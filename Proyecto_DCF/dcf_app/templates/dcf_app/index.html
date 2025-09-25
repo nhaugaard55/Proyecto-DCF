@@ -138,6 +138,8 @@
                     <li class="list-group-item d-flex justify-content-between"><span>CAPM</span><span>{% with valor=resultado.metricas.capm_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
                     <li class="list-group-item d-flex justify-content-between"><span>WACC</span><span>{% with valor=resultado.metricas.wacc_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
                     <li class="list-group-item d-flex justify-content-between"><span>Crecimiento utilizado</span><span>{% with valor=resultado.metricas.crecimiento_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
+                    <li class="list-group-item d-flex justify-content-between"><span>CAGR estimado</span><span>{% with valor=resultado.metricas.crecimiento_cagr_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
+                    <li class="list-group-item d-flex justify-content-between"><span>Crecimiento promedio</span><span>{% with valor=resultado.metricas.crecimiento_promedio_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
                 </ul>
                 {% if resultado.metricas.valor_terminal %}
                 <div class="pt-3 small text-muted">Valor terminal estimado: ${{ resultado.metricas.valor_terminal|floatformat:0 }}</div>

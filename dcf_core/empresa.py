@@ -30,7 +30,8 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
     if not history.empty:
         precio = to_float(history["Close"].iloc[-1], 0)
     else:
-        precio = to_float(info.get("currentPrice") or info.get("previousClose"), 0)
+        precio = to_float(info.get("currentPrice")
+                          or info.get("previousClose"), 0)
 
     equity = acciones * precio
 
@@ -42,21 +43,22 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
             debt = to_float(deuda_series.iloc[0], 0)
 
     cashflow = getattr(empresa, "cashflow", None)
-    fcf = None
+    fcf = []
     fcf_actual = 0.0
     if cashflow is not None and not cashflow.empty and "Free Cash Flow" in cashflow.index:
-        fcf = cashflow.loc["Free Cash Flow"].dropna().head(5)
-        if not fcf.empty:
-            fcf_actual = to_float(fcf.iloc[0], 0)
-    else:
-        fcf = []
+        fcf_series = cashflow.loc["Free Cash Flow"].dropna().head(5)
+        if hasattr(fcf_series, "tolist"):
+            fcf = [to_float(valor) for valor in fcf_series.tolist()]
+        elif isinstance(fcf_series, (list, tuple)):
+            fcf = [to_float(valor) for valor in fcf_series]
+        if fcf:
+            fcf_actual = fcf[0]
 
     pe_ratio_raw = info.get("trailingPE")
     pe_ratio = None
-    try:
-        pe_ratio = float(pe_ratio_raw)
-    except (TypeError, ValueError):
-        pe_ratio = None
+
+    pe_ratio_raw = info.get("trailingPE")
+    pe_ratio = to_float(pe_ratio_raw) if pe_ratio_raw is not None else None
 
     tasa_rf = obtener_tasa_libre_riesgo()
     market_return = 0.08
@@ -71,8 +73,14 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
     capm = tasa_rf + beta * (market_return - tasa_rf)
     wacc = calcular_wacc(beta, debt, equity, cost_of_debt, tax_rate, tasa_rf)
 
-    ps_ratio = to_float(precio / info.get("revenuePerShare"), 0) if info.get("revenuePerShare") else None
-    pb_ratio = to_float(precio / info.get("bookValue"), 0) if info.get("bookValue") else None
+    revenue_per_share_raw = info.get("revenuePerShare")
+    revenue_per_share = to_float(
+        revenue_per_share_raw) if revenue_per_share_raw else None
+    book_value_raw = info.get("bookValue")
+    book_value = to_float(book_value_raw) if book_value_raw else None
+
+    ps_ratio = (precio / revenue_per_share) if revenue_per_share else None
+    pb_ratio = (precio / book_value) if book_value else None
     roe = info.get("returnOnEquity")
     debt_to_capital = (debt / (debt + equity)) if (debt + equity) else 0
     volume = to_float(info.get("volume"), 0)
@@ -136,12 +144,11 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
 
     año_actual = datetime.now().year
     fcf_historico = []
-    if hasattr(fcf, "values"):
-        for i, valor in enumerate(fcf.values):
-            fcf_historico.append({
-                "anio": año_actual - i,
-                "valor": to_float(valor)
-            })
+    for i, valor in enumerate(fcf):
+        fcf_historico.append({
+            "anio": año_actual - i,
+            "valor": to_float(valor)
+        })
 
     fcf_proyectado = proyectar_fcf(fcf_actual, tasa_crecimiento)
     fcf_proyecciones = []
@@ -184,7 +191,8 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
     if valor_total is not None:
         fcf_final = fcf_proyectado[-1] if fcf_proyectado else 0
         if wacc > 0 and crecimiento_largo_plazo < wacc:
-            valor_terminal = (fcf_final * (1 + crecimiento_largo_plazo)) / (wacc - crecimiento_largo_plazo)
+            valor_terminal = (
+                fcf_final * (1 + crecimiento_largo_plazo)) / (wacc - crecimiento_largo_plazo)
 
     datos_empresa = {
         "nombre": nombre,
