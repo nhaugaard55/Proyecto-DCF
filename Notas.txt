@@ -1,0 +1,1 @@
+En esta version cree el entorno virtual, inicialize GIT y lo subi a GitHub para trabajar mas ordenado.
