@@ -98,13 +98,13 @@
                         {% endwith %}
                     </div>
                     <div class="col-6">Market Cap:<br>
-                        {% with valor=resultado.datos_empresa.market_cap %}
-                            <span class="fw-semibold">{% if valor %}${{ valor|floatformat:0 }}{% else %}N/D{% endif %}</span>
+                        {% with valor=resultado.datos_empresa.market_cap_billones %}
+                            <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
                         {% endwith %}
                     </div>
                     <div class="col-6">Deuda:<br>
-                        {% with valor=resultado.datos_empresa.deuda %}
-                            <span class="fw-semibold">{% if valor %}${{ valor|floatformat:0 }}{% else %}N/D{% endif %}</span>
+                        {% with valor=resultado.datos_empresa.deuda_billones %}
+                            <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
                         {% endwith %}
                     </div>
                     <div class="col-6">Beta:<br>
@@ -142,7 +142,7 @@
                     <li class="list-group-item d-flex justify-content-between"><span>Crecimiento promedio</span><span>{% with valor=resultado.metricas.crecimiento_promedio_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
                 </ul>
                 {% if resultado.metricas.valor_terminal %}
-                <div class="pt-3 small text-muted">Valor terminal estimado: ${{ resultado.metricas.valor_terminal|floatformat:0 }}</div>
+                <div class="pt-3 small text-muted">Valor terminal estimado: ${{ resultado.metricas.valor_terminal|floatformat:2 }}B</div>
                 {% endif %}
             </div>
         </div>
@@ -198,7 +198,7 @@
                             {% for item in resultado.fcf_historico %}
                             <tr>
                                 <td>{{ item.anio }}</td>
-                                <td>${{ item.valor|floatformat:0 }}</td>
+                                <td>${{ item.valor|floatformat:2 }}B</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -225,7 +225,7 @@
                             {% for item in resultado.fcf_proyectado %}
                             <tr>
                                 <td>{{ item.anio }}</td>
-                                <td>${{ item.valor|floatformat:0 }}</td>
+                                <td>${{ item.valor|floatformat:2 }}B</td>
                             </tr>
                             {% endfor %}
                         </tbody>

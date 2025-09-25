@@ -19,6 +19,12 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
         except (TypeError, ValueError):
             return float(default)
 
+    def to_billions(value):
+        try:
+            return float(value) / 1_000_000_000 if value is not None else None
+        except (TypeError, ValueError):
+            return None
+
     nombre = info.get("longName", ticker)
     sector = info.get("sector", "Desconocido")
     beta = to_float(info.get("beta"), 1.0)
@@ -147,7 +153,7 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
     for i, valor in enumerate(fcf):
         fcf_historico.append({
             "anio": año_actual - i,
-            "valor": to_float(valor)
+            "valor": to_billions(valor)
         })
 
     fcf_proyectado = proyectar_fcf(fcf_actual, tasa_crecimiento)
@@ -155,7 +161,7 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
     for i, valor in enumerate(fcf_proyectado, start=1):
         fcf_proyecciones.append({
             "anio": año_actual + i,
-            "valor": to_float(valor)
+            "valor": to_billions(valor)
         })
 
     crecimiento_largo_plazo = 0.02
@@ -194,13 +200,17 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
             valor_terminal = (
                 fcf_final * (1 + crecimiento_largo_plazo)) / (wacc - crecimiento_largo_plazo)
 
+    valor_terminal_billones = to_billions(valor_terminal)
+
     datos_empresa = {
         "nombre": nombre,
         "sector": sector,
         "precio_actual": precio,
         "acciones": acciones,
         "market_cap": equity,
+        "market_cap_billones": to_billions(equity),
         "deuda": debt,
+        "deuda_billones": to_billions(debt),
         "beta": beta,
         "tasa_impositiva": tax_rate,
         "tasa_impositiva_pct": tax_rate * 100 if tax_rate is not None else None,
@@ -224,7 +234,7 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
         "crecimiento_cagr_pct": crecimiento * 100 if crecimiento is not None else None,
         "crecimiento_promedio": avg_growth_rate,
         "crecimiento_promedio_pct": avg_growth_rate * 100 if avg_growth_rate is not None else None,
-        "valor_terminal": valor_terminal,
+        "valor_terminal": valor_terminal_billones,
     }
 
     dividendos = {
