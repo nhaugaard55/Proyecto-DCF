@@ -16,9 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from dcf_app.views import dcf_view
+from dcf_app.views import dcf_view, dcf_pdf_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', dcf_view, name='home'),
+    path('dcf/pdf/', dcf_pdf_view, name='dcf_pdf'),
 ]

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #222; }
+        h1, h2, h3 { color: #1a1a1a; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+        th { background-color: #f1f1f1; }
+        .section { margin-bottom: 18px; }
+        .meta { font-size: 11px; margin-top: 4px; color: #555; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+        .badge-success { background-color: #d4edda; color: #155724; }
+        .badge-warning { background-color: #fff3cd; color: #856404; }
+        .badge-danger { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Valuación DCF - {{ resultado.nombre }} ({{ ticker }})</h1>
+    <p class="meta">Fecha de generación: {{ generado|date:"d/m/Y H:i" }}</p>
+
+    <div class="section">
+        <h2>Resumen</h2>
+        <table>
+            <tbody>
+                <tr>
+                    <th>Valor intrínseco</th>
+                    <td>
+                        {% if resultado.valor_intrinseco is not None %}
+                            ${{ resultado.valor_intrinseco|floatformat:2 }}
+                        {% else %}N/D{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Precio actual</th>
+                    <td>
+                        {% if resultado.precio_actual is not None %}
+                            ${{ resultado.precio_actual|floatformat:2 }}
+                        {% else %}N/D{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Diferencia%</th>
+                    <td>
+                        {% if resultado.diferencia_pct is not None %}
+                            {{ resultado.diferencia_pct|floatformat:2 }}%
+                        {% else %}N/D{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Estado</th>
+                    <td>
+                        {% if resultado.estado == "SUBVALUADA" %}
+                            <span class="badge badge-success">{{ resultado.estado }}</span>
+                        {% elif resultado.estado == "SOBREVALUADA" %}
+                            <span class="badge badge-danger">{{ resultado.estado }}</span>
+                        {% else %}
+                            <span class="badge badge-warning">{{ resultado.estado|default:"N/D" }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Datos generales</h2>
+        <table>
+            <tbody>
+                <tr><th>Sector</th><td>{{ resultado.sector }}</td></tr>
+                <tr><th>Método crecimiento</th><td>{{ resultado.datos_empresa.metodo_crecimiento }}</td></tr>
+                <tr><th>Market Cap</th><td>{% if resultado.datos_empresa.market_cap_billones is not None %}${{ resultado.datos_empresa.market_cap_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td></tr>
+                <tr><th>Deuda</th><td>{% if resultado.datos_empresa.deuda_billones is not None %}${{ resultado.datos_empresa.deuda_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td></tr>
+                <tr><th>Beta</th><td>{% if resultado.datos_empresa.beta is not None %}{{ resultado.datos_empresa.beta|floatformat:2 }}{% else %}N/D{% endif %}</td></tr>
+                <tr><th>WACC</th><td>{% if resultado.metricas.wacc_pct is not None %}{{ resultado.metricas.wacc_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td></tr>
+                <tr><th>Valor terminal</th><td>{% if resultado.metricas.valor_terminal is not None %}${{ resultado.metricas.valor_terminal|floatformat:2 }}B{% else %}N/D{% endif %}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Filtros fundamentales</h2>
+        <table>
+            <thead>
+                <tr><th>Indicador</th><th>Valor</th><th>Criterio</th><th>Resultado</th></tr>
+            </thead>
+            <tbody>
+                {% for filtro in resultado.filtros %}
+                <tr>
+                    <td>{{ filtro.nombre }}</td>
+                    <td>{{ filtro.valor }}</td>
+                    <td>{{ filtro.criterio }}</td>
+                    <td>{% if filtro.cumple %}✔ Cumple{% else %}✖ No cumple{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>FCF histórico (Billones)</h2>
+        <table>
+            <thead><tr><th>Año</th><th>FCF</th></tr></thead>
+            <tbody>
+                {% for item in resultado.fcf_historico %}
+                <tr>
+                    <td>{{ item.anio }}</td>
+                    <td>{% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>FCF proyectado (Billones)</h2>
+        <table>
+            <thead><tr><th>Año</th><th>FCF proyectado</th></tr></thead>
+            <tbody>
+                {% for item in resultado.fcf_proyectado %}
+                <tr>
+                    <td>{{ item.anio }}</td>
+                    <td>{% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

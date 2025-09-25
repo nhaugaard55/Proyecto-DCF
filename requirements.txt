@@ -8,6 +8,7 @@ dj-database-url==2.2.0
 Django==5.2.6
 gunicorn==21.2.0
 whitenoise==6.6.0
+xhtml2pdf==0.2.15
 frozendict==2.4.6
 idna==3.10
 multitasking==0.0.12
