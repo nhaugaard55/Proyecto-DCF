@@ -14,12 +14,16 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
     history = empresa.history(period="1d")
 
     def to_float(value, default=0.0):
+        if isinstance(value, complex):
+            value = value.real
         try:
             return float(value)
         except (TypeError, ValueError):
             return float(default)
 
     def to_billions(value):
+        if isinstance(value, complex):
+            value = value.real
         try:
             return float(value) / 1_000_000_000 if value is not None else None
         except (TypeError, ValueError):
