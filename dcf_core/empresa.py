@@ -1,5 +1,6 @@
 import yfinance as yf
-from finanzas import (
+from datetime import datetime
+from .finanzas import (
     obtener_tasa_libre_riesgo,
     calcular_wacc,
     proyectar_fcf,
@@ -9,227 +10,245 @@ from finanzas import (
 
 def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growth_rate=0.05):
     empresa = yf.Ticker(ticker)
-    info = empresa.info
+    info = getattr(empresa, "info", {}) or {}
+    history = empresa.history(period="1d")
+
+    def to_float(value, default=0.0):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(default)
 
     nombre = info.get("longName", ticker)
     sector = info.get("sector", "Desconocido")
-    beta = info.get("beta", 1.0)
-    tax_rate = info.get("effectiveTaxRate", 0.25)
-    cost_of_debt = info.get("yield", 0.05)
+    beta = to_float(info.get("beta"), 1.0)
+    tax_rate = to_float(info.get("effectiveTaxRate"), 0.25)
+    cost_of_debt = to_float(info.get("yield"), 0.05)
 
-    acciones = info.get("sharesOutstanding", 0)
-    precio = empresa.history(period="1d")["Close"].iloc[-1]
+    acciones = to_float(info.get("sharesOutstanding"), 0)
+    precio = 0.0
+    if not history.empty:
+        precio = to_float(history["Close"].iloc[-1], 0)
+    else:
+        precio = to_float(info.get("currentPrice") or info.get("previousClose"), 0)
+
     equity = acciones * precio
 
-    balance = empresa.balance_sheet
-    debt = balance.loc["Long Term Debt"][0] if "Long Term Debt" in balance.index else 0
+    balance = getattr(empresa, "balance_sheet", None)
+    debt = 0.0
+    if balance is not None and not balance.empty and "Long Term Debt" in balance.index:
+        deuda_series = balance.loc["Long Term Debt"].dropna()
+        if not deuda_series.empty:
+            debt = to_float(deuda_series.iloc[0], 0)
 
-    cashflow = empresa.cashflow
-    fcf = cashflow.loc["Free Cash Flow"].dropna().head(5)
-    fcf_actual = fcf.iloc[0]
+    cashflow = getattr(empresa, "cashflow", None)
+    fcf = None
+    fcf_actual = 0.0
+    if cashflow is not None and not cashflow.empty and "Free Cash Flow" in cashflow.index:
+        fcf = cashflow.loc["Free Cash Flow"].dropna().head(5)
+        if not fcf.empty:
+            fcf_actual = to_float(fcf.iloc[0], 0)
+    else:
+        fcf = []
 
-    pe_ratio = info.get("trailingPE", "N/A")
+    pe_ratio_raw = info.get("trailingPE")
+    pe_ratio = None
+    try:
+        pe_ratio = float(pe_ratio_raw)
+    except (TypeError, ValueError):
+        pe_ratio = None
+
     tasa_rf = obtener_tasa_libre_riesgo()
     market_return = 0.08
 
-    print("\n📊 Datos:")
-    print(f"🏷️ Nombre de la empresa: {nombre}")
-    print(f"🏢 Sector: {sector}")
-    print(f"📉 Price-to-Earnings Ratio (P/E): {pe_ratio}")
-    print(f"🏦 Tasa libre de riesgo (Rf): {tasa_rf:.2%}")
-    print(f"📊 Expected Market Return (Rm): {market_return:.2%}")
-    print(f"💵 Precio actual: ${precio:.2f}")
-    print(f"📈 Shares Outstanding: {acciones / 1_000_000_000:.4f}B")
-    print(f"📐 Beta: {beta}")
-    print(f"💰 Cost of Debt: {cost_of_debt:.2%}")
-    print(f"🏦 Tax Rate: {tax_rate:.2%}")
-    print(f"📊 Deuda (D): ${debt / 1_000_000_000:,.4f}B")
-    print(f"💼 Market Cap (E): ${equity / 1_000_000_000:,.4f}B")
-
-    # 🧪 Filtros clave del análisis:
-    print("\n📊 Filtros clave del análisis:")
-
-    # P/E Ratio
-    try:
-        pe_ratio_float = float(pe_ratio)
-        print(
-            f"P/E Ratio: {pe_ratio_float:.4f} {'❌' if pe_ratio_float > 20 else '✅'} (< 20)")
-    except:
-        print(f"P/E Ratio: {pe_ratio} ❌ (no disponible)")
-
-    ps_ratio = precio / info.get("revenuePerShare",
-                                 1) if info.get("revenuePerShare") else 0
-    # P/S Ratio
-    print(f"P/S Ratio: {ps_ratio:.2f} {'❌' if ps_ratio > 2 else '✅'} (< 2)")
-
-    pb_ratio = precio / \
-        info.get("bookValue", 1) if info.get("bookValue") else 0
-    # P/B Ratio
-    print(f"P/B Ratio: {pb_ratio:.2f} {'❌' if pb_ratio > 1 else '✅'} (< 1)")
-
-    roe = info.get("returnOnEquity", 0)
-    # ROE
-    print(f"ROE: {roe:.2%} {'✅' if roe > 0.10 else '❌'} (> 10%)")
-
-    debt_to_capital = debt / (debt + equity) if (debt + equity) else 0
-    # Debt to Capital Ratio
-    print(
-        f"Debt to Capital Ratio: {debt_to_capital:.2%} {'✅' if debt_to_capital < 0.25 else '❌'} (< 25%)")
-
-    volume = info.get("volume", 0)
-    # Volume
-    print(f"Volume: {volume:,} {'✅' if volume > 250000 else '❌'} (> 250,000)")
-
-    revenue_growth = info.get("revenueGrowth", 0)
-    # Revenue Growth
-    print(
-        f"Revenue Growth: {revenue_growth:.2%} {'✅' if revenue_growth > 0 else '❌'} (> 0%)")
-
-    icr = info.get("ebitda", 0) / info.get("totalInterestExpense",
-                                           1) if info.get("totalInterestExpense") else "N/A"
-    # ICR (con control de tipo)
-    try:
-        icr_val = float(icr)
-        icr_str = f"{icr_val:.2f} {'✅' if icr_val > 2 else '❌'}"
-    except:
-        icr_str = "N/A ❌"
-    print(f"🧮 Interest Coverage Ratio (ICR): {icr_str}")
-
-    # Calcular el crecimiento porcentual promedio (Average Growth Rate)
-    # Se mueve fuera de esta función según indicación
-
-    # Permitir al usuario elegir entre CAGR y crecimiento promedio
     if metodo_crecimiento == "2":
         tasa_crecimiento = avg_growth_rate
-        print("📈 Usando crecimiento promedio.")
+        metodo_utilizado = "Promedio"
     else:
         tasa_crecimiento = crecimiento
-        print("📈 Usando CAGR.")
+        metodo_utilizado = "CAGR"
 
     capm = tasa_rf + beta * (market_return - tasa_rf)
     wacc = calcular_wacc(beta, debt, equity, cost_of_debt, tax_rate, tasa_rf)
 
-    print("\n📊 Cálculos:")
-    print(f"💸 FCF actual: ${fcf_actual / 1_000_000_000:,.4f}B")
-    print(f"📈 Tasa de crecimiento estimada (CAGR): {crecimiento:.2%}")
-    print(
-        f"📊 Tasa de crecimiento promedio (Average Growth Rate): {avg_growth_rate:.2%}")
-    print(f"📉 Tasa de descuento (CAPM): {capm:.2%}")
-    print(f"⚖️  WACC: {wacc:.2%}")
-    capitalizacion = equity
-    valor_empresa = equity + debt
-    print(
-        f"🏢 Capitalización de mercado: ${capitalizacion / 1_000_000_000:,.4f}B")
-    print(
-        f"🏷️ Valor de la compañía (Enterprise Value): ${valor_empresa / 1_000_000_000:,.4f}B")
+    ps_ratio = to_float(precio / info.get("revenuePerShare"), 0) if info.get("revenuePerShare") else None
+    pb_ratio = to_float(precio / info.get("bookValue"), 0) if info.get("bookValue") else None
+    roe = info.get("returnOnEquity")
+    debt_to_capital = (debt / (debt + equity)) if (debt + equity) else 0
+    volume = to_float(info.get("volume"), 0)
+    revenue_growth = info.get("revenueGrowth")
+    icr = None
+    if info.get("totalInterestExpense"):
+        try:
+            icr = info.get("ebitda", 0) / info.get("totalInterestExpense")
+        except (TypeError, ZeroDivisionError):
+            icr = None
 
-    print("\n📈 Serie histórica de Free Cash Flow (FCF):")
-    from datetime import datetime
+    filtros = []
+    filtros.append({
+        "nombre": "P/E",
+        "valor": f"{pe_ratio:.2f}" if pe_ratio is not None else "N/D",
+        "criterio": "< 20",
+        "cumple": pe_ratio is not None and pe_ratio <= 20
+    })
+    filtros.append({
+        "nombre": "P/S",
+        "valor": f"{ps_ratio:.2f}" if ps_ratio is not None else "N/D",
+        "criterio": "< 2",
+        "cumple": ps_ratio is not None and ps_ratio <= 2
+    })
+    filtros.append({
+        "nombre": "P/B",
+        "valor": f"{pb_ratio:.2f}" if pb_ratio is not None else "N/D",
+        "criterio": "< 1",
+        "cumple": pb_ratio is not None and pb_ratio <= 1
+    })
+    filtros.append({
+        "nombre": "ROE",
+        "valor": f"{roe:.2%}" if isinstance(roe, (int, float)) else "N/D",
+        "criterio": "> 10%",
+        "cumple": isinstance(roe, (int, float)) and roe > 0.10
+    })
+    filtros.append({
+        "nombre": "Debt/Capital",
+        "valor": f"{debt_to_capital:.2%}",
+        "criterio": "< 25%",
+        "cumple": debt_to_capital < 0.25
+    })
+    filtros.append({
+        "nombre": "Volumen",
+        "valor": f"{volume:,.0f}" if volume else "N/D",
+        "criterio": "> 250k",
+        "cumple": volume and volume > 250000
+    })
+    filtros.append({
+        "nombre": "Revenue Growth",
+        "valor": f"{revenue_growth:.2%}" if isinstance(revenue_growth, (int, float)) else "N/D",
+        "criterio": "> 0%",
+        "cumple": isinstance(revenue_growth, (int, float)) and revenue_growth > 0
+    })
+    filtros.append({
+        "nombre": "ICR",
+        "valor": f"{icr:.2f}" if isinstance(icr, (int, float)) else "N/D",
+        "criterio": "> 2",
+        "cumple": isinstance(icr, (int, float)) and icr > 2
+    })
+
     año_actual = datetime.now().year
-    for i, val in enumerate(fcf.values):
-        año = año_actual - i
-        valor_billon = val / 1000000000
-        print(f"{año}: ${valor_billon:,.4f}B")
+    fcf_historico = []
+    if hasattr(fcf, "values"):
+        for i, valor in enumerate(fcf.values):
+            fcf_historico.append({
+                "anio": año_actual - i,
+                "valor": to_float(valor)
+            })
 
-    fcf_proy = proyectar_fcf(fcf_actual, tasa_crecimiento)
-
-    print("\n📈 Proyección de FCF para los próximos 5 años:")
-    año_inicio_proy = año_actual + 1
-    for i, fcf_ano in enumerate(fcf_proy):
-        año_proy = año_inicio_proy + i
-        print(f"{año_proy}: ${fcf_ano / 1_000_000_000:,.4f}B")
+    fcf_proyectado = proyectar_fcf(fcf_actual, tasa_crecimiento)
+    fcf_proyecciones = []
+    for i, valor in enumerate(fcf_proyectado, start=1):
+        fcf_proyecciones.append({
+            "anio": año_actual + i,
+            "valor": to_float(valor)
+        })
 
     crecimiento_largo_plazo = 0.02
-    fcf_final = fcf_proy[-1]
-    valor_terminal = (fcf_final * (1 + crecimiento_largo_plazo)
-                      ) / (wacc - crecimiento_largo_plazo)
+    valor_total = calcular_valor_intrinseco(fcf_proyectado, wacc)
+    equity_value = (valor_total - debt) if valor_total is not None else None
+    valor_por_accion = None
+    if equity_value is not None and acciones:
+        valor_por_accion = equity_value / acciones
 
-    print("\n📉 Supuestos a Largo Plazo:")
-    print(f"📈 Expected Long-Term Growth: {crecimiento_largo_plazo:.2%}")
-    print(
-        f"🏁 Valor terminal (Terminal Value): ${valor_terminal / 1_000_000_000:,.4f}B")
+    diferencia = None
+    if valor_por_accion is not None:
+        diferencia = valor_por_accion - precio
 
-    # Mostrar el valor presente de los FCF proyectados año por año
-    print("\n💵 Valor presente de los FCF proyectados por año:")
-    vp_fcf_total = 0
-    for i, fcf in enumerate(fcf_proy, start=1):
-        vp = fcf / ((1 + wacc) ** i)
-        vp_fcf_total += vp
-        print(f"Año {i}: PV = ${vp / 1_000_000_000:,.4f}B")
+    diferencia_pct = None
+    if diferencia is not None and precio:
+        diferencia_pct = (diferencia / precio) * 100
 
-    print(
-        f"\n💰 Valor presente total (PV) de los FCF: ${vp_fcf_total / 1_000_000_000:,.4f}B")
-
-    valor_residual_desc = valor_terminal / ((1 + wacc) ** len(fcf_proy))
-    print(
-        f"💵 Valor residual descontado (Present Value of Terminal Value): ${valor_residual_desc / 1_000_000_000:,.4f}B")
-
-    valor_total = calcular_valor_intrinseco(fcf_proy, wacc)
-    equity_value = valor_total - debt
-    valor_por_accion = equity_value / acciones if acciones else 0
-
-    diferencia_pct = ((valor_por_accion - precio) / precio) * 100
-
-    valor_intrinseco = valor_por_accion
-    current_price = precio
-
-    # Nuevos datos añadidos después de los filtros existentes:
-
-    # 📈 Dividend Yield
     dividend_yield = info.get("dividendYield")
-    if dividend_yield is not None:
-        print(
-            f"📈 Dividend Yield: {dividend_yield * 100:.2f}% {'✅' if dividend_yield > 0.02 else '❌'} (> 2%)")
-    else:
-        print("📈 Dividend Yield: No disponible")
-
-    # 🚀 Dividend Growth Rate (requiere cálculo manual o fuente externa)
-    print("🚀 Dividend Growth Rate: No disponible (requiere histórico)")
-
-    # 📅 Años pagando dividendos (manual/histórico)
-    print("📅 Años pagando dividendos: No disponible (requiere histórico)")
-
-    # 🧮 Net Worth / Shares
     total_assets = info.get("totalAssets")
     total_liabilities = info.get("totalLiab")
-    shares_outstanding = info.get("sharesOutstanding")
-    if total_assets and total_liabilities and shares_outstanding:
-        net_worth_per_share = (
-            total_assets - total_liabilities) / shares_outstanding
-        print(f"🧮 Net Worth / Share: ${net_worth_per_share:.2f}")
-    else:
-        print("🧮 Net Worth / Share: No disponible")
+    net_worth_per_share = None
+    if total_assets and total_liabilities and acciones:
+        net_worth_per_share = (total_assets - total_liabilities) / acciones
 
-    # 🧠 Intrinsic Value (ya lo estás calculando, solo lo mostramos)
-    if valor_intrinseco is not None:
-        print(f"🧠 Intrinsic Value: ${valor_intrinseco:.2f}")
-    else:
-        print("🧠 Intrinsic Value: No disponible")
+    safety_margin = None
+    if valor_por_accion is not None and precio:
+        try:
+            safety_margin = (valor_por_accion - precio) / valor_por_accion
+        except ZeroDivisionError:
+            safety_margin = None
 
-    # 🛡️ Safety Margin
-    if valor_intrinseco and current_price:
-        safety_margin = (valor_intrinseco - current_price) / valor_intrinseco
-        print(
-            f"🛡️ Safety Margin: {safety_margin:.2%} {'✅' if safety_margin > 0.25 else '❌'} (> 25%)")
-    else:
-        print("🛡️ Safety Margin: No disponible")
+    valor_terminal = None
+    if valor_total is not None:
+        fcf_final = fcf_proyectado[-1] if fcf_proyectado else 0
+        if wacc > 0 and crecimiento_largo_plazo < wacc:
+            valor_terminal = (fcf_final * (1 + crecimiento_largo_plazo)) / (wacc - crecimiento_largo_plazo)
 
-    # 📉 52-Week Low
-    week_52_low = info.get("fiftyTwoWeekLow")
-    if week_52_low:
-        print(f"📉 52-week low: ${week_52_low}")
-    else:
-        print("📉 52-week low: No disponible")
+    datos_empresa = {
+        "nombre": nombre,
+        "sector": sector,
+        "precio_actual": precio,
+        "acciones": acciones,
+        "market_cap": equity,
+        "deuda": debt,
+        "beta": beta,
+        "tasa_impositiva": tax_rate,
+        "tasa_impositiva_pct": tax_rate * 100 if tax_rate is not None else None,
+        "cost_of_debt": cost_of_debt,
+        "cost_of_debt_pct": cost_of_debt * 100 if cost_of_debt is not None else None,
+        "metodo_crecimiento": metodo_utilizado,
+    }
 
-    # 📊 Bass pattern (visual)
-    print("📊 Bass pattern (manual): Observación técnica recomendada")
+    metricas = {
+        "tasa_rf": tasa_rf,
+        "tasa_rf_pct": tasa_rf * 100 if tasa_rf is not None else None,
+        "market_return": market_return,
+        "market_return_pct": market_return * 100 if market_return is not None else None,
+        "capm": capm,
+        "capm_pct": capm * 100 if capm is not None else None,
+        "wacc": wacc,
+        "wacc_pct": wacc * 100 if wacc is not None else None,
+        "crecimiento": tasa_crecimiento,
+        "crecimiento_pct": tasa_crecimiento * 100 if tasa_crecimiento is not None else None,
+        "crecimiento_cagr": crecimiento,
+        "crecimiento_cagr_pct": crecimiento * 100 if crecimiento is not None else None,
+        "crecimiento_promedio": avg_growth_rate,
+        "crecimiento_promedio_pct": avg_growth_rate * 100 if avg_growth_rate is not None else None,
+        "valor_terminal": valor_terminal,
+    }
+
+    dividendos = {
+        "yield": dividend_yield,
+        "yield_pct": dividend_yield * 100 if dividend_yield is not None else None,
+        "net_worth_per_share": net_worth_per_share,
+        "safety_margin": safety_margin,
+        "safety_margin_pct": safety_margin * 100 if safety_margin is not None else None,
+        "fifty_two_week_low": info.get("fiftyTwoWeekLow")
+    }
+
+    estado = None
+    if valor_por_accion is not None and precio:
+        if valor_por_accion > precio * 1.1:
+            estado = "SUBVALUADA"
+        elif valor_por_accion < precio * 0.9:
+            estado = "SOBREVALUADA"
+        else:
+            estado = "RAZONABLE"
 
     return {
         "nombre": nombre,
         "sector": sector,
         "valor_intrinseco": valor_por_accion,
         "precio_actual": precio,
-        "diferencia": valor_por_accion - precio,
+        "diferencia": diferencia,
         "diferencia_pct": diferencia_pct,
-        "estado": "SUBVALUADA" if valor_por_accion > precio * 1.1 else "SOBREVALUADA" if valor_por_accion < precio * 0.9 else "RAZONABLE"
+        "estado": estado,
+        "datos_empresa": datos_empresa,
+        "filtros": filtros,
+        "metricas": metricas,
+        "fcf_historico": fcf_historico,
+        "fcf_proyectado": fcf_proyecciones,
+        "dividendos": dividendos,
     }

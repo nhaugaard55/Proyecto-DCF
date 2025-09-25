@@ -60,12 +60,23 @@ def proyectar_fcf(fcf_actual, tasa_crecimiento, años=5):
 
 
 def calcular_crecimientos(fcf_series):
-    if len(fcf_series) > 1:
-        cagr = (fcf_series.iloc[0] / fcf_series.iloc[-1]
-                ) ** (1 / (len(fcf_series) - 1)) - 1
-        tasas = [((fcf_series.iloc[i] / fcf_series.iloc[i+1]) - 1)
-                 for i in range(len(fcf_series) - 1)]
-        promedio = sum(tasas) / len(tasas)
+    if fcf_series is None:
+        valores = []
+    elif hasattr(fcf_series, "dropna"):
+        valores = [float(v) for v in fcf_series.dropna().tolist()]
+    else:
+        valores = [float(v) for v in fcf_series if v is not None]
+
+    if len(valores) > 1 and valores[-1] != 0:
+        try:
+            cagr = (valores[0] / valores[-1]) ** (1 / (len(valores) - 1)) - 1
+        except (ZeroDivisionError, ValueError):
+            cagr = 0.05
+        tasas = []
+        for i in range(len(valores) - 1):
+            if valores[i + 1] != 0:
+                tasas.append((valores[i] / valores[i + 1]) - 1)
+        promedio = sum(tasas) / len(tasas) if tasas else 0.05
     else:
         cagr = promedio = 0.05
     return float(cagr), float(promedio)
@@ -75,10 +86,23 @@ def calcular_crecimientos(fcf_series):
 
 def calcular_valor_intrinseco(fcf_proyectado, wacc, crecimiento_perpetuo=0.02):
     """Calcula el valor intrínseco con FCF proyectado y valor residual."""
-    vp_fcf = sum(fcf / ((1 + wacc) ** i)
-                 for i, fcf in enumerate(fcf_proyectado, start=1))
+    if not fcf_proyectado or wacc <= 0:
+        return None
+
+    vp_fcf = sum(
+        fcf / ((1 + wacc) ** i)
+        for i, fcf in enumerate(fcf_proyectado, start=1)
+    )
+
+    crecimiento_ajustado = min(crecimiento_perpetuo, wacc - 0.005) if wacc > crecimiento_perpetuo else None
+    if crecimiento_ajustado is None or crecimiento_ajustado < 0:
+        return None
+
     fcf_final = fcf_proyectado[-1]
-    valor_residual = (fcf_final * (1 + crecimiento_perpetuo)
-                      ) / (wacc - crecimiento_perpetuo)
+    try:
+        valor_residual = (fcf_final * (1 + crecimiento_ajustado)) / (wacc - crecimiento_ajustado)
+    except ZeroDivisionError:
+        return None
+
     valor_residual_desc = valor_residual / ((1 + wacc) ** len(fcf_proyectado))
     return vp_fcf + valor_residual_desc
