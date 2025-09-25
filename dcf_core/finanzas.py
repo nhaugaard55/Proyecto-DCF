@@ -1,3 +1,4 @@
+import math
 import requests
 
 # Obtiene la tasa libre de riesgo desde la API de la Fed
@@ -67,19 +68,45 @@ def calcular_crecimientos(fcf_series):
     else:
         valores = [float(v) for v in fcf_series if v is not None]
 
-    if len(valores) > 1 and valores[-1] != 0:
+    def sanitize(valor, default=0.05):
+        if valor is None:
+            return default
+        if isinstance(valor, complex):
+            valor = valor.real
         try:
-            cagr = (valores[0] / valores[-1]) ** (1 / (len(valores) - 1)) - 1
-        except (ZeroDivisionError, ValueError):
-            cagr = 0.05
+            valor = float(valor)
+        except (TypeError, ValueError):
+            return default
+        if math.isnan(valor) or math.isinf(valor):
+            return default
+        return valor
+
+    if len(valores) > 1:
+        primero = valores[0]
+        ultimo = valores[-1]
+        cagr_calc = None
+        if ultimo not in (0, None) and ultimo != 0 and primero > 0 and ultimo > 0:
+            try:
+                exponente = 1 / (len(valores) - 1)
+                ratio = primero / ultimo
+                if ratio > 0:
+                    cagr_calc = (ratio ** exponente) - 1
+            except (ZeroDivisionError, OverflowError, ValueError):
+                cagr_calc = None
+
         tasas = []
         for i in range(len(valores) - 1):
-            if valores[i + 1] != 0:
-                tasas.append((valores[i] / valores[i + 1]) - 1)
-        promedio = sum(tasas) / len(tasas) if tasas else 0.05
+            siguiente = valores[i + 1]
+            actual = valores[i]
+            if siguiente and siguiente != 0:
+                tasas.append((actual / siguiente) - 1)
+
+        promedio_calc = (sum(tasas) / len(tasas)) if tasas else None
+        cagr = sanitize(cagr_calc)
+        promedio = sanitize(promedio_calc)
     else:
         cagr = promedio = 0.05
-    return float(cagr), float(promedio)
+    return cagr, promedio
 
 # Calcula el valor intrínseco de la empresa usando FCF proyectado y valor residual
 
