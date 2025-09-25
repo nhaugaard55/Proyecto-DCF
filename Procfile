@@ -1,0 +1,1 @@
+web: gunicorn Proyecto_DCF.wsgi:application
