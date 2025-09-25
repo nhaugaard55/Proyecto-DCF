@@ -1,1 +1,1 @@
-web: gunicorn Proyecto_DCF.wsgi:application
+web: gunicorn Proyecto_DCF.Proyecto_DCF.wsgi:application
