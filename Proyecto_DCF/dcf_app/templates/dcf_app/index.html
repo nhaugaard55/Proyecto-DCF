@@ -19,6 +19,14 @@
                             <option value="2" {% if metodo == "2" %}selected{% endif %}>Promedio año a año</option>
                         </select>
                     </div>
+                    <div class="col-12">
+                        <label for="fuente" class="form-label">Fuente de datos</label>
+                        <select name="fuente" id="fuente" class="form-select">
+                            <option value="auto" {% if fuente == "auto" %}selected{% endif %}>Automático (prioriza FMP y usa iFinance si falta)</option>
+                            <option value="fmp" {% if fuente == "fmp" %}selected{% endif %}>Financial Modeling Prep</option>
+                            <option value="yfinance" {% if fuente == "yfinance" %}selected{% endif %}>iFinance (yfinance)</option>
+                        </select>
+                    </div>
                     <div class="col-12 d-flex justify-content-end">
                         <button type="submit" class="btn btn-primary">Analizar</button>
                     </div>
@@ -40,6 +48,9 @@
                     <div>
                         <h2 class="h4 mb-0">{{ resultado.nombre }} {% if ticker %}<span class="text-muted">({{ ticker }})</span>{% endif %}</h2>
                         <p class="text-muted mb-0">{{ resultado.sector }}</p>
+                        {% if resultado.fuente_datos %}
+                        <p class="text-muted small mb-0">Fuente de datos: {{ resultado.fuente_datos_descripcion }}</p>
+                        {% endif %}
                     </div>
                     {% if resultado.estado %}
                     <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle px-3 py-2 mt-3 mt-md-0 fw-semibold">{{ resultado.estado }}</span>
@@ -78,10 +89,14 @@
                         {% endwith %}
                     </div>
                 </div>
+                {% if resultado.mensaje_fuente %}
+                <div class="alert alert-info mt-3">{{ resultado.mensaje_fuente }}</div>
+                {% endif %}
                 <div class="mt-4 d-flex justify-content-end">
                     <form method="get" action="{% url 'dcf_pdf' %}">
                         <input type="hidden" name="ticker" value="{{ ticker }}">
                         <input type="hidden" name="metodo" value="{{ metodo }}">
+                        <input type="hidden" name="fuente" value="{{ fuente }}">
                         <button type="submit" class="btn btn-outline-secondary">Descargar PDF</button>
                     </form>
                 </div>

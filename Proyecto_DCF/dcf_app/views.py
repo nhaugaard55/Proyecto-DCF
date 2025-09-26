@@ -13,14 +13,16 @@ def dcf_view(request):
     error = None
     ticker = ""
     metodo = "1"
+    fuente = "auto"
 
     if request.method == "POST":
         ticker = request.POST.get("ticker", "").strip().upper()
         metodo = request.POST.get("metodo", "1")
+        fuente = request.POST.get("fuente", "auto")
 
         if ticker:
             try:
-                resultado = ejecutar_dcf(ticker, metodo)
+                resultado = ejecutar_dcf(ticker, metodo, fuente)
             except Exception as e:
                 error = f"Ocurrió un error al analizar el ticker: {e}"
         else:
@@ -30,7 +32,8 @@ def dcf_view(request):
         "resultado": resultado,
         "error": error,
         "ticker": ticker,
-        "metodo": metodo
+        "metodo": metodo,
+        "fuente": fuente
     })
 
 
@@ -46,12 +49,13 @@ def _render_pdf(template_name: str, context: dict) -> bytes | None:
 def dcf_pdf_view(request):
     ticker = request.GET.get("ticker", "").strip().upper()
     metodo = request.GET.get("metodo", "1")
+    fuente = request.GET.get("fuente", "auto")
 
     if not ticker:
         return HttpResponse("Ticker inválido", status=400)
 
     try:
-        resultado = ejecutar_dcf(ticker, metodo)
+        resultado = ejecutar_dcf(ticker, metodo, fuente)
     except Exception as exc:
         return HttpResponse(f"No se pudo generar el informe: {exc}", status=500)
 
@@ -62,6 +66,7 @@ def dcf_pdf_view(request):
         "resultado": resultado,
         "ticker": ticker,
         "metodo": "CAGR" if metodo != "2" else "Promedio",
+        "fuente": fuente,
         "generado": timezone.now(),
     }
 

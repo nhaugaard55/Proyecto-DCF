@@ -115,10 +115,7 @@ def obtener_fcf_historico(ticker: str, minimo: int = 6, limite: int = 10) -> Lis
     menos puntos de los solicitados, se retornan los disponibles.
     """
     cliente = FMPClient()
-    try:
-        historial = cliente.get_free_cash_flow_history(ticker, limit=limite)
-    except FMPClientError:
-        return []
+    historial = cliente.get_free_cash_flow_history(ticker, limit=limite)
     # FMP ya devuelve los datos ordenados del más nuevo al más viejo, pero por las dudas
     historial.sort(key=lambda item: (item.year is None, -(item.year or 0)))
     if len(historial) < minimo:
