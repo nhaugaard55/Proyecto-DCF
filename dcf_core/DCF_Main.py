@@ -16,8 +16,8 @@ def ejecutar_dcf(ticker: str, metodo: str = "1") -> dict:
     Returns:
         dict: Contiene 'precio_actual', 'valor_intrinseco', 'estado', 'diferencia_pct'.
     """
-    fcf_historial: List[FCFEntry] = obtener_fcf_historico(ticker, minimo=6, limite=12)
-    valores_para_crecimiento = [dato.value for dato in fcf_historial[:7]]
+    fcf_historial: List[FCFEntry] = obtener_fcf_historico(ticker, minimo=4, limite=5)
+    valores_para_crecimiento = [dato.value for dato in fcf_historial]
     crecimiento, avg_growth_rate = calcular_crecimientos(valores_para_crecimiento)
 
     return analizar_empresa(

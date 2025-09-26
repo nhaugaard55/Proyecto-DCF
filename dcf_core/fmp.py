@@ -24,7 +24,7 @@ class FCFEntry:
 class FMPClient:
     """Very small helper around the Financial Modeling Prep REST API."""
 
-    _BASE_URL = "https://financialmodelingprep.com/api/v3"
+    _BASE_URL = "https://financialmodelingprep.com"
 
     def __init__(self, api_key: Optional[str] = None, session: Optional[requests.Session] = None) -> None:
         self._api_key = api_key or os.environ.get("FMP_API_KEY")
@@ -54,16 +54,16 @@ class FMPClient:
         ticker = ticker.upper().strip()
         if not ticker:
             raise FMPClientError("El ticker proporcionado no es válido.")
-        params = {"symbol": ticker, "period": "annual", "limit": limit}
-        data = self._request("cash-flow-statement", params=params)
+        effective_limit = min(limit, 5)
+        params = {"symbol": ticker, "period": "annual", "limit": effective_limit}
+        data = self._request("stable/cash-flow-statement", params=params)
 
         if isinstance(data, dict):
             error_message = data.get("Error Message") or data.get("error")
             if error_message and "Legacy Endpoint" in str(error_message):
-                # Fallback para planes gratuitos / nuevos que requieren el esquema antiguo.
                 data = self._request(
-                    f"cash-flow-statement/{ticker}",
-                    params={"period": "annual", "limit": limit}
+                    f"api/v3/cash-flow-statement/{ticker}",
+                    params={"period": "annual", "limit": effective_limit}
                 )
             else:
                 raise FMPClientError(
@@ -115,7 +115,10 @@ def obtener_fcf_historico(ticker: str, minimo: int = 6, limite: int = 10) -> Lis
     menos puntos de los solicitados, se retornan los disponibles.
     """
     cliente = FMPClient()
-    historial = cliente.get_free_cash_flow_history(ticker, limit=limite)
+    try:
+        historial = cliente.get_free_cash_flow_history(ticker, limit=limite)
+    except FMPClientError:
+        return []
     # FMP ya devuelve los datos ordenados del más nuevo al más viejo, pero por las dudas
     historial.sort(key=lambda item: (item.year is None, -(item.year or 0)))
     if len(historial) < minimo:
