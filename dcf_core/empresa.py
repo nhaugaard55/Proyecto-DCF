@@ -1,5 +1,8 @@
-import yfinance as yf
 from datetime import datetime
+from typing import Optional, Sequence
+
+import yfinance as yf
+
 from .finanzas import (
     obtener_tasa_libre_riesgo,
     calcular_wacc,
@@ -7,8 +10,16 @@ from .finanzas import (
     calcular_valor_intrinseco
 )
 
+from .fmp import FCFEntry
 
-def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growth_rate=0.05):
+
+def analizar_empresa(
+    ticker,
+    metodo_crecimiento="1",
+    crecimiento=0.05,
+    avg_growth_rate=0.05,
+    fcf_historial: Optional[Sequence[FCFEntry]] = None
+):
     empresa = yf.Ticker(ticker)
     info = getattr(empresa, "info", {}) or {}
     history = empresa.history(period="1d")
@@ -52,17 +63,34 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
         if not deuda_series.empty:
             debt = to_float(deuda_series.iloc[0], 0)
 
-    cashflow = getattr(empresa, "cashflow", None)
-    fcf = []
-    fcf_actual = 0.0
-    if cashflow is not None and not cashflow.empty and "Free Cash Flow" in cashflow.index:
-        fcf_series = cashflow.loc["Free Cash Flow"].dropna().head(5)
-        if hasattr(fcf_series, "tolist"):
-            fcf = [to_float(valor) for valor in fcf_series.tolist()]
-        elif isinstance(fcf_series, (list, tuple)):
-            fcf = [to_float(valor) for valor in fcf_series]
-        if fcf:
-            fcf_actual = fcf[0]
+    fcf: list[float] = []
+    fcf_presentacion: list[tuple[Optional[int], float]] = []
+    if fcf_historial:
+        for entrada in fcf_historial:
+            raw_valor = getattr(entrada, "value", None)
+            if raw_valor is None:
+                continue
+            valor = to_float(raw_valor, 0.0)
+            fcf.append(valor)
+
+            raw_year = getattr(entrada, "year", None)
+            try:
+                year = int(raw_year) if raw_year is not None else None
+            except (TypeError, ValueError):
+                year = None
+            fcf_presentacion.append((year, valor))
+    else:
+        cashflow = getattr(empresa, "cashflow", None)
+        if cashflow is not None and not cashflow.empty and "Free Cash Flow" in cashflow.index:
+            fcf_series = cashflow.loc["Free Cash Flow"].dropna().head(5)
+            if hasattr(fcf_series, "tolist"):
+                fcf = [to_float(valor) for valor in fcf_series.tolist()]
+            elif isinstance(fcf_series, (list, tuple)):
+                fcf = [to_float(valor) for valor in fcf_series]
+        for valor in fcf:
+            fcf_presentacion.append((None, valor))
+
+    fcf_actual = fcf[0] if fcf else 0.0
 
     pe_ratio_raw = info.get("trailingPE")
     pe_ratio = None
@@ -154,9 +182,10 @@ def analizar_empresa(ticker, metodo_crecimiento="1", crecimiento=0.05, avg_growt
 
     año_actual = datetime.now().year
     fcf_historico = []
-    for i, valor in enumerate(fcf):
+    for indice, (year, valor) in enumerate(fcf_presentacion[:7]):
+        anio = year if year is not None else año_actual - indice
         fcf_historico.append({
-            "anio": año_actual - i,
+            "anio": anio,
             "valor": to_billions(valor)
         })
 

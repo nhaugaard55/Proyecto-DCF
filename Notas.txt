@@ -1,1 +1,2 @@
 En esta version cree el entorno virtual, inicialize GIT y lo subi a GitHub para trabajar mas ordenado.
+Actualización: Integré Financial Modeling Prep para obtener hasta 7 años de FCF. Necesitás definir la variable de entorno FMP_API_KEY con tu clave de la API antes de ejecutar el análisis (ejemplo: export FMP_API_KEY=tu_clave).

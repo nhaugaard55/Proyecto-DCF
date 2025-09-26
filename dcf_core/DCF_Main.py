@@ -1,6 +1,8 @@
-import yfinance as yf
-from .finanzas import calcular_crecimientos
+from typing import List
+
 from .empresa import analizar_empresa
+from .finanzas import calcular_crecimientos
+from .fmp import FCFEntry, obtener_fcf_historico
 
 
 def ejecutar_dcf(ticker: str, metodo: str = "1") -> dict:
@@ -14,13 +16,14 @@ def ejecutar_dcf(ticker: str, metodo: str = "1") -> dict:
     Returns:
         dict: Contiene 'precio_actual', 'valor_intrinseco', 'estado', 'diferencia_pct'.
     """
-    empresa_temp = yf.Ticker(ticker)
-    cashflow_temp = getattr(empresa_temp, "cashflow", None)
+    fcf_historial: List[FCFEntry] = obtener_fcf_historico(ticker, minimo=6, limite=12)
+    valores_para_crecimiento = [dato.value for dato in fcf_historial[:7]]
+    crecimiento, avg_growth_rate = calcular_crecimientos(valores_para_crecimiento)
 
-    fcf_temp = None
-    if cashflow_temp is not None and not cashflow_temp.empty and "Free Cash Flow" in cashflow_temp.index:
-        fcf_temp = cashflow_temp.loc["Free Cash Flow"].dropna().head(5)
-
-    crecimiento, avg_growth_rate = calcular_crecimientos(fcf_temp)
-
-    return analizar_empresa(ticker, metodo, crecimiento, avg_growth_rate)
+    return analizar_empresa(
+        ticker,
+        metodo,
+        crecimiento,
+        avg_growth_rate,
+        fcf_historial=fcf_historial
+    )
