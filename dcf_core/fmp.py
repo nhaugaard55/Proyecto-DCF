@@ -35,7 +35,7 @@ class FMPClient:
                 "Definí la variable de entorno FMP_API_KEY antes de ejecutar el análisis."
             )
 
-    def _request(self, endpoint: str, params: Optional[dict] = None) -> list:
+    def _request(self, endpoint: str, params: Optional[dict] = None):
         params = params.copy() if params else {}
         params["apikey"] = self._api_key
         url = f"{self._BASE_URL}/{endpoint}"
@@ -47,22 +47,35 @@ class FMPClient:
                 f"No se pudo obtener información de Financial Modeling Prep ({exc})."
             ) from exc
 
-        data = response.json()
-        if not isinstance(data, list):
-            raise FMPClientError(
-                "Financial Modeling Prep devolvió un formato inesperado al pedir el cash flow."
-            )
-        return data
+        return response.json()
 
     def get_cash_flow_statements(self, ticker: str, limit: int = 10) -> list:
         """Return raw annual cash-flow statements for the given ticker."""
         ticker = ticker.upper().strip()
         if not ticker:
             raise FMPClientError("El ticker proporcionado no es válido.")
-        return self._request(
-            f"cash-flow-statement/{ticker}",
-            params={"period": "annual", "limit": limit}
-        )
+        params = {"symbol": ticker, "period": "annual", "limit": limit}
+        data = self._request("cash-flow-statement", params=params)
+
+        if isinstance(data, dict):
+            error_message = data.get("Error Message") or data.get("error")
+            if error_message and "Legacy Endpoint" in str(error_message):
+                # Fallback para planes gratuitos / nuevos que requieren el esquema antiguo.
+                data = self._request(
+                    f"cash-flow-statement/{ticker}",
+                    params={"period": "annual", "limit": limit}
+                )
+            else:
+                raise FMPClientError(
+                    f"Financial Modeling Prep devolvió un error al pedir el cash flow: {error_message or data}."
+                )
+
+        if not isinstance(data, list):
+            raise FMPClientError(
+                "Financial Modeling Prep devolvió un formato inesperado al pedir el cash flow."
+            )
+
+        return data
 
     def get_free_cash_flow_history(self, ticker: str, limit: int = 10) -> List[FCFEntry]:
         """Return a list of free cash flow entries (most recent first)."""
