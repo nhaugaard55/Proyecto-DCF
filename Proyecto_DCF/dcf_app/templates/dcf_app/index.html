@@ -138,10 +138,20 @@
                         {% with valor=resultado.datos_empresa.tasa_impositiva_pct %}
                             <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
                         {% endwith %}
+                        {% with fuente=resultado.datos_empresa.tasa_impositiva_fuente anios=resultado.datos_empresa.tasa_impositiva_anios %}
+                            {% if fuente %}
+                            <div class="text-muted small">Fuente: {{ fuente }}{% if anios %} ({{ anios }} años){% endif %}</div>
+                            {% endif %}
+                        {% endwith %}
                     </div>
                     <div class="col-6">Cost of Debt:<br>
                         {% with valor=resultado.datos_empresa.cost_of_debt_pct %}
                             <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
+                        {% endwith %}
+                        {% with fuente=resultado.datos_empresa.cost_of_debt_fuente anios=resultado.datos_empresa.cost_of_debt_anios %}
+                            {% if fuente %}
+                            <div class="text-muted small">Fuente: {{ fuente }}{% if anios %} ({{ anios }} años){% endif %}</div>
+                            {% endif %}
                         {% endwith %}
                     </div>
                     <div class="col-12">Método crecimiento:<br><span class="fw-semibold">{{ resultado.datos_empresa.metodo_crecimiento }}</span></div>

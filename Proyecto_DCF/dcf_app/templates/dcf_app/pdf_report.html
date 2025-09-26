@@ -79,6 +79,14 @@
                 <tr><th>Market Cap</th><td>{% if resultado.datos_empresa.market_cap_billones is not None %}${{ resultado.datos_empresa.market_cap_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td></tr>
                 <tr><th>Deuda</th><td>{% if resultado.datos_empresa.deuda_billones is not None %}${{ resultado.datos_empresa.deuda_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td></tr>
                 <tr><th>Beta</th><td>{% if resultado.datos_empresa.beta is not None %}{{ resultado.datos_empresa.beta|floatformat:2 }}{% else %}N/D{% endif %}</td></tr>
+                <tr><th>Tasa impositiva</th><td>{% if resultado.datos_empresa.tasa_impositiva_pct is not None %}{{ resultado.datos_empresa.tasa_impositiva_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td></tr>
+                {% if resultado.datos_empresa.tasa_impositiva_fuente %}
+                <tr><th>Fuente tasa</th><td>{{ resultado.datos_empresa.tasa_impositiva_fuente }}{% if resultado.datos_empresa.tasa_impositiva_anios %} ({{ resultado.datos_empresa.tasa_impositiva_anios }} años){% endif %}</td></tr>
+                {% endif %}
+                <tr><th>Cost of Debt</th><td>{% if resultado.datos_empresa.cost_of_debt_pct is not None %}{{ resultado.datos_empresa.cost_of_debt_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td></tr>
+                {% if resultado.datos_empresa.cost_of_debt_fuente %}
+                <tr><th>Fuente costo deuda</th><td>{{ resultado.datos_empresa.cost_of_debt_fuente }}{% if resultado.datos_empresa.cost_of_debt_anios %} ({{ resultado.datos_empresa.cost_of_debt_anios }} años){% endif %}</td></tr>
+                {% endif %}
                 <tr><th>WACC</th><td>{% if resultado.metricas.wacc_pct is not None %}{{ resultado.metricas.wacc_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td></tr>
                 <tr><th>Valor terminal</th><td>{% if resultado.metricas.valor_terminal is not None %}${{ resultado.metricas.valor_terminal|floatformat:2 }}B{% else %}N/D{% endif %}</td></tr>
             </tbody>

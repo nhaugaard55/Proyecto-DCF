@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Sequence
+from typing import Dict, Optional, Sequence
 
 import yfinance as yf
 
@@ -18,7 +18,10 @@ def analizar_empresa(
     metodo_crecimiento="1",
     crecimiento=0.05,
     avg_growth_rate=0.05,
-    fcf_historial: Optional[Sequence[FCFEntry]] = None
+    fcf_historial: Optional[Sequence[FCFEntry]] = None,
+    tax_rate_override: Optional[float] = None,
+    cost_of_debt_override: Optional[float] = None,
+    metricas_fuente: Optional[Dict[str, dict]] = None,
 ):
     empresa = yf.Ticker(ticker)
     info = getattr(empresa, "info", {}) or {}
@@ -43,8 +46,11 @@ def analizar_empresa(
     nombre = info.get("longName", ticker)
     sector = info.get("sector", "Desconocido")
     beta = to_float(info.get("beta"), 1.0)
-    tax_rate = to_float(info.get("effectiveTaxRate"), 0.25)
-    cost_of_debt = to_float(info.get("yield"), 0.05)
+    tax_rate_info = to_float(info.get("effectiveTaxRate"), 0.25)
+    cost_of_debt_info = to_float(info.get("yield"), 0.05)
+
+    tax_rate = tax_rate_info if tax_rate_override is None else float(tax_rate_override)
+    cost_of_debt = cost_of_debt_info if cost_of_debt_override is None else float(cost_of_debt_override)
 
     acciones = to_float(info.get("sharesOutstanding"), 0)
     precio = 0.0
@@ -252,6 +258,12 @@ def analizar_empresa(
         "metodo_crecimiento": metodo_utilizado,
     }
 
+    detalles_metricas = metricas_fuente or {}
+    datos_empresa["tasa_impositiva_fuente"] = detalles_metricas.get("tax_rate", {}).get("descripcion")
+    datos_empresa["tasa_impositiva_anios"] = detalles_metricas.get("tax_rate", {}).get("años")
+    datos_empresa["cost_of_debt_fuente"] = detalles_metricas.get("cost_of_debt", {}).get("descripcion")
+    datos_empresa["cost_of_debt_anios"] = detalles_metricas.get("cost_of_debt", {}).get("años")
+
     metricas = {
         "tasa_rf": tasa_rf,
         "tasa_rf_pct": tasa_rf * 100 if tasa_rf is not None else None,
@@ -268,6 +280,7 @@ def analizar_empresa(
         "crecimiento_promedio": avg_growth_rate,
         "crecimiento_promedio_pct": avg_growth_rate * 100 if avg_growth_rate is not None else None,
         "valor_terminal": valor_terminal_billones,
+        "detalles_fuente": detalles_metricas,
     }
 
     dividendos = {
@@ -302,4 +315,5 @@ def analizar_empresa(
         "fcf_historico": fcf_historico,
         "fcf_proyectado": fcf_proyecciones,
         "dividendos": dividendos,
+        "metricas_fuente": detalles_metricas,
     }
