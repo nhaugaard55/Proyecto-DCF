@@ -31,6 +31,16 @@ class FMPDerivedMetrics:
     cost_samples: Dict[int, float]
 
 
+@dataclass(frozen=True)
+class FMPSearchResult:
+    """Represents a single match from the FMP search endpoint."""
+
+    symbol: str
+    name: str
+    exchange: Optional[str]
+    asset_type: Optional[str]
+
+
 class FMPClient:
     """Very small helper around the Financial Modeling Prep REST API."""
 
@@ -58,6 +68,49 @@ class FMPClient:
             ) from exc
 
         return response.json()
+
+    def search_companies(self, query: str, limit: int = 8) -> List[FMPSearchResult]:
+        """Return a list of companies matching the query by ticker or name."""
+
+        cleaned_query = query.strip()
+        if not cleaned_query:
+            return []
+
+        effective_limit = min(max(limit, 1), 20)
+        params = {"query": cleaned_query, "limit": effective_limit}
+        data = self._request("api/v3/search", params=params)
+
+        if isinstance(data, dict):
+            error_message = data.get("Error Message") or data.get("error")
+            raise FMPClientError(
+                f"Financial Modeling Prep devolvió un error al buscar compañías: {error_message or data}."
+            )
+
+        if not isinstance(data, list):
+            raise FMPClientError(
+                "Financial Modeling Prep devolvió un formato inesperado al buscar compañías."
+            )
+
+        resultados: List[FMPSearchResult] = []
+        for item in data:
+            symbol_raw = (item.get("symbol") or "").strip()
+            if not symbol_raw:
+                continue
+
+            nombre = (item.get("name") or item.get("companyName") or symbol_raw).strip()
+            exchange = item.get("exchangeShortName") or item.get("exchange")
+            asset_type = item.get("type") or item.get("assetType")
+
+            resultados.append(
+                FMPSearchResult(
+                    symbol=symbol_raw.upper(),
+                    name=nombre,
+                    exchange=exchange,
+                    asset_type=asset_type,
+                )
+            )
+
+        return resultados
 
     def get_cash_flow_statements(self, ticker: str, limit: int = 10) -> list:
         """Return raw annual cash-flow statements for the given ticker."""

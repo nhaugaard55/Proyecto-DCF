@@ -1,5 +1,16 @@
 {% extends "dcf_app/base.html" %}
 
+{% block extra_head %}
+<style>
+    .ticker-search-wrapper { position: relative; }
+    .ticker-dropdown { position: absolute; top: calc(100% + 0.25rem); left: 0; right: 0; z-index: 1050; max-height: 16rem; overflow-y: auto; }
+    .ticker-dropdown .dropdown-item { white-space: normal; }
+    .ticker-dropdown .symbol { font-weight: 600; }
+    .ticker-dropdown .exchange { color: #6c757d; font-size: 0.85rem; }
+    .ticker-dropdown .no-results { padding: 0.75rem 1rem; color: #6c757d; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-8">
@@ -9,8 +20,14 @@
                 <form method="post" class="row gy-3">
                     {% csrf_token %}
                     <div class="col-md-7">
-                        <label for="ticker" class="form-label">Ticker</label>
-                        <input type="text" name="ticker" id="ticker" class="form-control" value="{{ ticker }}" placeholder="Ej: AAPL">
+                        <label for="company-query" class="form-label">Ticker o nombre</label>
+                        <div class="ticker-search-wrapper">
+                            <input type="text" name="company_query" id="company-query" class="form-control" value="{{ search_value }}" placeholder="Ej: Apple o AAPL" autocomplete="off" data-search-url="{% url 'company_search' %}">
+                            <input type="hidden" name="ticker" id="ticker-value" value="{{ ticker }}">
+                            <input type="hidden" name="company_name" id="company-name-value" value="{{ company_name|default:"" }}">
+                            <input type="hidden" name="company_exchange" id="company-exchange-value" value="{{ company_exchange|default:"" }}">
+                            <div class="dropdown-menu ticker-dropdown" id="ticker-suggestions" role="listbox"></div>
+                        </div>
                     </div>
                     <div class="col-md-5">
                         <label for="metodo" class="form-label">Método de crecimiento</label>
@@ -307,4 +324,170 @@
     </div>
 </div>
 {% endif %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("company-query");
+    const hiddenTicker = document.getElementById("ticker-value");
+    const hiddenName = document.getElementById("company-name-value");
+    const hiddenExchange = document.getElementById("company-exchange-value");
+    const suggestionsBox = document.getElementById("ticker-suggestions");
+    const form = input ? input.form : null;
+    if (!input || !hiddenTicker || !suggestionsBox || !form) {
+        return;
+    }
+
+    const searchUrl = input.dataset.searchUrl || "";
+    let controller = null;
+    let items = [];
+    let activeIndex = -1;
+    let suppressClear = false;
+
+    const symbolPattern = /^[\s]*([A-Za-z0-9.\-:]+)/;
+
+    function extractSymbol(text) {
+        const match = symbolPattern.exec(text || "");
+        return match ? match[1].toUpperCase() : "";
+    }
+
+    function closeDropdown() {
+        items = [];
+        activeIndex = -1;
+        suggestionsBox.innerHTML = "";
+        suggestionsBox.classList.remove("show");
+    }
+
+    function setActive(index) {
+        const buttons = suggestionsBox.querySelectorAll(".dropdown-item");
+        buttons.forEach((button, idx) => {
+            button.classList.toggle("active", idx === index);
+        });
+    }
+
+    function writeSelection(item) {
+        input.value = item.symbol;
+        hiddenTicker.value = item.symbol;
+        hiddenName.value = item.name || "";
+        hiddenExchange.value = item.exchange || "";
+    }
+
+    function selectItem(index) {
+        const item = items[index];
+        if (!item) {
+            return;
+        }
+        suppressClear = true;
+        writeSelection(item);
+        closeDropdown();
+        setTimeout(() => {
+            suppressClear = false;
+        }, 0);
+    }
+
+    function renderSuggestions(results) {
+        suggestionsBox.innerHTML = "";
+
+        if (!results.length) {
+            const empty = document.createElement("div");
+            empty.className = "no-results";
+            empty.textContent = "Sin resultados";
+            suggestionsBox.appendChild(empty);
+            suggestionsBox.classList.add("show");
+            items = [];
+            activeIndex = -1;
+            return;
+        }
+
+        items = results;
+        activeIndex = -1;
+
+        results.forEach((item, index) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "dropdown-item d-flex flex-column suggestion-item";
+            const exchangeLabel = item.exchange ? ` <span class="exchange">(${item.exchange})</span>` : "";
+            button.innerHTML = `<span class="symbol">${item.symbol}</span><span>${item.name}${exchangeLabel}</span>`;
+            button.addEventListener("mousedown", (event) => {
+                event.preventDefault();
+                selectItem(index);
+            });
+            suggestionsBox.appendChild(button);
+        });
+
+        suggestionsBox.classList.add("show");
+    }
+
+    input.addEventListener("input", function (event) {
+        if (suppressClear) {
+            return;
+        }
+
+        hiddenTicker.value = "";
+        hiddenName.value = "";
+        hiddenExchange.value = "";
+        const value = event.target.value.trim();
+        if (!value || !searchUrl) {
+            closeDropdown();
+            return;
+        }
+
+        if (controller) {
+            controller.abort();
+        }
+
+        controller = new AbortController();
+        fetch(`${searchUrl}?q=${encodeURIComponent(value)}`, { signal: controller.signal })
+            .then((response) => (response.ok ? response.json() : { results: [] }))
+            .then((data) => {
+                const results = Array.isArray(data.results) ? data.results.slice(0, 10) : [];
+                renderSuggestions(results);
+            })
+            .catch(() => {
+                closeDropdown();
+            });
+    });
+
+    input.addEventListener("keydown", function (event) {
+        if (!items.length) {
+            if (event.key === "Escape") {
+                closeDropdown();
+            }
+            return;
+        }
+
+        if (event.key === "ArrowDown") {
+            event.preventDefault();
+            activeIndex = (activeIndex + 1) % items.length;
+            setActive(activeIndex);
+        } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            activeIndex = (activeIndex - 1 + items.length) % items.length;
+            setActive(activeIndex);
+        } else if (event.key === "Enter") {
+            event.preventDefault();
+            const index = activeIndex >= 0 ? activeIndex : 0;
+            selectItem(index);
+        } else if (event.key === "Escape") {
+            closeDropdown();
+        }
+    });
+
+    document.addEventListener("click", function (event) {
+        if (!suggestionsBox.contains(event.target) && event.target !== input) {
+            closeDropdown();
+        }
+    });
+
+    form.addEventListener("submit", function () {
+        if (!hiddenTicker.value) {
+            const fallbackSymbol = extractSymbol(input.value);
+            hiddenTicker.value = fallbackSymbol;
+            hiddenName.value = hiddenName.value || input.value.trim();
+        }
+    });
+
+    if (!input.value && hiddenTicker.value) {
+        input.value = hiddenTicker.value;
+    }
+});
+</script>
 {% endblock %}
