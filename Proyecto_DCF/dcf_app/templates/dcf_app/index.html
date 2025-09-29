@@ -132,8 +132,8 @@
                         {% endwith %}
                     </div>
                     <div class="col-6">Acciones:<br>
-                        {% with valor=resultado.datos_empresa.acciones %}
-                            <span class="fw-semibold">{% if valor %}{{ valor|floatformat:0 }}{% else %}N/D{% endif %}</span>
+                        {% with valor=resultado.datos_empresa.acciones_billones %}
+                            <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
                         {% endwith %}
                     </div>
                     <div class="col-6">Market Cap:<br>

@@ -291,6 +291,7 @@ def analizar_empresa(
         "sector": sector,
         "precio_actual": precio,
         "acciones": acciones,
+        "acciones_billones": to_billions(acciones),
         "market_cap": equity,
         "market_cap_billones": to_billions(equity),
         "deuda": debt,
