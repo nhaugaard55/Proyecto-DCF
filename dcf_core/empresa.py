@@ -218,7 +218,45 @@ def analizar_empresa(
     if diferencia is not None and precio:
         diferencia_pct = (diferencia / precio) * 100
 
-    dividend_yield = info.get("dividendYield")
+    def to_optional_float(value):
+        try:
+            if isinstance(value, complex):
+                value = value.real
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def normalizar_dividend_yield(raw_yield, raw_dividend_rate, current_price):
+        valor = to_optional_float(raw_yield)
+        if valor is not None:
+            if valor > 5:  # algunos proveedores devuelven el porcentaje sin dividir por 100
+                valor = valor / 100.0
+            if valor < 0:
+                valor = None
+
+        tasa = to_optional_float(raw_dividend_rate)
+        precio_actual = to_optional_float(current_price)
+        calculado = None
+        if tasa is not None and precio_actual not in (None, 0):
+            try:
+                calculado = max(tasa / precio_actual, 0.0)
+            except ZeroDivisionError:
+                calculado = None
+
+        if valor is None:
+            return calculado
+
+        if calculado is not None:
+            # Si el valor difiere demasiado del cálculo con dividendRate, preferimos el calculado.
+            limite_base = 0.1  # 10%
+            limite_superior = max(calculado * 4, limite_base)
+            if valor > limite_superior:
+                return calculado
+
+        return valor
+
+    dividend_rate = info.get("dividendRate")
+    dividend_yield = normalizar_dividend_yield(info.get("dividendYield"), dividend_rate, precio)
     total_assets = info.get("totalAssets")
     total_liabilities = info.get("totalLiab")
     net_worth_per_share = None
