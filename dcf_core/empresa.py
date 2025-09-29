@@ -270,6 +270,13 @@ def analizar_empresa(
         except ZeroDivisionError:
             safety_margin = None
 
+    filtros.append({
+        "nombre": "Safety Margin",
+        "valor": f"{safety_margin:.2%}" if isinstance(safety_margin, (int, float)) else "N/D",
+        "criterio": "> 0%",
+        "cumple": isinstance(safety_margin, (int, float)) and safety_margin > 0
+    })
+
     valor_terminal = None
     if valor_total is not None:
         fcf_final = fcf_proyectado[-1] if fcf_proyectado else 0
