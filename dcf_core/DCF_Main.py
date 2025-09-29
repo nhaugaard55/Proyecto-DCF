@@ -183,22 +183,22 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
                 if fmp_error:
                     mensajes_fuente.append(
                         "No se pudieron obtener datos desde Financial Modeling Prep "
-                        f"({fmp_error}). Se utilizó iFinance."
+                        f"({fmp_error}). Se utilizó Yfinance."
                     )
                 else:
                     mensajes_fuente.append(
                         "Financial Modeling Prep no devolvió datos para este ticker. "
-                        "Se utilizó iFinance."
+                        "Se utilizó Yfinance."
                     )
             elif fuente_solicitada == "auto":
                 if fmp_error:
                     mensajes_fuente.append(
-                        "Se utilizó iFinance porque Financial Modeling Prep devolvió un error "
+                        "Se utilizó Yfinance porque Financial Modeling Prep devolvió un error "
                         f"({fmp_error})."
                     )
                 else:
                     mensajes_fuente.append(
-                        "Se utilizó iFinance porque Financial Modeling Prep no tiene datos para este ticker."
+                        "Se utilizó Yfinance porque Financial Modeling Prep no tiene datos para este ticker."
                     )
 
     tax_rate_override: Optional[float] = None
@@ -274,7 +274,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
 
     etiquetas_fuente = {
         "fmp": "Financial Modeling Prep",
-        "yfinance": "iFinance (yfinance)",
+        "yfinance": "Yfinance",
     }
 
     for info in metricas_fuente.values():
@@ -309,7 +309,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
 
     descripcion_fuentes = {
         "fmp": "Financial Modeling Prep",
-        "yfinance": "iFinance (yfinance)",
+        "yfinance": "Yfinance",
     }
 
     resultado["fuente_datos"] = fuente_utilizada

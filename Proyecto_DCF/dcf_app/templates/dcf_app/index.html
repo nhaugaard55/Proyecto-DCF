@@ -39,9 +39,9 @@
                     <div class="col-12">
                         <label for="fuente" class="form-label">Fuente de datos</label>
                         <select name="fuente" id="fuente" class="form-select">
-                            <option value="auto" {% if fuente == "auto" %}selected{% endif %}>Automático (prioriza FMP y usa iFinance si falta)</option>
+                            <option value="auto" {% if fuente == "auto" %}selected{% endif %}>Automático (prioriza FMP y usa Yfinance si falta)</option>
                             <option value="fmp" {% if fuente == "fmp" %}selected{% endif %}>Financial Modeling Prep</option>
-                            <option value="yfinance" {% if fuente == "yfinance" %}selected{% endif %}>iFinance (yfinance)</option>
+                            <option value="yfinance" {% if fuente == "yfinance" %}selected{% endif %}>Yfinance</option>
                         </select>
                     </div>
                     <div class="col-12 d-flex justify-content-end">
