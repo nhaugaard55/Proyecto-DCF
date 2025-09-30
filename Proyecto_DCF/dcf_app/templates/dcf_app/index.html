@@ -146,6 +146,49 @@
     .results-section .table tbody td {
         border-color: rgba(148, 163, 184, 0.2);
     }
+    .news-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .news-item {
+        padding: 0.85rem 1rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid rgba(37, 99, 235, 0.08);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .news-headline {
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: 0.01em;
+    }
+    .news-headline a {
+        color: inherit;
+        text-decoration: none;
+    }
+    .news-headline a:hover {
+        text-decoration: underline;
+    }
+    .news-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+        font-size: 0.85rem;
+        color: rgba(11, 29, 53, 0.6);
+    }
+    .news-dot::before {
+        content: "";
+        width: 0.35rem;
+        height: 0.35rem;
+        border-radius: 50%;
+        background: rgba(11, 29, 53, 0.45);
+        display: inline-block;
+    }
     .ticker-search-wrapper {
         position: relative;
     }
@@ -545,6 +588,47 @@
                 </div>
             </div>
         </div>
+
+        {% if resultado.noticias %}
+        <div class="col-12">
+            <div class="card soft-card">
+                <div class="card-body">
+                    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+                        <h3 class="h5 mb-0">Noticias recientes</h3>
+                        <div class="d-flex flex-column align-items-md-end text-muted small">
+                            <span>Sentí el pulso del mercado para {{ resultado.nombre }}</span>
+                            {% if resultado.noticias_fuente_descripcion %}
+                            <span>Fuente: {{ resultado.noticias_fuente_descripcion }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="news-list">
+                        {% for noticia in resultado.noticias %}
+                        <article class="news-item">
+                            <div class="news-headline">
+                                <a href="{{ noticia.url }}" target="_blank" rel="noopener">{{ noticia.titulo }}</a>
+                            </div>
+                            <div class="news-meta">
+                                {% if noticia.fuente %}<span>{{ noticia.fuente }}</span>{% endif %}
+                                {% if noticia.fuente and noticia.fecha %}<span class="news-dot"></span>{% endif %}
+                                {% if noticia.fecha %}<time datetime="{{ noticia.fecha|date:'c' }}">{{ noticia.fecha|date:"d/m/Y H:i" }}</time>{% endif %}
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% elif resultado.noticias_error %}
+        <div class="col-12">
+            <div class="card soft-card">
+                <div class="card-body">
+                    <h3 class="h5 mb-2">Noticias recientes</h3>
+                    <p class="text-muted mb-0">{{ resultado.noticias_error }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </section>
 {% elif ticker %}

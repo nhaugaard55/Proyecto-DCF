@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Dict, List, Optional
 
 import requests
@@ -39,6 +40,18 @@ class FMPSearchResult:
     name: str
     exchange: Optional[str]
     asset_type: Optional[str]
+
+
+@dataclass(frozen=True)
+class FMPNewsItem:
+    """Represents a single news entry for a ticker."""
+
+    title: str
+    site: Optional[str]
+    summary: Optional[str]
+    url: str
+    image: Optional[str]
+    published_at: Optional[datetime]
 
 
 class FMPClient:
@@ -211,6 +224,73 @@ class FMPClient:
 
         return history
 
+    def get_company_news(self, ticker: str, limit: int = 8) -> List[FMPNewsItem]:
+        """Return recent news for the provided ticker."""
+
+        ticker = ticker.upper().strip()
+        if not ticker:
+            raise FMPClientError("El ticker proporcionado no es válido.")
+
+        effective_limit = min(max(limit, 1), 50)
+        params = {"tickers": ticker, "limit": effective_limit}
+        data = self._request("api/v3/stock_news", params=params)
+
+        if isinstance(data, dict):
+            error_message = data.get("Error Message") or data.get("error")
+            raise FMPClientError(
+                f"Financial Modeling Prep devolvió un error al pedir noticias: {error_message or data}."
+            )
+
+        if not isinstance(data, list):
+            raise FMPClientError(
+                "Financial Modeling Prep devolvió un formato inesperado al pedir noticias."
+            )
+
+        items: List[FMPNewsItem] = []
+        for raw in data:
+            titulo = (raw.get("title") or "").strip()
+            enlace = (raw.get("url") or raw.get("link") or "").strip()
+            if not titulo or not enlace:
+                continue
+
+            sitio = (raw.get("site") or raw.get("source")) or None
+            if sitio:
+                sitio = sitio.strip() or None
+
+            resumen = (raw.get("text") or raw.get("summary") or None)
+            if resumen:
+                resumen = resumen.strip() or None
+
+            imagen = (raw.get("image") or raw.get("imageUrl") or None)
+            if imagen:
+                imagen = imagen.strip() or None
+
+            publicado_raw = raw.get("publishedDate") or raw.get("date") or ""
+            publicado = None
+            if publicado_raw:
+                texto_fecha = str(publicado_raw).strip()
+                if texto_fecha:
+                    normalizado = texto_fecha.replace("Z", "+00:00")
+                    try:
+                        publicado = datetime.fromisoformat(normalizado)
+                    except ValueError:
+                        try:
+                            publicado = datetime.strptime(texto_fecha[:19], "%Y-%m-%d %H:%M:%S")
+                        except ValueError:
+                            publicado = None
+
+            items.append(
+                FMPNewsItem(
+                    title=titulo,
+                    site=sitio,
+                    summary=resumen,
+                    url=enlace,
+                    image=imagen,
+                    published_at=publicado,
+                )
+            )
+
+        return items
 
 def obtener_fcf_historico(ticker: str, minimo: int = 6, limite: int = 10) -> List[FCFEntry]:
     """
@@ -227,6 +307,13 @@ def obtener_fcf_historico(ticker: str, minimo: int = 6, limite: int = 10) -> Lis
         # No lanzamos excepción: dejamos que el flujo principal decida cómo proceder.
         return historial
     return historial
+
+
+def obtener_noticias_empresa(ticker: str, limite: int = 6) -> List[FMPNewsItem]:
+    """Recupera las noticias más recientes de un ticker."""
+
+    cliente = FMPClient()
+    return cliente.get_company_news(ticker, limit=limite)
 
 
 def _extraer_año(data: dict) -> Optional[int]:

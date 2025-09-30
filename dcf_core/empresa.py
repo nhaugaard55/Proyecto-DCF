@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from typing import Dict, Optional, Sequence
 
@@ -10,6 +11,7 @@ from .finanzas import (
     calcular_valor_intrinseco
 )
 
+from .finnhub import FinnhubError, obtener_noticias_finnhub
 from .fmp import FCFEntry
 
 
@@ -338,6 +340,129 @@ def analizar_empresa(
         "fifty_two_week_low": info.get("fiftyTwoWeekLow")
     }
 
+    noticias: list[dict] = []
+    noticias_fuentes: set[str] = set()
+    noticias_error: Optional[str] = None
+
+    yfinance_consultado = False
+
+    try:
+        raw_news_any = getattr(empresa, "news", None)
+    except Exception as exc:  # pragma: no cover - dependiente de la red
+        raw_news: list = []
+        noticias_error = f"YFinance no devolvió noticias ({exc})"
+    else:
+        raw_news = list(raw_news_any or [])
+    finally:
+        yfinance_consultado = True
+
+    if raw_news:
+        noticias_fuentes.add("yfinance")
+        for item in raw_news[:6]:
+            if not isinstance(item, dict):
+                continue
+            titulo = (item.get("title") or item.get("headline") or "").strip()
+            enlace = (item.get("link") or item.get("url") or "").strip()
+            if not titulo or not enlace:
+                continue
+
+            fuente = (item.get("publisher") or item.get("source") or "").strip() or None
+            resumen = (item.get("summary") or item.get("content") or item.get("description") or None)
+            if resumen:
+                resumen = resumen.strip() or None
+
+            imagen = None
+            thumbnail = item.get("thumbnail")
+            if isinstance(thumbnail, dict):
+                url_directa = thumbnail.get("url")
+                if isinstance(url_directa, str) and url_directa.strip():
+                    imagen = url_directa.strip()
+                else:
+                    resoluciones = thumbnail.get("resolutions")
+                    if isinstance(resoluciones, list):
+                        for res in resoluciones:
+                            url_res = (res.get("url") if isinstance(res, dict) else None)
+                            if isinstance(url_res, str) and url_res.strip():
+                                imagen = url_res.strip()
+                                break
+
+            publicado = None
+            marca_tiempo = item.get("providerPublishTime") or item.get("providerPublishTimeUTC") or item.get("datetime")
+            if isinstance(marca_tiempo, (int, float)):
+                try:
+                    publicado = datetime.fromtimestamp(marca_tiempo)
+                except (OSError, ValueError, OverflowError):
+                    publicado = None
+
+            noticias.append({
+                "titulo": titulo,
+                "fuente": fuente,
+                "resumen": resumen,
+                "url": enlace,
+                "imagen": imagen,
+                "fecha": publicado,
+            })
+
+    if not noticias:
+        if yfinance_consultado and "yfinance" not in noticias_fuentes and noticias_error is None:
+            noticias_error = "YFinance no reportó noticias recientes para este ticker."
+
+        try:
+            noticias_finnhub = obtener_noticias_finnhub(ticker, limite=6)
+        except FinnhubError as exc:
+            mensaje = _limpiar_mensaje_api(str(exc))
+            noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
+        except Exception as exc:  # pragma: no cover - dependiente de la red
+            mensaje = f"No se pudieron obtener noticias desde Finnhub ({_limpiar_mensaje_api(str(exc))})."
+            noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
+        else:
+            if noticias_finnhub:
+                noticias_fuentes.add("finnhub")
+                for noticia in noticias_finnhub:
+                    noticias.append(
+                        {
+                            "titulo": noticia.title,
+                            "fuente": noticia.source,
+                            "resumen": noticia.summary,
+                            "url": noticia.url,
+                            "imagen": noticia.image,
+                            "fecha": noticia.published_at,
+                        }
+                    )
+
+    noticias_por_url: dict[str, dict] = {}
+    for item in noticias:
+        url = item.get("url")
+        if not url:
+            continue
+        existente = noticias_por_url.get(url)
+        fecha_item = item.get("fecha")
+        fecha_existente = existente.get("fecha") if existente else None
+        if existente is None or (
+            isinstance(fecha_item, datetime)
+            and (not isinstance(fecha_existente, datetime) or fecha_item > fecha_existente)
+        ):
+            noticias_por_url[url] = item
+
+    noticias = list(noticias_por_url.values())
+    noticias.sort(
+        key=lambda n: (
+            n.get("fecha") is None,
+            -(n.get("fecha").timestamp()) if isinstance(n.get("fecha"), datetime) else 0,
+        )
+    )
+    noticias = noticias[:6]
+
+    if not noticias and noticias_error is None:
+        noticias_error = "No se encontraron noticias recientes para este ticker."
+
+    mapa_fuentes = {
+        "yfinance": "YFinance",
+        "finnhub": "Finnhub",
+    }
+    fuentes_detectadas = [mapa_fuentes.get(f, f.title()) for f in sorted(noticias_fuentes)]
+    noticias_fuente_descripcion = ", ".join(fuentes_detectadas) if fuentes_detectadas else None
+
     estado = None
     if valor_por_accion is not None and precio:
         if valor_por_accion > precio * 1.1:
@@ -362,4 +487,20 @@ def analizar_empresa(
         "fcf_proyectado": fcf_proyecciones,
         "dividendos": dividendos,
         "metricas_fuente": detalles_metricas,
+        "noticias": noticias,
+        "noticias_fuente": ",".join(sorted(noticias_fuentes)) if noticias_fuentes else None,
+        "noticias_error": noticias_error,
+        "noticias_fuente_descripcion": noticias_fuente_descripcion,
     }
+
+
+def _limpiar_mensaje_api(texto: str) -> str:
+    """Oculta parámetros sensibles (como claves) dentro de mensajes de error."""
+
+    if not texto:
+        return texto
+
+    # Reemplaza apikey=XXXX por apikey=****
+    texto = re.sub(r"apikey=[^&\s]+", "apikey=****", texto)
+    texto = re.sub(r"token=[^&\s]+", "token=****", texto)
+    return texto
