@@ -189,6 +189,26 @@
         background: rgba(11, 29, 53, 0.45);
         display: inline-block;
     }
+    .ai-summary {
+        margin-top: 1.5rem;
+        padding: 1rem 1.2rem;
+        border-radius: 1rem;
+        background: rgba(37, 99, 235, 0.08);
+        color: var(--text-primary);
+    }
+    .ai-summary-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: rgba(11, 29, 53, 0.65);
+    }
+    .ai-summary-text {
+        margin: 0;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
     .ticker-search-wrapper {
         position: relative;
     }
@@ -616,6 +636,17 @@
                         </article>
                         {% endfor %}
                     </div>
+                    {% if resultado.resumen_noticias %}
+                    <div class="ai-summary">
+                        <div class="ai-summary-title">Resumen IA del sentimiento</div>
+                        <p class="ai-summary-text">{{ resultado.resumen_noticias }}</p>
+                    </div>
+                    {% elif resultado.resumen_noticias_error %}
+                    <div class="ai-summary bg-transparent p-0">
+                        <div class="ai-summary-title">Resumen IA</div>
+                        <p class="ai-summary-text text-muted">{{ resultado.resumen_noticias_error }}</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

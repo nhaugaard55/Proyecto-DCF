@@ -4,6 +4,7 @@ from typing import Dict, Optional, Sequence
 
 import yfinance as yf
 
+from .ai_summary import AISummaryError, generar_resumen_sentimiento
 from .finanzas import (
     obtener_tasa_libre_riesgo,
     calcular_wacc,
@@ -463,6 +464,16 @@ def analizar_empresa(
     fuentes_detectadas = [mapa_fuentes.get(f, f.title()) for f in sorted(noticias_fuentes)]
     noticias_fuente_descripcion = ", ".join(fuentes_detectadas) if fuentes_detectadas else None
 
+    resumen_noticias = None
+    resumen_noticias_error = None
+    if noticias:
+        try:
+            resumen_noticias = generar_resumen_sentimiento(noticias)
+        except AISummaryError as exc:
+            resumen_noticias_error = _limpiar_mensaje_api(str(exc))
+        except Exception as exc:  # pragma: no cover
+            resumen_noticias_error = f"Error generando el resumen con IA ({_limpiar_mensaje_api(str(exc))})."
+
     estado = None
     if valor_por_accion is not None and precio:
         if valor_por_accion > precio * 1.1:
@@ -491,6 +502,8 @@ def analizar_empresa(
         "noticias_fuente": ",".join(sorted(noticias_fuentes)) if noticias_fuentes else None,
         "noticias_error": noticias_error,
         "noticias_fuente_descripcion": noticias_fuente_descripcion,
+        "resumen_noticias": resumen_noticias,
+        "resumen_noticias_error": resumen_noticias_error,
     }
 
 
