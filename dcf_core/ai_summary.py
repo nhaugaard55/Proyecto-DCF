@@ -13,7 +13,7 @@ class AISummaryError(RuntimeError):
     """Raised when the sentiment summary could not be generated."""
 
 
-_DEFAULT_MODEL = "mistralai/Mistral-7B-Instruct-v0.2"
+_DEFAULT_MODEL = "HuggingFaceH4/Zephyr-7B-beta"
 _HF_BASE_URL = "https://api-inference.huggingface.co/models"
 
 
@@ -41,11 +41,12 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
     cuerpo = "\n".join(partes)
     instruccion = (
         f"Eres un analista financiero. Leyendo los titulares listados, redacta un breve resumen en {idioma} "
-        "sobre el sentimiento actual del mercado respecto a la empresa (positivo, negativo o mixto) "
-        "e incluye los temas principales. Sé muy conciso (máximo tres frases)."
+        "sobre el sentimiento actual del mercado respecto a la empresa (positivo, negativo o mixto) e "
+        "indica los temas dominantes. Sé muy conciso (máximo tres frases)."
     )
     return (
-        f"<s>[INST] {instruccion}\n\nNoticias:\n{cuerpo}\n\nResumen: [/INST]"
+        "<|system|>\n" + instruccion + "</s>\n"\
+        + "<|user|>\nNoticias:\n" + cuerpo + "\n\nResumen:<|assistant|>"
     )
 
 
@@ -91,6 +92,11 @@ def generar_resumen_sentimiento(
 
     if response.status_code == 429:
         raise AISummaryError("La API de Hugging Face devolvió 429 (límite de cuota alcanzado). Intenta más tarde.")
+
+    if response.status_code == 404:
+        raise AISummaryError(
+            "La API de Hugging Face devolvió 404 (modelo no encontrado o sin acceso). Verifica el nombre del modelo o tu token."
+        )
 
     if response.status_code >= 500:
         raise AISummaryError("La API de Hugging Face está temporalmente indisponible (error 5xx).")
