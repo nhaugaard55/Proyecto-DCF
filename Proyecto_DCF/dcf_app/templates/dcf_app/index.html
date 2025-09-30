@@ -185,6 +185,7 @@
         }
     }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -471,6 +472,9 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="mt-4">
+                        <canvas id="fcfHistoricoChart" height="220"></canvas>
+                    </div>
                     {% else %}
                     <p class="text-muted mb-0">No hay datos suficientes.</p>
                     {% endif %}
@@ -497,6 +501,9 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                    </div>
+                    <div class="mt-4">
+                        <canvas id="fcfProyectadoChart" height="220"></canvas>
                     </div>
                     {% else %}
                     <p class="text-muted mb-0">No se pudo proyectar el flujo.</p>
@@ -714,6 +721,114 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!input.value && hiddenTicker.value) {
         input.value = hiddenTicker.value;
     }
+
+    {% if resultado %}
+    if (typeof Chart !== "undefined") {
+        Chart.defaults.font.family = "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif";
+        const localeFormatter = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formatBillions = (value) => {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return "N/D";
+            }
+            return `${localeFormatter.format(Number(value))}B`;
+        };
+
+        const createLineChart = (canvas, labels, series, color, fillColor, datasetLabel) => {
+            if (!canvas || !labels.length || !series.some((value) => value !== null && !Number.isNaN(value))) {
+                return;
+            }
+
+            const ctx = canvas.getContext("2d");
+            const dataPoints = series.map((value) => (value === null ? null : Number(value)));
+
+            new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: datasetLabel,
+                            data: dataPoints,
+                            borderColor: color,
+                            backgroundColor: fillColor,
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 3.5,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: color,
+                            pointBorderColor: "#ffffff",
+                            pointBorderWidth: 1.5
+                        }
+                    ]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    interaction: { intersect: false, mode: "index" },
+                    scales: {
+                        y: {
+                            grid: { color: "rgba(37, 99, 235, 0.08)" },
+                            ticks: {
+                                callback: (tickValue) => formatBillions(tickValue)
+                            },
+                            title: {
+                                display: true,
+                                text: "Monto (Billones USD)"
+                            }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${datasetLabel}: ${formatBillions(context.parsed.y)}`
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        {% if resultado.fcf_historico %}
+        const fcfHistoricoLabels = [{% for item in resultado.fcf_historico %}"{{ item.anio }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const fcfHistoricoSeries = [{% for item in resultado.fcf_historico %}{% if item.valor is not None %}{{ item.valor }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        {% else %}
+        const fcfHistoricoLabels = [];
+        const fcfHistoricoSeries = [];
+        {% endif %}
+
+        {% if resultado.fcf_proyectado %}
+        const fcfProyectadoLabels = [{% for item in resultado.fcf_proyectado %}"{{ item.anio }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const fcfProyectadoSeries = [{% for item in resultado.fcf_proyectado %}{% if item.valor is not None %}{{ item.valor }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        {% else %}
+        const fcfProyectadoLabels = [];
+        const fcfProyectadoSeries = [];
+        {% endif %}
+
+        const fcfHistoricoLabelsAscending = [...fcfHistoricoLabels].reverse();
+        const fcfHistoricoSeriesAscending = [...fcfHistoricoSeries].reverse();
+        createLineChart(
+            document.getElementById("fcfHistoricoChart"),
+            fcfHistoricoLabelsAscending,
+            fcfHistoricoSeriesAscending,
+            "#2563eb",
+            "rgba(37, 99, 235, 0.18)",
+            "FCF histórico (B)"
+        );
+
+        createLineChart(
+            document.getElementById("fcfProyectadoChart"),
+            fcfProyectadoLabels,
+            fcfProyectadoSeries,
+            "#0ea5e9",
+            "rgba(14, 165, 233, 0.18)",
+            "FCF proyectado (B)"
+        );
+    }
+    {% endif %}
 });
 </script>
 {% endblock %}
