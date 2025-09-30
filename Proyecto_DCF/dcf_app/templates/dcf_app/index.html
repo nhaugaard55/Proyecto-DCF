@@ -2,328 +2,554 @@
 
 {% block extra_head %}
 <style>
-    .ticker-search-wrapper { position: relative; }
-    .ticker-dropdown { position: absolute; top: calc(100% + 0.25rem); left: 0; right: 0; z-index: 1050; max-height: 16rem; overflow-y: auto; }
-    .ticker-dropdown .dropdown-item { white-space: normal; }
-    .ticker-dropdown .symbol { font-weight: 600; }
-    .ticker-dropdown .exchange { color: #6c757d; font-size: 0.85rem; }
-    .ticker-dropdown .no-results { padding: 0.75rem 1rem; color: #6c757d; }
+    .hero-section {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(59, 130, 246, 0.08) 50%, rgba(14, 116, 144, 0.08) 100%);
+        border-radius: 2rem;
+        padding: clamp(2.5rem, 4vw, 4rem);
+        margin-bottom: 3rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 30px 60px rgba(15, 23, 42, 0.08);
+    }
+    .hero-section::after {
+        content: "";
+        position: absolute;
+        width: 32rem;
+        height: 32rem;
+        background: radial-gradient(circle, rgba(37, 99, 235, 0.18) 0%, rgba(37, 99, 235, 0) 65%);
+        top: -10rem;
+        right: -8rem;
+        z-index: 0;
+    }
+    .hero-section > .row,
+    .hero-section .form-card {
+        position: relative;
+        z-index: 1;
+    }
+    .hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.85rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.55);
+        color: var(--accent);
+        font-size: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 1.25rem;
+    }
+    .hero-title {
+        font-size: clamp(2rem, 4vw, 3rem);
+        font-weight: 700;
+        line-height: 1.1;
+        margin-bottom: 1rem;
+    }
+    .hero-subtitle {
+        font-size: 1.05rem;
+        max-width: 36rem;
+        color: rgba(11, 29, 53, 0.75);
+    }
+    .hero-list {
+        list-style: none;
+        padding: 0;
+        margin: 2rem 0 0;
+        display: grid;
+        gap: 0.75rem;
+        max-width: 28rem;
+    }
+    .hero-list li {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 500;
+        color: rgba(11, 29, 53, 0.85);
+    }
+    .hero-check {
+        width: 1.65rem;
+        height: 1.65rem;
+        border-radius: 50%;
+        background: rgba(37, 99, 235, 0.15);
+        color: var(--accent);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+    }
+    .hero-summary {
+      margin-top: 2.5rem;
+    }
+    .feature-pill {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0.85rem 1.1rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.68);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+        min-width: 9.5rem;
+    }
+    .feature-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 600;
+        color: rgba(11, 29, 53, 0.55);
+    }
+    .feature-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--accent);
+    }
+    .form-card {
+        background: var(--surface-glass);
+        border-radius: 1.5rem;
+        padding: clamp(1.75rem, 3vw, 2.5rem);
+        border: 1px solid rgba(37, 99, 235, 0.12);
+    }
+    .form-card h2 {
+        font-weight: 600;
+    }
+    .form-card .form-text {
+        font-size: 0.9rem;
+    }
+    .form-card .btn {
+        box-shadow: 0 12px 25px rgba(37, 99, 235, 0.25);
+    }
+    .soft-card {
+        border: 1px solid rgba(37, 99, 235, 0.08);
+        border-radius: 1.5rem;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(12px);
+    }
+    .soft-card .card-body {
+        padding: clamp(1.5rem, 2.5vw, 2.5rem);
+    }
+    .results-section .card-title,
+    .results-section h3.h5 {
+        font-weight: 600;
+    }
+    .badge-soft-success {
+        background: rgba(22, 163, 74, 0.12);
+        color: #166534;
+        border: 1px solid rgba(22, 163, 74, 0.2);
+    }
+    .results-section .table thead {
+        background: rgba(37, 99, 235, 0.05);
+    }
+    .results-section .table thead th {
+        border-bottom: 0;
+    }
+    .results-section .table tbody td {
+        border-color: rgba(148, 163, 184, 0.2);
+    }
+    .ticker-search-wrapper {
+        position: relative;
+    }
+    .ticker-dropdown {
+        position: absolute;
+        top: calc(100% + 0.35rem);
+        left: 0;
+        right: 0;
+        z-index: 1050;
+        max-height: 16rem;
+        overflow-y: auto;
+        border-radius: 0.85rem;
+        box-shadow: 0 18px 32px rgba(15, 23, 42, 0.12);
+    }
+    .ticker-dropdown .dropdown-item {
+        white-space: normal;
+        padding-top: 0.6rem;
+        padding-bottom: 0.6rem;
+    }
+    .ticker-dropdown .symbol {
+        font-weight: 600;
+    }
+    .ticker-dropdown .exchange {
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+    .ticker-dropdown .no-results {
+        padding: 0.75rem 1rem;
+        color: #6c757d;
+    }
+    @media (max-width: 991.98px) {
+        .hero-section {
+            padding: 2.5rem 1.75rem;
+        }
+        .hero-summary {
+            margin-top: 2rem;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <h1 class="h3 mb-3">Valuación DCF</h1>
-                <form method="post" class="row gy-3">
+<section class="hero-section">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-6">
+            <span class="hero-eyebrow">Valuación con fundamento</span>
+            {% if resultado %}
+            <h1 class="hero-title">Análisis de {{ resultado.nombre }}{% if ticker %} ({{ ticker }}){% endif %}</h1>
+            <p class="hero-subtitle">Repasá el valor intrínseco estimado, comparalo con el precio actual y validá los supuestos utilizados.</p>
+            <div class="hero-summary d-flex flex-wrap gap-3">
+                <div class="feature-pill">
+                    <span class="feature-label">Precio actual</span>
+                    <span class="feature-value">{% with precio=resultado.precio_actual %}{% if precio is not None %}${{ precio|floatformat:2 }}{% else %}N/D{% endif %}{% endwith %}</span>
+                </div>
+                <div class="feature-pill">
+                    <span class="feature-label">Valor intrínseco</span>
+                    <span class="feature-value">{% with valor=resultado.valor_intrinseco %}{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}{% endwith %}</span>
+                </div>
+                <div class="feature-pill">
+                    <span class="feature-label">Margen estimado</span>
+                    <span class="feature-value">{% with diff=resultado.diferencia_pct %}{% if diff is not None %}{{ diff|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                </div>
+            </div>
+            {% else %}
+            <h1 class="hero-title">Descubrí el valor intrínseco de tus inversiones</h1>
+            <p class="hero-subtitle">Combinamos flujos de caja descontados con datos confiables del mercado para ayudarte a decidir con mayor claridad.</p>
+            <ul class="hero-list">
+                <li><span class="hero-check">&#10003;</span><span>Análisis DCF en segundos con supuestos configurables.</span></li>
+                <li><span class="hero-check">&#10003;</span><span>Datos actualizados de Financial Modeling Prep y YFinance.</span></li>
+                <li><span class="hero-check">&#10003;</span><span>Exportá tus resultados en un PDF listo para compartir.</span></li>
+            </ul>
+            {% endif %}
+        </div>
+        <div class="col-lg-5 ms-lg-auto">
+            <div class="form-card shadow-lg">
+                <span class="badge bg-primary-subtle text-primary-emphasis mb-2">Iniciar análisis</span>
+                <h2 class="h4 mb-2">Configura tu escenario</h2>
+                <p class="text-muted small mb-4">Buscá una compañía y elegí la metodología de crecimiento que mejor se ajuste a tu caso.</p>
+                <form method="post" class="row g-3">
                     {% csrf_token %}
-                    <div class="col-md-7">
-                        <label for="company-query" class="form-label">Ticker o nombre</label>
+                    <div class="col-12">
+                        <label for="company-query" class="form-label fw-semibold">Ticker o nombre</label>
                         <div class="ticker-search-wrapper">
-                            <input type="text" name="company_query" id="company-query" class="form-control" value="{{ search_value }}" placeholder="Ej: Apple o AAPL" autocomplete="off" data-search-url="{% url 'company_search' %}">
+                            <input type="text" name="company_query" id="company-query" class="form-control form-control-lg" value="{{ search_value }}" placeholder="Ej: Apple o AAPL" autocomplete="off" data-search-url="{% url 'company_search' %}">
                             <input type="hidden" name="ticker" id="ticker-value" value="{{ ticker }}">
                             <input type="hidden" name="company_name" id="company-name-value" value="{{ company_name|default:"" }}">
                             <input type="hidden" name="company_exchange" id="company-exchange-value" value="{{ company_exchange|default:"" }}">
                             <div class="dropdown-menu ticker-dropdown" id="ticker-suggestions" role="listbox"></div>
                         </div>
                     </div>
-                    <div class="col-md-5">
-                        <label for="metodo" class="form-label">Método de crecimiento</label>
-                        <select name="metodo" id="metodo" class="form-select">
+                    <div class="col-md-6">
+                        <label for="metodo" class="form-label fw-semibold">Método de crecimiento</label>
+                        <select name="metodo" id="metodo" class="form-select form-select-lg">
                             <option value="1" {% if metodo == "1" %}selected{% endif %}>CAGR (compuesto)</option>
                             <option value="2" {% if metodo == "2" %}selected{% endif %}>Promedio año a año</option>
                         </select>
                     </div>
-                    <div class="col-12">
-                        <label for="fuente" class="form-label">Fuente de datos</label>
-                        <select name="fuente" id="fuente" class="form-select">
+                    <div class="col-md-6">
+                        <label for="fuente" class="form-label fw-semibold">Fuente de datos</label>
+                        <select name="fuente" id="fuente" class="form-select form-select-lg">
                             <option value="auto" {% if fuente == "auto" %}selected{% endif %}>Automático (prioriza FMP y usa Yfinance si falta)</option>
                             <option value="fmp" {% if fuente == "fmp" %}selected{% endif %}>Financial Modeling Prep</option>
                             <option value="yfinance" {% if fuente == "yfinance" %}selected{% endif %}>Yfinance</option>
                         </select>
                     </div>
-                    <div class="col-12 d-flex justify-content-end">
-                        <button type="submit" class="btn btn-primary">Analizar</button>
+                    <div class="col-12 d-flex flex-wrap gap-3 align-items-center justify-content-between pt-2">
+                        <button type="submit" class="btn btn-primary btn-lg px-4">Analizar</button>
+                        <span class="text-muted small">Probá con <span class="fw-semibold">AAPL</span> o <span class="fw-semibold">MSFT</span>.</span>
                     </div>
                 </form>
+                {% if error %}
+                <div class="alert alert-danger mt-3 mb-0">{{ error }}</div>
+                {% endif %}
             </div>
         </div>
-        {% if error %}
-        <div class="alert alert-danger">{{ error }}</div>
-        {% endif %}
     </div>
-</div>
+</section>
 
 {% if resultado %}
-<div class="row g-4">
-    <div class="col-12">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-                    <div>
-                        <h2 class="h4 mb-0">{{ resultado.nombre }} {% if ticker %}<span class="text-muted">({{ ticker }})</span>{% endif %}</h2>
-                        <p class="text-muted mb-0">{{ resultado.sector }}</p>
-                        {% if resultado.fuente_datos %}
-                        <p class="text-muted small mb-0">Fuente de datos: {{ resultado.fuente_datos_descripcion }}</p>
+<section class="results-section">
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card soft-card shadow-lg border-0">
+                <div class="card-body">
+                    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+                        <div>
+                            <h2 class="h4 mb-1">{{ resultado.nombre }} {% if ticker %}<span class="text-muted">({{ ticker }})</span>{% endif %}</h2>
+                            <p class="text-muted mb-1">{{ resultado.sector }}</p>
+                            {% if resultado.fuente_datos %}
+                            <p class="text-muted small mb-0">Fuente de datos: {{ resultado.fuente_datos_descripcion }}</p>
+                            {% endif %}
+                        </div>
+                        {% if resultado.estado %}
+                        <span class="badge badge-soft-success px-3 py-2 fw-semibold">{{ resultado.estado }}</span>
                         {% endif %}
                     </div>
-                    {% if resultado.estado %}
-                    <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle px-3 py-2 mt-3 mt-md-0 fw-semibold">{{ resultado.estado }}</span>
+                    <div class="row row-cols-1 row-cols-md-3 text-center gy-4 mt-3">
+                        <div class="col">
+                            <p class="text-muted text-uppercase small fw-semibold mb-1">Precio actual</p>
+                            {% with precio=resultado.precio_actual %}
+                                {% if precio is not None %}
+                                <span class="fs-4 fw-semibold">${{ precio|floatformat:2 }}</span>
+                                {% else %}
+                                <span class="fs-4 fw-semibold">N/D</span>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        <div class="col">
+                            <p class="text-muted text-uppercase small fw-semibold mb-1">Valor intrínseco</p>
+                            {% with valor=resultado.valor_intrinseco %}
+                                {% if valor is not None %}
+                                <span class="fs-4 fw-semibold">${{ valor|floatformat:2 }}</span>
+                                {% else %}
+                                <span class="fs-4 fw-semibold">No disponible</span>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        <div class="col">
+                            <p class="text-muted text-uppercase small fw-semibold mb-1">Margen estimado</p>
+                            {% with diff=resultado.diferencia_pct %}
+                                {% if diff is not None %}
+                                <span class="fs-4 fw-semibold">{{ diff|floatformat:2 }}%</span>
+                                {% else %}
+                                <span class="fs-4 fw-semibold">N/D</span>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                    {% if resultado.mensaje_fuente %}
+                    <div class="alert alert-info mt-4 mb-0">{{ resultado.mensaje_fuente }}</div>
+                    {% endif %}
+                    <div class="mt-4 d-flex justify-content-end">
+                        <form method="get" action="{% url 'dcf_pdf' %}">
+                            <input type="hidden" name="ticker" value="{{ ticker }}">
+                            <input type="hidden" name="metodo" value="{{ metodo }}">
+                            <input type="hidden" name="fuente" value="{{ fuente }}">
+                            <button type="submit" class="btn btn-outline-primary px-4">Descargar PDF</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card soft-card h-100">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Datos generales</h3>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Precio actual</span>
+                            {% with valor=resultado.datos_empresa.precio_actual %}
+                                <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Acciones</span>
+                            {% with valor=resultado.datos_empresa.acciones_billones %}
+                                <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Market Cap</span>
+                            {% with valor=resultado.datos_empresa.market_cap_billones %}
+                                <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Deuda</span>
+                            {% with valor=resultado.datos_empresa.deuda_billones %}
+                                <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Beta</span>
+                            {% with valor=resultado.datos_empresa.beta %}
+                                <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Tasa impositiva</span>
+                            {% with valor=resultado.datos_empresa.tasa_impositiva_pct %}
+                                <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                            {% with fuente=resultado.datos_empresa.tasa_impositiva_fuente anios=resultado.datos_empresa.tasa_impositiva_anios %}
+                                {% if fuente %}
+                                <div class="text-muted small">Fuente: {{ fuente }}{% if anios %} ({{ anios }} años){% endif %}</div>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Cost of Debt</span>
+                            {% with valor=resultado.datos_empresa.cost_of_debt_pct %}
+                                <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                            {% with fuente=resultado.datos_empresa.cost_of_debt_fuente anios=resultado.datos_empresa.cost_of_debt_anios %}
+                                {% if fuente %}
+                                <div class="text-muted small">Fuente: {{ fuente }}{% if anios %} ({{ anios }} años){% endif %}</div>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        <div class="col-12">
+                            <span class="text-muted small d-block">Método crecimiento</span>
+                            <span class="fw-semibold">{{ resultado.datos_empresa.metodo_crecimiento }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card soft-card h-100">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Métricas clave</h3>
+                    <ul class="list-group list-group-flush rounded-3 overflow-hidden">
+                        <li class="list-group-item d-flex justify-content-between"><span>Rf</span><span>{% with valor=resultado.metricas.tasa_rf_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>Rm</span><span>{% with valor=resultado.metricas.market_return_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>CAPM</span><span>{% with valor=resultado.metricas.capm_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>WACC</span><span>{% with valor=resultado.metricas.wacc_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>Crecimiento utilizado</span><span>{% with valor=resultado.metricas.crecimiento_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>CAGR estimado</span><span>{% with valor=resultado.metricas.crecimiento_cagr_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>Crecimiento promedio</span><span>{% with valor=resultado.metricas.crecimiento_promedio_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
+                    </ul>
+                    {% if resultado.metricas.valor_terminal %}
+                    <div class="pt-3 small text-muted">Valor terminal estimado: ${{ resultado.metricas.valor_terminal|floatformat:2 }}B</div>
                     {% endif %}
                 </div>
-                <hr>
-                <div class="row text-center">
-                    <div class="col-md-4 mb-3 mb-md-0">
-                        <p class="text-muted mb-1">Precio actual</p>
-                        {% with precio=resultado.precio_actual %}
-                            {% if precio is not None %}
-                                <span class="fs-4 fw-semibold">${{ precio|floatformat:2 }}</span>
-                            {% else %}
-                                <span class="fs-4 fw-semibold">N/D</span>
-                            {% endif %}
-                        {% endwith %}
-                    </div>
-                    <div class="col-md-4 mb-3 mb-md-0">
-                        <p class="text-muted mb-1">Valor intrínseco</p>
-                        {% with valor=resultado.valor_intrinseco %}
-                            {% if valor is not None %}
-                                <span class="fs-4 fw-semibold">${{ valor|floatformat:2 }}</span>
-                            {% else %}
-                                <span class="fs-4 fw-semibold">No disponible</span>
-                            {% endif %}
-                        {% endwith %}
-                    </div>
-                    <div class="col-md-4">
-                        <p class="text-muted mb-1">Margen estimado</p>
-                        {% with diff=resultado.diferencia_pct %}
-                            {% if diff is not None %}
-                                <span class="fs-4 fw-semibold">{{ diff|floatformat:2 }}%</span>
-                            {% else %}
-                                <span class="fs-4 fw-semibold">N/D</span>
-                            {% endif %}
-                        {% endwith %}
-                    </div>
-                </div>
-                {% if resultado.mensaje_fuente %}
-                <div class="alert alert-info mt-3">{{ resultado.mensaje_fuente }}</div>
-                {% endif %}
-                <div class="mt-4 d-flex justify-content-end">
-                    <form method="get" action="{% url 'dcf_pdf' %}">
-                        <input type="hidden" name="ticker" value="{{ ticker }}">
-                        <input type="hidden" name="metodo" value="{{ metodo }}">
-                        <input type="hidden" name="fuente" value="{{ fuente }}">
-                        <button type="submit" class="btn btn-outline-secondary">Descargar PDF</button>
-                    </form>
-                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-lg-6">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <h3 class="h5">Datos generales</h3>
-                <div class="row g-2">
-                    <div class="col-6">Precio actual:<br>
-                        {% with valor=resultado.datos_empresa.precio_actual %}
-                            <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
-                        {% endwith %}
+        <div class="col-12">
+            <div class="card soft-card">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Filtros fundamentales</h3>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Indicador</th>
+                                    <th>Valor</th>
+                                    <th>Criterio</th>
+                                    <th>Resultado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for filtro in resultado.filtros %}
+                                <tr>
+                                    <td>{{ filtro.nombre }}</td>
+                                    <td>{{ filtro.valor }}</td>
+                                    <td>{{ filtro.criterio }}</td>
+                                    <td>
+                                        {% if filtro.cumple %}
+                                        <span class="badge bg-success">Cumple</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">No cumple</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="col-6">Acciones:<br>
-                        {% with valor=resultado.datos_empresa.acciones_billones %}
-                            <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
-                        {% endwith %}
-                    </div>
-                    <div class="col-6">Market Cap:<br>
-                        {% with valor=resultado.datos_empresa.market_cap_billones %}
-                            <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
-                        {% endwith %}
-                    </div>
-                    <div class="col-6">Deuda:<br>
-                        {% with valor=resultado.datos_empresa.deuda_billones %}
-                            <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
-                        {% endwith %}
-                    </div>
-                    <div class="col-6">Beta:<br>
-                        {% with valor=resultado.datos_empresa.beta %}
-                            <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
-                        {% endwith %}
-                    </div>
-                    <div class="col-6">Tasa impositiva:<br>
-                        {% with valor=resultado.datos_empresa.tasa_impositiva_pct %}
-                            <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
-                        {% endwith %}
-                        {% with fuente=resultado.datos_empresa.tasa_impositiva_fuente anios=resultado.datos_empresa.tasa_impositiva_anios %}
-                            {% if fuente %}
-                            <div class="text-muted small">Fuente: {{ fuente }}{% if anios %} ({{ anios }} años){% endif %}</div>
-                            {% endif %}
-                        {% endwith %}
-                    </div>
-                    <div class="col-6">Cost of Debt:<br>
-                        {% with valor=resultado.datos_empresa.cost_of_debt_pct %}
-                            <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
-                        {% endwith %}
-                        {% with fuente=resultado.datos_empresa.cost_of_debt_fuente anios=resultado.datos_empresa.cost_of_debt_anios %}
-                            {% if fuente %}
-                            <div class="text-muted small">Fuente: {{ fuente }}{% if anios %} ({{ anios }} años){% endif %}</div>
-                            {% endif %}
-                        {% endwith %}
-                    </div>
-                    <div class="col-12">Método crecimiento:<br><span class="fw-semibold">{{ resultado.datos_empresa.metodo_crecimiento }}</span></div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-lg-6">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <h3 class="h5">Métricas clave</h3>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex justify-content-between"><span>Rf</span><span>{% with valor=resultado.metricas.tasa_rf_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                    <li class="list-group-item d-flex justify-content-between"><span>Rm</span><span>{% with valor=resultado.metricas.market_return_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                    <li class="list-group-item d-flex justify-content-between"><span>CAPM</span><span>{% with valor=resultado.metricas.capm_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                    <li class="list-group-item d-flex justify-content-between"><span>WACC</span><span>{% with valor=resultado.metricas.wacc_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                    <li class="list-group-item d-flex justify-content-between"><span>Crecimiento utilizado</span><span>{% with valor=resultado.metricas.crecimiento_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                    <li class="list-group-item d-flex justify-content-between"><span>CAGR estimado</span><span>{% with valor=resultado.metricas.crecimiento_cagr_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                    <li class="list-group-item d-flex justify-content-between"><span>Crecimiento promedio</span><span>{% with valor=resultado.metricas.crecimiento_promedio_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                </ul>
-                {% if resultado.metricas.valor_terminal %}
-                <div class="pt-3 small text-muted">Valor terminal estimado: ${{ resultado.metricas.valor_terminal|floatformat:2 }}B</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h3 class="h5">Filtros fundamentales</h3>
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead>
-                            <tr>
-                                <th>Indicador</th>
-                                <th>Valor</th>
-                                <th>Criterio</th>
-                                <th>Resultado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for filtro in resultado.filtros %}
-                            <tr>
-                                <td>{{ filtro.nombre }}</td>
-                                <td>{{ filtro.valor }}</td>
-                                <td>{{ filtro.criterio }}</td>
-                                <td>
-                                    {% if filtro.cumple %}
-                                    <span class="badge bg-success">Cumple</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">No cumple</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+        <div class="col-lg-6">
+            <div class="card soft-card h-100">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">FCF histórico</h3>
+                    {% if resultado.fcf_historico %}
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr><th>Año</th><th>FCF</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for item in resultado.fcf_historico %}
+                                <tr>
+                                    <td>{{ item.anio }}</td>
+                                    <td>${{ item.valor|floatformat:2 }}B</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No hay datos suficientes.</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-lg-6">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <h3 class="h5">FCF histórico</h3>
-                {% if resultado.fcf_historico %}
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr><th>Año</th><th>FCF</th></tr>
-                        </thead>
-                        <tbody>
-                            {% for item in resultado.fcf_historico %}
-                            <tr>
-                                <td>{{ item.anio }}</td>
-                                <td>${{ item.valor|floatformat:2 }}B</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+        <div class="col-lg-6">
+            <div class="card soft-card h-100">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Proyección FCF (5 años)</h3>
+                    {% if resultado.fcf_proyectado %}
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr><th>Año</th><th>FCF proyectado</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for item in resultado.fcf_proyectado %}
+                                <tr>
+                                    <td>{{ item.anio }}</td>
+                                    <td>${{ item.valor|floatformat:2 }}B</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No se pudo proyectar el flujo.</p>
+                    {% endif %}
                 </div>
-                {% else %}
-                <p class="text-muted mb-0">No hay datos suficientes.</p>
-                {% endif %}
             </div>
         </div>
-    </div>
 
-    <div class="col-lg-6">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <h3 class="h5">Proyección FCF (5 años)</h3>
-                {% if resultado.fcf_proyectado %}
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr><th>Año</th><th>FCF proyectado</th></tr>
-                        </thead>
-                        <tbody>
-                            {% for item in resultado.fcf_proyectado %}
-                            <tr>
-                                <td>{{ item.anio }}</td>
-                                <td>${{ item.valor|floatformat:2 }}B</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <p class="text-muted mb-0">No se pudo proyectar el flujo.</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h3 class="h5">Dividendos y otros</h3>
-                <div class="row g-3">
-                    <div class="col-md-3">Dividend Yield:<br>
-                        {% with valor=resultado.dividendos.yield_pct %}
-                            <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
-                        {% endwith %}
-                    </div>
-                    <div class="col-md-3">Net Worth / Share:<br>
-                        {% with valor=resultado.dividendos.net_worth_per_share %}
-                            <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
-                        {% endwith %}
-                    </div>
-                    <div class="col-md-3">Safety Margin:<br>
-                        {% with valor=resultado.dividendos.safety_margin_pct %}
-                            <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
-                        {% endwith %}
-                    </div>
-                    <div class="col-md-3">52-week low:<br>
-                        {% with valor=resultado.dividendos.fifty_two_week_low %}
-                            <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
-                        {% endwith %}
+        <div class="col-12">
+            <div class="card soft-card">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Dividendos y otros</h3>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <span class="text-muted small d-block">Dividend Yield</span>
+                            {% with valor=resultado.dividendos.yield_pct %}
+                                <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                        <div class="col-md-3">
+                            <span class="text-muted small d-block">Net Worth / Share</span>
+                            {% with valor=resultado.dividendos.net_worth_per_share %}
+                                <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                        <div class="col-md-3">
+                            <span class="text-muted small d-block">Safety Margin</span>
+                            {% with valor=resultado.dividendos.safety_margin_pct %}
+                                <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                        <div class="col-md-3">
+                            <span class="text-muted small d-block">52-week low</span>
+                            {% with valor=resultado.dividendos.fifty_two_week_low %}
+                                <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</section>
 {% elif ticker %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="alert alert-warning">No se pudo generar un análisis completo con los datos disponibles.</div>
+<section class="results-section">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="alert alert-warning shadow-sm" role="alert">No se pudo generar un análisis completo con los datos disponibles.</div>
+        </div>
     </div>
-</div>
+</section>
 {% endif %}
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const input = document.getElementById("company-query");

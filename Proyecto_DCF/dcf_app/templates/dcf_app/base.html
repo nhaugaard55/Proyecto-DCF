@@ -5,19 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proyecto DCF</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { min-height: 100vh; }
-        .navbar-brand span { font-weight: 600; }
+        :root {
+            --surface-glass: rgba(255, 255, 255, 0.85);
+            --nav-bg: rgba(12, 18, 41, 0.88);
+            --text-primary: #0b1d35;
+            --accent: #2563eb;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at 0% 0%, #f0f5ff 0%, #e3efff 35%, #f8fbff 100%);
+            color: var(--text-primary);
+        }
+
+        .glass-nav {
+            background: var(--nav-bg);
+            backdrop-filter: blur(12px);
+        }
+
+        .navbar-brand span {
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        main {
+            padding-top: 4rem;
+            padding-bottom: 4rem;
+        }
+
         .badge-pill { border-radius: 50rem; }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-light">
-    <nav class="navbar navbar-dark bg-dark">
+<body>
+    <nav class="navbar navbar-dark glass-nav shadow-sm py-3">
         <div class="container">
-            <a class="navbar-brand" href="/">
-                <span>DCF Analyzer</span>
-            </a>
+            <div class="navbar-brand m-0"></div>
         </div>
     </nav>
     <main class="container py-5">
