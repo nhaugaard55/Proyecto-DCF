@@ -14,6 +14,12 @@ from pathlib import Path
 from typing import Any, Dict, cast
 import os
 import sys
+
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    load_dotenv = None
+
 try:
     import dj_database_url
 except ModuleNotFoundError:
@@ -25,6 +31,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
+
+if load_dotenv:
+    load_dotenv(ROOT_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production

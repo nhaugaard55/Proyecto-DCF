@@ -94,12 +94,14 @@ def calcular_crecimientos(fcf_series):
             except (ZeroDivisionError, OverflowError, ValueError):
                 cagr_calc = None
 
-        tasas = []
-        for i in range(len(valores) - 1):
-            siguiente = valores[i + 1]
-            actual = valores[i]
-            if siguiente and siguiente != 0:
-                tasas.append((actual / siguiente) - 1)
+        valores_cronologicos = list(reversed(valores))
+        tasas: list[float] = []
+        for anterior, actual in zip(valores_cronologicos, valores_cronologicos[1:]):
+            denominador = abs(anterior)
+            if not denominador:
+                continue
+            variacion = (actual - anterior) / denominador
+            tasas.append(variacion)
 
         promedio_calc = (sum(tasas) / len(tasas)) if tasas else None
         cagr = sanitize(cagr_calc)
