@@ -295,8 +295,8 @@
                         <div class="ticker-search-wrapper">
                             <input type="text" name="company_query" id="company-query" class="form-control form-control-lg" value="{{ search_value }}" placeholder="Ej: Apple o AAPL" autocomplete="off" data-search-url="{% url 'company_search' %}">
                             <input type="hidden" name="ticker" id="ticker-value" value="{{ ticker }}">
-                            <input type="hidden" name="company_name" id="company-name-value" value="{{ company_name|default:"" }}">
-                            <input type="hidden" name="company_exchange" id="company-exchange-value" value="{{ company_exchange|default:"" }}">
+                            <input type="hidden" name="company_name" id="company-name-value" value="{{ company_name|default:'' }}">
+                            <input type="hidden" name="company_exchange" id="company-exchange-value" value="{{ company_exchange|default:'' }}">
                             <div class="dropdown-menu ticker-dropdown" id="ticker-suggestions" role="listbox"></div>
                         </div>
                     </div>
@@ -671,6 +671,7 @@
     </div>
 </section>
 {% endif %}
+{{ chart_data|json_script:"dcf-chart-data" }}
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -837,29 +838,66 @@ document.addEventListener("DOMContentLoaded", function () {
         input.value = hiddenTicker.value;
     }
 
-    {% if resultado %}
-    if (typeof Chart !== "undefined") {
+    const baseChartData = {
+        has_resultado: false,
+        fcf_historico_labels: [],
+        fcf_historico_series: [],
+        fcf_proyectado_labels: [],
+        fcf_proyectado_series: [],
+    };
+    const chartDataElement = document.getElementById("dcf-chart-data");
+    let chartData = baseChartData;
+
+    if (chartDataElement) {
+        try {
+            const parsed = JSON.parse(chartDataElement.textContent);
+            if (parsed && typeof parsed === "object") {
+                chartData = { ...baseChartData, ...parsed };
+            }
+        } catch (error) {
+            chartData = baseChartData;
+        }
+    }
+
+    if (chartData.has_resultado && typeof Chart !== "undefined") {
         Chart.defaults.font.family = "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif";
         const localeFormatter = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const formatBillions = (value) => {
-            if (value === null || value === undefined || Number.isNaN(value)) {
+            if (value === null || value === undefined) {
                 return "N/D";
             }
-            return `${localeFormatter.format(Number(value))}B`;
+            const numericValue = Number(value);
+            if (Number.isNaN(numericValue)) {
+                return "N/D";
+            }
+            return `${localeFormatter.format(numericValue)}B`;
         };
 
-        const createLineChart = (canvas, labels, series, color, fillColor, datasetLabel) => {
-            if (!canvas || !labels.length || !series.some((value) => value !== null && !Number.isNaN(value))) {
+        const createLineChart = (canvasId, labels, series, color, fillColor, datasetLabel) => {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                return;
+            }
+
+            const safeLabels = Array.isArray(labels) ? labels : [];
+            const safeSeries = Array.isArray(series) ? series : [];
+            if (!safeLabels.length || !safeSeries.some((value) => value !== null && value !== undefined && !Number.isNaN(Number(value)))) {
                 return;
             }
 
             const ctx = canvas.getContext("2d");
-            const dataPoints = series.map((value) => (value === null ? null : Number(value)));
+            const dataPoints = safeSeries.map((value) => {
+                if (value === null || value === undefined) {
+                    return null;
+                }
+                const numericValue = Number(value);
+                return Number.isNaN(numericValue) ? null : numericValue;
+            });
 
             new Chart(ctx, {
                 type: "line",
                 data: {
-                    labels,
+                    labels: safeLabels,
                     datasets: [
                         {
                             label: datasetLabel,
@@ -872,9 +910,9 @@ document.addEventListener("DOMContentLoaded", function () {
                             pointHoverRadius: 5,
                             pointBackgroundColor: color,
                             pointBorderColor: "#ffffff",
-                            pointBorderWidth: 1.5
-                        }
-                    ]
+                            pointBorderWidth: 1.5,
+                        },
+                    ],
                 },
                 options: {
                     maintainAspectRatio: false,
@@ -884,66 +922,49 @@ document.addEventListener("DOMContentLoaded", function () {
                         y: {
                             grid: { color: "rgba(37, 99, 235, 0.08)" },
                             ticks: {
-                                callback: (tickValue) => formatBillions(tickValue)
+                                callback: (tickValue) => formatBillions(tickValue),
                             },
                             title: {
                                 display: true,
-                                text: "Monto (Billones USD)"
-                            }
+                                text: "Monto (Billones USD)",
+                            },
                         },
                         x: {
-                            grid: { display: false }
-                        }
+                            grid: { display: false },
+                        },
                     },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: (context) => `${datasetLabel}: ${formatBillions(context.parsed.y)}`
-                            }
-                        }
-                    }
-                }
+                                label: (context) => `${datasetLabel}: ${formatBillions(context.parsed.y)}`,
+                            },
+                        },
+                    },
+                },
             });
         };
 
-        {% if resultado.fcf_historico %}
-        const fcfHistoricoLabels = [{% for item in resultado.fcf_historico %}"{{ item.anio }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
-        const fcfHistoricoSeries = [{% for item in resultado.fcf_historico %}{% if item.valor is not None %}{{ item.valor }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
-        {% else %}
-        const fcfHistoricoLabels = [];
-        const fcfHistoricoSeries = [];
-        {% endif %}
-
-        {% if resultado.fcf_proyectado %}
-        const fcfProyectadoLabels = [{% for item in resultado.fcf_proyectado %}"{{ item.anio }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
-        const fcfProyectadoSeries = [{% for item in resultado.fcf_proyectado %}{% if item.valor is not None %}{{ item.valor }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
-        {% else %}
-        const fcfProyectadoLabels = [];
-        const fcfProyectadoSeries = [];
-        {% endif %}
-
-        const fcfHistoricoLabelsAscending = [...fcfHistoricoLabels].reverse();
-        const fcfHistoricoSeriesAscending = [...fcfHistoricoSeries].reverse();
+        const historicoLabels = [...chartData.fcf_historico_labels].reverse();
+        const historicoSeries = [...chartData.fcf_historico_series].reverse();
         createLineChart(
-            document.getElementById("fcfHistoricoChart"),
-            fcfHistoricoLabelsAscending,
-            fcfHistoricoSeriesAscending,
+            "fcfHistoricoChart",
+            historicoLabels,
+            historicoSeries,
             "#2563eb",
             "rgba(37, 99, 235, 0.18)",
             "FCF histórico (B)"
         );
 
         createLineChart(
-            document.getElementById("fcfProyectadoChart"),
-            fcfProyectadoLabels,
-            fcfProyectadoSeries,
+            "fcfProyectadoChart",
+            chartData.fcf_proyectado_labels,
+            chartData.fcf_proyectado_series,
             "#0ea5e9",
             "rgba(14, 165, 233, 0.18)",
             "FCF proyectado (B)"
         );
     }
-    {% endif %}
 });
 </script>
 {% endblock %}

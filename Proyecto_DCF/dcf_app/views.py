@@ -1,5 +1,7 @@
 import io
 import re
+from decimal import Decimal
+from typing import Any, cast
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.template.loader import render_to_string
@@ -38,6 +40,68 @@ def _resolver_ticker(raw_ticker: str, raw_query: str) -> str:
     return potencial or query_limpio.upper()
 
 
+def _clean_numeric(value):
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        try:
+            return float(str(value))
+        except (TypeError, ValueError):
+            return None
+
+
+def _extract_chart_series(entries):
+    labels = []
+    values = []
+    if not entries:
+        return labels, values
+
+    for item in entries:
+        if isinstance(item, dict):
+            labels.append(str(item.get('anio', '')))
+            values.append(_clean_numeric(item.get('valor')))
+        else:
+            labels.append(str(getattr(item, 'anio', '')))
+            values.append(_clean_numeric(getattr(item, 'valor', None)))
+    return labels, values
+
+
+def _build_chart_data(resultado):
+    if not resultado:
+        return {
+            'has_resultado': False,
+            'fcf_historico_labels': [],
+            'fcf_historico_series': [],
+            'fcf_proyectado_labels': [],
+            'fcf_proyectado_series': [],
+        }
+
+    if isinstance(resultado, dict):
+        historico_entries = resultado.get('fcf_historico')
+        proyectado_entries = resultado.get('fcf_proyectado')
+    else:
+        historico_entries = getattr(resultado, 'fcf_historico', None)
+        proyectado_entries = getattr(resultado, 'fcf_proyectado', None)
+
+    historico_labels, historico_series = _extract_chart_series(historico_entries)
+    proyectado_labels, proyectado_series = _extract_chart_series(proyectado_entries)
+
+    has_data = bool(historico_labels or proyectado_labels)
+    return {
+        'has_resultado': has_data,
+        'fcf_historico_labels': historico_labels,
+        'fcf_historico_series': historico_series,
+        'fcf_proyectado_labels': proyectado_labels,
+        'fcf_proyectado_series': proyectado_series,
+    }
+
+
+
+
 def dcf_view(request):
     resultado = None
     error = None
@@ -64,6 +128,8 @@ def dcf_view(request):
         else:
             error = "Por favor ingresá un ticker válido."
 
+    chart_data = _build_chart_data(resultado)
+
     return render(request, "dcf_app/index.html", {
         "resultado": resultado,
         "error": error,
@@ -73,14 +139,15 @@ def dcf_view(request):
         "search_value": valor_busqueda or ticker,
         "company_name": company_name,
         "company_exchange": company_exchange,
+        "chart_data": chart_data,
     })
 
 
 def _render_pdf(template_name: str, context: dict) -> bytes | None:
     html = render_to_string(template_name, context)
     output = io.BytesIO()
-    pdf = pisa.CreatePDF(html, dest=output, encoding="UTF-8")
-    if pdf.err:
+    pdf_result = cast(Any, pisa.CreatePDF(html, dest=output, encoding="UTF-8"))
+    if getattr(pdf_result, "err", 0):
         return None
     return output.getvalue()
 
