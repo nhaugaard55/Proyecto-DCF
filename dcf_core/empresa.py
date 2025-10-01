@@ -466,9 +466,48 @@ def analizar_empresa(
 
     resumen_noticias = None
     resumen_noticias_error = None
+
+    ticker_lower = ticker.lower()
+    nombre_normalizado = nombre.lower()
+    nombre_sin_inc = nombre_normalizado.replace(" inc.", "").replace(" inc", "")
+    nombre_simple = nombre.split(" ")[0].lower() if nombre else ""
+
+    def _menciona(texto: Optional[str]) -> bool:
+        texto_busqueda = str(texto or "").lower()
+        if not texto_busqueda.strip():
+            return False
+        if ticker_lower and ticker_lower in texto_busqueda:
+            return True
+        if nombre_normalizado and nombre_normalizado in texto_busqueda:
+            return True
+        if nombre_sin_inc and nombre_sin_inc.strip() and nombre_sin_inc in texto_busqueda:
+            return True
+        if nombre_simple:
+            patron = fr"\b{re.escape(nombre_simple)}['’]s\b"
+            if re.search(patron, texto_busqueda):
+                return True
+        return False
+
+    noticias_resumen: list[dict] = []
     if noticias:
+        for item in noticias:
+            copia = dict(item)
+            copia["empresa"] = nombre
+            noticias_resumen.append(copia)
+
+        relevantes_titulo = [n for n in noticias_resumen if _menciona(n.get("titulo"))]
+        if relevantes_titulo:
+            noticias_resumen = relevantes_titulo
+        else:
+            relevantes_contenido = [
+                n for n in noticias_resumen if _menciona(n.get("titulo")) or _menciona(n.get("resumen"))
+            ]
+            if relevantes_contenido:
+                noticias_resumen = relevantes_contenido
+
+    if noticias_resumen:
         try:
-            resumen_noticias = generar_resumen_sentimiento(noticias)
+            resumen_noticias = generar_resumen_sentimiento(noticias_resumen)
         except AISummaryError as exc:
             resumen_noticias_error = _limpiar_mensaje_api(str(exc))
         except Exception as exc:  # pragma: no cover
