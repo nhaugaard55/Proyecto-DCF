@@ -52,10 +52,11 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
         partes.append(fragmento)
     cuerpo = "\n".join(partes)
     instruccion = (
-        f"Eres un analista financiero. Analiza únicamente lo que indican las noticias sobre {empresa}. "
-        f"Redacta un breve resumen en {idioma} explicando si el sentimiento hacia {empresa} es positivo, "
-        "negativo o mixto y qué temas concretos afectan a la compañía. Ignora menciones a otras empresas "
-        "o al mercado general. Sé muy conciso (máximo tres frases) y usa lenguaje neutral."
+        f"Eres un analista financiero hispanohablante. Analiza solo las noticias listadas sobre {empresa}. "
+        f"Redacta en {idioma} un resumen fluido y natural, con tono periodístico latino, que conecte los hechos en un mismo relato. "
+        "Incluye las ideas principales de cada noticia (qué ocurrió y por qué importa) y explica cómo influyen en el sentimiento hacia la compañía. "
+        "Cierra con una frase que indique si el tono general resulta positivo, negativo o mixto. Sé conciso (máximo tres frases), "
+        "evita traducciones literales y no añadas información externa ni menciones a otras empresas."
     )
     return (
         "<|system|>\n" + instruccion + "</s>\n"\
