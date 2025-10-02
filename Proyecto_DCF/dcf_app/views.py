@@ -2,11 +2,14 @@ import io
 import re
 from decimal import Decimal
 from typing import Any, cast
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_GET
+from django.urls import reverse
+from urllib.parse import urlencode
 from xhtml2pdf import pisa
 
 from dcf_core.DCF_Main import ejecutar_dcf
@@ -106,31 +109,76 @@ def dcf_view(request):
     resultado = None
     error = None
     ticker = ""
-    metodo = "1"
-    fuente = "auto"
-    valor_busqueda = ""
-    company_name = ""
-    company_exchange = ""
+    metodo = request.GET.get("metodo", "1")
+    fuente = request.GET.get("fuente", "auto")
+    valor_busqueda = request.GET.get("company_query", "").strip()
+    company_name = request.GET.get("company_name", "").strip()
+    company_exchange = request.GET.get("company_exchange", "").strip()
+
+    def _parse_page(value: str | None, default: int = 1) -> int:
+        try:
+            numero = int(value)
+            return numero if numero > 0 else default
+        except (TypeError, ValueError):
+            return default
+
+    page_number = _parse_page(request.GET.get("page") or request.POST.get("page"))
 
     if request.method == "POST":
         valor_busqueda = request.POST.get("company_query", "").strip()
         company_name = request.POST.get("company_name", "").strip()
         company_exchange = request.POST.get("company_exchange", "").strip()
-        ticker = _resolver_ticker(request.POST.get("ticker", ""), valor_busqueda)
         metodo = request.POST.get("metodo", "1")
         fuente = request.POST.get("fuente", "auto")
+        ticker_resuelto = _resolver_ticker(request.POST.get("ticker", ""), valor_busqueda)
 
-        if ticker:
-            try:
-                resultado = ejecutar_dcf(ticker, metodo, fuente)
-            except Exception as e:
-                error = f"Ocurrió un error al analizar el ticker: {e}"
-        else:
-            error = "Por favor ingresá un ticker válido."
+        if ticker_resuelto:
+            query_params = {
+                "ticker": ticker_resuelto,
+                "metodo": metodo,
+                "fuente": fuente,
+                "company_query": valor_busqueda,
+                "company_name": company_name,
+                "company_exchange": company_exchange,
+                "page": 1,
+            }
+            return redirect(f"{reverse('home')}?{urlencode(query_params)}")
+
+        error = "Por favor ingresá un ticker válido."
+
+    ticker = request.GET.get("ticker", "").strip().upper()
+
+    if ticker:
+        try:
+            resultado = ejecutar_dcf(ticker, metodo, fuente)
+        except Exception as exc:
+            error = f"Ocurrió un error al analizar el ticker: {exc}"
+            resultado = None
 
     chart_data = _build_chart_data(resultado)
 
-    return render(request, "dcf_app/index.html", {
+    noticias_page = None
+    page_obj = None
+    pagination_query = ""
+    noticias_total = 0
+
+    if resultado:
+        noticias_list = resultado.get("noticias") or []
+        paginator = Paginator(noticias_list, 6)
+        noticias_total = paginator.count
+        if paginator.count:
+            try:
+                page_obj = paginator.page(page_number)
+            except (EmptyPage, PageNotAnInteger):
+                page_obj = paginator.page(1)
+            noticias_page = page_obj.object_list
+
+            base_query = request.GET.copy()
+            if "page" in base_query:
+                del base_query["page"]
+            pagination_query = base_query.urlencode()
+
+    context = {
         "resultado": resultado,
         "error": error,
         "ticker": ticker,
@@ -140,7 +188,13 @@ def dcf_view(request):
         "company_name": company_name,
         "company_exchange": company_exchange,
         "chart_data": chart_data,
-    })
+        "noticias_page": noticias_page,
+        "page_obj": page_obj,
+        "pagination_query": pagination_query,
+        "noticias_total": noticias_total,
+    }
+
+    return render(request, "dcf_app/index.html", context)
 
 
 def _render_pdf(template_name: str, context: dict) -> bytes | None:
