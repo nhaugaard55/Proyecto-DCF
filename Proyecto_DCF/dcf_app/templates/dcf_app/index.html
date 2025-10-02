@@ -618,7 +618,7 @@
             </div>
         </div>
 
-        {% if noticias_page %}
+        {% if news_total > 0 %}
         <div class="col-12">
             <div class="card soft-card">
                 <div class="card-body">
@@ -631,34 +631,15 @@
                             {% endif %}
                         </div>
                     </div>
-                    <div class="news-list">
-                        {% for noticia in noticias_page %}
-                        <article class="news-item">
-                            <div class="news-headline">
-                                <a href="{{ noticia.url }}" target="_blank" rel="noopener">{{ noticia.titulo }}</a>
-                            </div>
-                            <div class="news-meta">
-                                {% if noticia.fuente %}<span>{{ noticia.fuente }}</span>{% endif %}
-                                {% if noticia.fuente and noticia.fecha %}<span class="news-dot"></span>{% endif %}
-                                {% if noticia.fecha %}<time datetime="{{ noticia.fecha|date:'c' }}">{{ noticia.fecha|date:"d/m/Y H:i" }}</time>{% endif %}
-                            </div>
-                        </article>
-                        {% endfor %}
-                    </div>
-                    {% if page_obj %}
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mt-3">
-                        <span class="text-muted small">Mostrando {{ noticias_page|length }} de {{ noticias_total }} noticias</span>
-                        <div class="d-flex align-items-center gap-2">
-                            {% if page_obj.has_previous %}
-                            <a class="btn btn-sm btn-outline-primary" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}">&#8592; Anteriores</a>
-                            {% endif %}
-                            <span class="text-muted small">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-                            {% if page_obj.has_next %}
-                            <a class="btn btn-sm btn-outline-primary" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}">Siguientes &#8594;</a>
-                            {% endif %}
+                    <div class="news-list" id="news-list"></div>
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mt-3" id="news-pagination">
+                        <span class="text-muted small" id="news-count"></span>
+                        <div class="d-flex align-items-center gap-2" id="news-nav-controls">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="news-prev">&#8592; Anteriores</button>
+                            <span class="text-muted small" id="news-page-info"></span>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="news-next">Siguientes &#8594;</button>
                         </div>
                     </div>
-                    {% endif %}
                     {% if resultado.resumen_noticias %}
                     <div class="ai-summary">
                         <div class="ai-summary-title">Resumen IA del sentimiento</div>
@@ -693,6 +674,10 @@
         </div>
     </div>
 </section>
+{% endif %}
+{% if news_total > 0 %}
+{{ news_data|json_script:"dcf-news-data" }}
+{{ news_config|json_script:"dcf-news-config" }}
 {% endif %}
 {{ chart_data|json_script:"dcf-chart-data" }}
 
@@ -859,6 +844,188 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (!input.value && hiddenTicker.value) {
         input.value = hiddenTicker.value;
+    }
+
+    const newsDataElement = document.getElementById("dcf-news-data");
+    const newsConfigElement = document.getElementById("dcf-news-config");
+    const newsListContainer = document.getElementById("news-list");
+    const newsPrevButton = document.getElementById("news-prev");
+    const newsNextButton = document.getElementById("news-next");
+    const newsPageInfo = document.getElementById("news-page-info");
+    const newsCountLabel = document.getElementById("news-count");
+    const newsNavControls = document.getElementById("news-nav-controls");
+    const newsPagination = document.getElementById("news-pagination");
+
+    if (newsDataElement && newsConfigElement && newsListContainer) {
+        let newsData = [];
+        try {
+            const parsedNews = JSON.parse(newsDataElement.textContent);
+            newsData = Array.isArray(parsedNews) ? parsedNews : [];
+        } catch (error) {
+            newsData = [];
+        }
+
+        let newsConfig = {};
+        try {
+            newsConfig = JSON.parse(newsConfigElement.textContent || "{}");
+        } catch (error) {
+            newsConfig = {};
+        }
+
+        const pageSize = Number(newsConfig.page_size) || 6;
+        const totalItems = newsData.length;
+        let currentPage = Number(newsConfig.initial_page) || 1;
+        const totalPages = totalItems ? Math.max(1, Math.ceil(totalItems / pageSize)) : 1;
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+        if (currentPage < 1) {
+            currentPage = 1;
+        }
+
+        const baseQueryString = typeof newsConfig.base_query === "string" ? newsConfig.base_query : "";
+        const dateFormatter = new Intl.DateTimeFormat("es-AR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+
+        const updateUrl = (page) => {
+            const params = baseQueryString ? new URLSearchParams(baseQueryString) : new URLSearchParams();
+            if (page > 1) {
+                params.set("page", page);
+            } else {
+                params.delete("page");
+            }
+            const queryString = params.toString();
+            const newUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ""}`;
+            window.history.replaceState(null, "", newUrl);
+        };
+
+        const renderNewsPage = (page) => {
+            const startIndex = (page - 1) * pageSize;
+            const pageItems = newsData.slice(startIndex, startIndex + pageSize);
+
+            newsListContainer.innerHTML = "";
+
+            if (!pageItems.length) {
+                const emptyState = document.createElement("p");
+                emptyState.className = "text-muted mb-0";
+                emptyState.textContent = "No hay noticias para mostrar.";
+                newsListContainer.appendChild(emptyState);
+            } else {
+                pageItems.forEach((item) => {
+                    const article = document.createElement("article");
+                    article.className = "news-item";
+
+                    const headline = document.createElement("div");
+                    headline.className = "news-headline";
+
+                    const link = document.createElement("a");
+                    link.href = item.url || "#";
+                    link.target = "_blank";
+                    link.rel = "noopener";
+                    link.textContent = item.titulo || "Sin título";
+
+                    headline.appendChild(link);
+                    article.appendChild(headline);
+
+                    const meta = document.createElement("div");
+                    meta.className = "news-meta";
+
+                    if (item.fuente) {
+                        const fuente = document.createElement("span");
+                        fuente.textContent = item.fuente;
+                        meta.appendChild(fuente);
+                    }
+
+                    const fechaTexto = item.fecha_display || "";
+                    const fechaIso = item.fecha_iso || "";
+
+                    if (item.fuente && fechaTexto) {
+                        const dot = document.createElement("span");
+                        dot.className = "news-dot";
+                        meta.appendChild(dot);
+                    }
+
+                    if (fechaTexto) {
+                        const time = document.createElement("time");
+                        time.textContent = fechaTexto;
+                        if (fechaIso) {
+                            time.dateTime = fechaIso;
+                        }
+                        meta.appendChild(time);
+                    } else if (fechaIso) {
+                        const parsedDate = new Date(fechaIso);
+                        if (!Number.isNaN(parsedDate.getTime())) {
+                            const time = document.createElement("time");
+                            time.dateTime = fechaIso;
+                            time.textContent = dateFormatter.format(parsedDate);
+                            meta.appendChild(time);
+                        }
+                    }
+
+                    if (meta.children.length) {
+                        article.appendChild(meta);
+                    }
+
+                    newsListContainer.appendChild(article);
+                });
+            }
+
+            if (newsCountLabel) {
+                if (totalItems) {
+                    const start = Math.min(totalItems, startIndex + 1);
+                    const end = Math.min(totalItems, startIndex + pageItems.length);
+                    newsCountLabel.textContent = `Mostrando ${start}-${end} de ${totalItems} noticias`;
+                } else {
+                    newsCountLabel.textContent = "";
+                }
+            }
+
+            if (newsPageInfo) {
+                newsPageInfo.textContent = totalItems ? `Página ${page} de ${totalPages}` : "";
+            }
+
+            if (newsPrevButton) {
+                newsPrevButton.disabled = page <= 1;
+            }
+            if (newsNextButton) {
+                newsNextButton.disabled = page >= totalPages;
+            }
+
+            if (newsNavControls) {
+                newsNavControls.classList.toggle("d-none", totalPages <= 1);
+            }
+
+            if (newsPagination) {
+                newsPagination.classList.toggle("d-none", totalItems === 0);
+            }
+
+            updateUrl(page);
+        };
+
+        if (newsPrevButton) {
+            newsPrevButton.addEventListener("click", () => {
+                if (currentPage > 1) {
+                    currentPage -= 1;
+                    renderNewsPage(currentPage);
+                }
+            });
+        }
+
+        if (newsNextButton) {
+            newsNextButton.addEventListener("click", () => {
+                if (currentPage < totalPages) {
+                    currentPage += 1;
+                    renderNewsPage(currentPage);
+                }
+            });
+        }
+
+        renderNewsPage(currentPage);
     }
 
     const baseChartData = {
