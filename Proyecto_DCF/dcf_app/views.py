@@ -1,10 +1,14 @@
 import io
 import re
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, cast
+from urllib.parse import urlencode
+
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 from xhtml2pdf import pisa
@@ -102,35 +106,97 @@ def _build_chart_data(resultado):
 
 
 
+NEWS_PAGE_SIZE = 6
+
+
+def _serialize_news_item(item: dict) -> dict:
+    fecha = item.get("fecha")
+    fecha_iso = None
+    fecha_display = None
+    if isinstance(fecha, datetime):
+        fecha_local = timezone.localtime(fecha) if timezone.is_aware(fecha) else fecha
+        fecha_iso = fecha_local.isoformat()
+        fecha_display = fecha_local.strftime("%d/%m/%Y %H:%M")
+
+    return {
+        "titulo": item.get("titulo"),
+        "fuente": item.get("fuente"),
+        "resumen": item.get("resumen"),
+        "url": item.get("url"),
+        "imagen": item.get("imagen"),
+        "fecha_iso": fecha_iso,
+        "fecha_display": fecha_display,
+    }
+
+
 def dcf_view(request):
     resultado = None
     error = None
     ticker = ""
-    metodo = "1"
-    fuente = "auto"
-    valor_busqueda = ""
-    company_name = ""
-    company_exchange = ""
+    metodo = request.GET.get("metodo", "1")
+    fuente = request.GET.get("fuente", "auto")
+    valor_busqueda = request.GET.get("company_query", "").strip()
+    company_name = request.GET.get("company_name", "").strip()
+    company_exchange = request.GET.get("company_exchange", "").strip()
+
+    def _parse_page(value: str | None, default: int = 1) -> int:
+        try:
+            numero = int(value)
+            return numero if numero > 0 else default
+        except (TypeError, ValueError):
+            return default
+
+    page_number = _parse_page(request.GET.get("page"))
 
     if request.method == "POST":
         valor_busqueda = request.POST.get("company_query", "").strip()
         company_name = request.POST.get("company_name", "").strip()
         company_exchange = request.POST.get("company_exchange", "").strip()
-        ticker = _resolver_ticker(request.POST.get("ticker", ""), valor_busqueda)
         metodo = request.POST.get("metodo", "1")
         fuente = request.POST.get("fuente", "auto")
+        ticker_resuelto = _resolver_ticker(request.POST.get("ticker", ""), valor_busqueda)
 
-        if ticker:
-            try:
-                resultado = ejecutar_dcf(ticker, metodo, fuente)
-            except Exception as e:
-                error = f"Ocurrió un error al analizar el ticker: {e}"
-        else:
-            error = "Por favor ingresá un ticker válido."
+        if ticker_resuelto:
+            query_params = {
+                "ticker": ticker_resuelto,
+                "metodo": metodo,
+                "fuente": fuente,
+                "company_query": valor_busqueda,
+                "company_name": company_name,
+                "company_exchange": company_exchange,
+                "page": 1,
+            }
+            return redirect(f"{reverse('home')}?{urlencode(query_params)}")
+
+        error = "Por favor ingresá un ticker válido."
+
+    ticker = request.GET.get("ticker", "").strip().upper()
+
+    if ticker:
+        try:
+            resultado = ejecutar_dcf(ticker, metodo, fuente)
+        except Exception as exc:
+            error = f"Ocurrió un error al analizar el ticker: {exc}"
+            resultado = None
 
     chart_data = _build_chart_data(resultado)
 
-    return render(request, "dcf_app/index.html", {
+    news_list = resultado.get("noticias") if resultado else []
+    news_total = len(news_list)
+    total_pages = max(1, (news_total + NEWS_PAGE_SIZE - 1) // NEWS_PAGE_SIZE) if news_total else 1
+    if page_number > total_pages:
+        page_number = total_pages
+    if page_number < 1:
+        page_number = 1
+
+    base_query = request.GET.copy()
+    if "page" in base_query:
+        del base_query["page"]
+    base_query_string = base_query.urlencode()
+
+    news_payload = [_serialize_news_item(item) for item in news_list]
+
+    context = {
         "resultado": resultado,
         "error": error,
         "ticker": ticker,
@@ -140,7 +206,19 @@ def dcf_view(request):
         "company_name": company_name,
         "company_exchange": company_exchange,
         "chart_data": chart_data,
-    })
+        "news_data": news_payload,
+        "news_total": news_total,
+        "news_page_size": NEWS_PAGE_SIZE,
+        "news_initial_page": page_number,
+        "news_base_query": base_query_string,
+        "news_config": {
+            "page_size": NEWS_PAGE_SIZE,
+            "initial_page": page_number,
+            "base_query": base_query_string,
+        },
+    }
+
+    return render(request, "dcf_app/index.html", context)
 
 
 def _render_pdf(template_name: str, context: dict) -> bytes | None:
