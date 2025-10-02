@@ -140,6 +140,11 @@ def dcf_view(request):
     company_exchange = request.GET.get("company_exchange", "").strip()
 
     def _parse_page(value: str | None, default: int = 1) -> int:
+        if value is None:
+            return default
+        value = value.strip()
+        if not value:
+            return default
         try:
             numero = int(value)
             return numero if numero > 0 else default
@@ -181,7 +186,14 @@ def dcf_view(request):
 
     chart_data = _build_chart_data(resultado)
 
-    news_list = resultado.get("noticias") if resultado else []
+    if isinstance(resultado, dict):
+        raw_news = resultado.get("noticias") or []
+    else:
+        raw_news = getattr(resultado, "noticias", []) or []
+    try:
+        news_list: list[dict[str, Any]] = list(raw_news)
+    except TypeError:
+        news_list = []
     news_total = len(news_list)
     total_pages = max(1, (news_total + NEWS_PAGE_SIZE - 1) // NEWS_PAGE_SIZE) if news_total else 1
     if page_number > total_pages:

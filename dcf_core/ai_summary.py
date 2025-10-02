@@ -23,6 +23,7 @@ class _ModelUnavailableError(AISummaryError):
 
 _DEFAULT_MODEL = "HuggingFaceH4/zephyr-7b-beta"
 _FALLBACK_MODEL = "facebook/bart-large-cnn"
+_TRANSLATION_MODEL = "Helsinki-NLP/opus-mt-en-es"
 _HF_BASE_URL = "https://api-inference.huggingface.co/models"
 
 
@@ -62,7 +63,9 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
     )
 
 
-def _solicitar_resumen(modelo: str, headers: Mapping[str, str], payload: Mapping[str, object], prompt: str) -> str:
+def _solicitar_resumen(
+    modelo: str, headers: Mapping[str, str], payload: Mapping[str, object], prompt: str
+) -> tuple[str, str]:
     endpoint = f"{_HF_BASE_URL}/{modelo}"
 
     try:
@@ -121,7 +124,65 @@ def _solicitar_resumen(modelo: str, headers: Mapping[str, str], payload: Mapping
         raise AISummaryError("La respuesta de Hugging Face llegó vacía.")
 
     resumen = generated.replace(prompt, "", 1).strip()
-    return resumen or generated.strip()
+    return (resumen or generated.strip(), modelo)
+
+
+def _deberia_traducir(model_id: str) -> bool:
+    modelo = (model_id or "").lower()
+    if not modelo:
+        return False
+    palabras_clave = ["facebook/bart", "huggingfaceh4/", "zephyr"]
+    return any(clave in modelo for clave in palabras_clave)
+
+
+def _traducir_a_espanol(texto: str, headers: Mapping[str, str]) -> str:
+    if not texto or not texto.strip():
+        return texto
+
+    modelo_traduccion = os.environ.get("HUGGINGFACE_TRANSLATION_MODEL", _TRANSLATION_MODEL)
+    if not modelo_traduccion:
+        return texto
+
+    endpoint = f"{_HF_BASE_URL}/{modelo_traduccion}"
+    payload = {
+        "inputs": texto,
+        "parameters": {"clean_up_tokenization_spaces": True},
+        "options": {"wait_for_model": True},
+    }
+
+    try:
+        response = requests.post(endpoint, headers=headers, json=payload, timeout=45)
+        response.raise_for_status()
+    except requests.RequestException:
+        return texto
+
+    try:
+        data = response.json()
+    except ValueError:
+        return texto
+
+    if isinstance(data, list) and data:
+        candidate = data[0]
+        if isinstance(candidate, dict) and candidate.get("translation_text"):
+            return str(candidate["translation_text"]).strip() or texto
+
+    if isinstance(data, dict) and data.get("translation_text"):
+        return str(data["translation_text"]).strip() or texto
+
+    return texto
+
+
+def _asegurar_espanol(texto: str, modelo_utilizado: str, headers: Mapping[str, str]) -> str:
+    if not texto:
+        return texto
+
+    if os.environ.get("HUGGINGFACE_ALWAYS_TRANSLATE", "false").lower() == "true":
+        return _traducir_a_espanol(texto, headers)
+
+    if _deberia_traducir(modelo_utilizado):
+        return _traducir_a_espanol(texto, headers)
+
+    return texto
 
 
 def generar_resumen_sentimiento(
@@ -170,7 +231,16 @@ def generar_resumen_sentimiento(
     ultimo_error: Optional[AISummaryError] = None
     for modelo_actual in modelos_a_probar:
         try:
-            return _solicitar_resumen(modelo_actual, headers, payload, prompt)
+            resumen, utilizado = _solicitar_resumen(modelo_actual, headers, payload, prompt)
+
+            if idioma.lower().startswith("es"):
+                resumen = _asegurar_espanol(
+                    resumen,
+                    utilizado,
+                    headers,
+                )
+
+            return resumen
         except _ModelUnavailableError as exc:
             ultimo_error = exc
             # Intentamos con el siguiente modelo disponible.
