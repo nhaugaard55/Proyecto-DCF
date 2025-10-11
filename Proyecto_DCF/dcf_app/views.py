@@ -2,7 +2,7 @@ import io
 import re
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from typing import Any, Optional, cast
+from typing import Any, cast
 from urllib.parse import urlencode
 
 from django.http import HttpResponse, JsonResponse
@@ -134,9 +134,6 @@ def _build_chart_data(resultado):
 
 NEWS_PAGE_SIZE = 6
 
-GROWTH_THRESHOLD = 0.15  # 15%
-GROWTH_CONSERVATIVE = 0.05
-
 
 def _guardar_analisis(
     *,
@@ -216,9 +213,6 @@ def dcf_view(request):
     valor_busqueda = request.GET.get("company_query", "").strip()
     company_name = request.GET.get("company_name", "").strip()
     company_exchange = request.GET.get("company_exchange", "").strip()
-    growth_pref = (request.GET.get("growth_pref") or "auto").lower()
-    if growth_pref not in {"auto", "aggressive", "conservative"}:
-        growth_pref = "auto"
 
     def _parse_page(value: str | None, default: int = 1) -> int:
         if value is None:
@@ -251,7 +245,6 @@ def dcf_view(request):
                 "company_name": company_name,
                 "company_exchange": company_exchange,
                 "page": 1,
-                "growth_pref": "auto",
             }
             return redirect(f"{reverse('home')}?{urlencode(query_params)}")
 
@@ -261,10 +254,7 @@ def dcf_view(request):
 
     if ticker:
         try:
-            growth_override = None
-            if metodo == "1" and growth_pref == "conservative":
-                growth_override = GROWTH_CONSERVATIVE
-            resultado = ejecutar_dcf(ticker, metodo, fuente, growth_override=growth_override)
+            resultado = ejecutar_dcf(ticker, metodo, fuente)
         except Exception as exc:
             error = f"Ocurrió un error al analizar el ticker: {exc}"
             resultado = None
@@ -303,48 +293,6 @@ def dcf_view(request):
     news_payload = [_serialize_news_item(item) for item in news_list]
     recent_records = AnalysisRecord.objects.all()[:6]
 
-    growth_prompt = False
-    growth_insight: dict[str, Any] | None = None
-    growth_choice_urls: dict[str, str] = {}
-    analyst_growth_pct = None
-    applied_growth_pct = None
-    detected_growth_pct = None
-
-    if isinstance(resultado, dict):
-        detected_growth_pct = resultado.get("crecimiento_detectado_pct")
-        analyst_growth_pct = resultado.get("crecimiento_analistas_pct")
-        applied_growth_pct = resultado.get("crecimiento_utilizado_pct")
-        if metodo == "1" and isinstance(detected_growth_pct, (int, float)):
-            if detected_growth_pct > GROWTH_THRESHOLD * 100:
-                growth_insight = {
-                    "detected_pct": detected_growth_pct,
-                    "applied_pct": applied_growth_pct,
-                    "threshold_pct": GROWTH_THRESHOLD * 100,
-                    "conservative_pct": GROWTH_CONSERVATIVE * 100,
-                    "analyst_pct": analyst_growth_pct,
-                }
-                if growth_pref == "auto":
-                    growth_prompt = True
-                else:
-                    growth_insight["selection"] = growth_pref
-
-    if growth_insight:
-        def _build_growth_url(preference: str) -> str:
-            params = base_query.copy()
-            if preference == "auto":
-                if "growth_pref" in params:
-                    del params["growth_pref"]
-            else:
-                params["growth_pref"] = preference
-            encoded = params.urlencode()
-            return f"{request.path}?{encoded}" if encoded else request.path
-
-        growth_choice_urls = {
-            "aggressive": _build_growth_url("aggressive"),
-            "conservative": _build_growth_url("conservative"),
-            "auto": _build_growth_url("auto"),
-        }
-
     context = {
         "resultado": resultado,
         "error": error,
@@ -366,13 +314,6 @@ def dcf_view(request):
             "base_query": base_query_string,
         },
         "recent_records": recent_records,
-        "growth_pref": growth_pref,
-        "growth_prompt": growth_prompt,
-        "growth_insight": growth_insight,
-        "growth_choice_urls": growth_choice_urls,
-        "analyst_growth_pct": analyst_growth_pct,
-        "applied_growth_pct": applied_growth_pct,
-        "detected_growth_pct": detected_growth_pct,
     }
 
     return render(request, "dcf_app/index.html", context)
@@ -389,20 +330,14 @@ def _render_pdf(template_name: str, context: dict) -> bytes | None:
 
 def dcf_pdf_view(request):
     ticker = request.GET.get("ticker", "").strip().upper()
-    metodo = _normalize_metodo(request.GET.get("metodo"))
-    fuente = _normalize_fuente(request.GET.get("fuente"))
-    growth_pref = (request.GET.get("growth_pref") or "auto").lower()
-    if growth_pref not in {"auto", "aggressive", "conservative"}:
-        growth_pref = "auto"
+    metodo = request.GET.get("metodo", "1")
+    fuente = request.GET.get("fuente", "auto")
 
     if not ticker:
         return HttpResponse("Ticker inválido", status=400)
 
     try:
-        growth_override = None
-        if metodo == "1" and growth_pref == "conservative":
-            growth_override = GROWTH_CONSERVATIVE
-        resultado = ejecutar_dcf(ticker, metodo, fuente, growth_override=growth_override)
+        resultado = ejecutar_dcf(ticker, metodo, fuente)
     except Exception as exc:
         return HttpResponse(f"No se pudo generar el informe: {exc}", status=500)
 

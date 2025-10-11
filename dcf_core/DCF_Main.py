@@ -9,7 +9,6 @@ from .fmp import (
     FCFEntry,
     FMPClientError,
     FMPDerivedMetrics,
-    obtener_crecimiento_analistas,
     obtener_fcf_historico,
     obtener_metricas_financieras,
 )
@@ -144,20 +143,13 @@ def _obtener_metricas_yfinance(ticker: str, limite: int = 5) -> tuple[Optional[f
     return tasa_promedio, tasas, costo_promedio, costos
 
 
-def ejecutar_dcf(
-    ticker: str,
-    metodo: str = "1",
-    fuente: str = "auto",
-    growth_override: Optional[float] = None,
-) -> dict:
+def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
     """
     Ejecuta el análisis DCF para un ticker dado y devuelve un diccionario con los resultados clave.
 
     Args:
         ticker (str): Símbolo bursátil de la empresa.
         metodo (str): "1" para usar CAGR, "2" para promedio año a año. Default: "1".
-        growth_override (float, opcional): Permite forzar una tasa de crecimiento específica
-            cuando el método seleccionado es CAGR.
 
     Returns:
         dict: Contiene 'precio_actual', 'valor_intrinseco', 'estado', 'diferencia_pct'.
@@ -303,32 +295,11 @@ def ejecutar_dcf(
             mensajes_fuente.append(f"{texto} calculado con {etiqueta}.")
 
     crecimiento, avg_growth_rate = calcular_crecimientos(valores_para_crecimiento)
-    crecimiento_detectado = crecimiento
-
-    crecimiento_analistas: Optional[float] = None
-    if usar_fmp:
-        try:
-            crecimiento_analistas = obtener_crecimiento_analistas(ticker, limite=4)
-        except FMPClientError:
-            mensajes_fuente.append(
-                "No se pudieron obtener las estimaciones de crecimiento provistas por analistas."
-            )
-        except Exception:  # pragma: no cover - dependiente de red
-            mensajes_fuente.append(
-                "Ocurrió un error inesperado al consultar las estimaciones de crecimiento de analistas."
-            )
-
-    crecimiento_aplicado = crecimiento
-    if metodo == "1" and growth_override is not None:
-        try:
-            crecimiento_aplicado = float(growth_override)
-        except (TypeError, ValueError):
-            crecimiento_aplicado = crecimiento
 
     resultado = analizar_empresa(
         ticker,
         metodo,
-        crecimiento_aplicado,
+        crecimiento,
         avg_growth_rate,
         fcf_historial=fcf_historial if fuente_utilizada == "fmp" else None,
         tax_rate_override=tax_rate_override,
@@ -346,24 +317,6 @@ def ejecutar_dcf(
         fuente_utilizada, fuente_utilizada
     )
     resultado["fuente_solicitada"] = fuente_solicitada
-    resultado["crecimiento_detectado"] = crecimiento_detectado
-    resultado["crecimiento_detectado_pct"] = (
-        crecimiento_detectado * 100 if crecimiento_detectado is not None else None
-    )
-    resultado["crecimiento_utilizado"] = crecimiento_aplicado
-    resultado["crecimiento_utilizado_pct"] = (
-        crecimiento_aplicado * 100 if crecimiento_aplicado is not None else None
-    )
-    resultado["crecimiento_promedio_pct"] = (
-        avg_growth_rate * 100 if avg_growth_rate is not None else None
-    )
-    resultado["crecimiento_analistas"] = crecimiento_analistas
-    resultado["crecimiento_analistas_pct"] = (
-        crecimiento_analistas * 100 if crecimiento_analistas is not None else None
-    )
-    if metodo == "1" and growth_override is not None:
-        resultado["growth_override_aplicado"] = crecimiento_aplicado
-
     if mensajes_fuente:
         resultado["mensaje_fuente"] = " ".join(mensajes_fuente)
 

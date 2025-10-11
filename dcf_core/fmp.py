@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
 
-import math
 import requests
 
 
@@ -225,30 +224,6 @@ class FMPClient:
 
         return history
 
-    def get_analyst_estimates(self, ticker: str, limit: int = 4, period: str = "annual") -> list:
-        """Return analyst estimates for the provided ticker."""
-
-        ticker = ticker.upper().strip()
-        if not ticker:
-            raise FMPClientError("El ticker proporcionado no es válido.")
-
-        effective_limit = min(max(limit, 1), 8)
-        params = {"period": period, "limit": effective_limit}
-        data = self._request(f"api/v3/analyst-estimates/{ticker}", params=params)
-
-        if isinstance(data, dict):
-            error_message = data.get("Error Message") or data.get("error")
-            raise FMPClientError(
-                f"Financial Modeling Prep devolvió un error al pedir estimaciones de analistas: {error_message or data}."
-            )
-
-        if not isinstance(data, list):
-            raise FMPClientError(
-                "Financial Modeling Prep devolvió un formato inesperado al pedir estimaciones de analistas."
-            )
-
-        return data
-
     def get_company_news(self, ticker: str, limit: int = 8) -> List[FMPNewsItem]:
         """Return recent news for the provided ticker."""
 
@@ -452,26 +427,3 @@ def obtener_metricas_financieras(ticker: str, limite: int = 5) -> FMPDerivedMetr
         cost_of_debt=costo_promedio,
         cost_samples=costo_por_año,
     )
-
-
-def obtener_crecimiento_analistas(ticker: str, limite: int = 4) -> Optional[float]:
-    """Devuelve la media del crecimiento estimado por analistas desde FMP."""
-
-    cliente = FMPClient()
-    estimaciones = cliente.get_analyst_estimates(ticker, limit=limite, period="annual")
-    valores: list[float] = []
-
-    for item in estimaciones:
-        growth = item.get("growth")
-        try:
-            valor = float(growth)
-        except (TypeError, ValueError):
-            continue
-        if math.isnan(valor) or math.isinf(valor):
-            continue
-        valores.append(valor)
-
-    if not valores:
-        return None
-
-    return sum(valores) / len(valores)
