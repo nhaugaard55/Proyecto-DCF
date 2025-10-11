@@ -123,6 +123,32 @@
     .form-card .btn {
         box-shadow: 0 12px 25px rgba(37, 99, 235, 0.25);
     }
+    .growth-advice-card {
+        background: var(--surface-card);
+        border: 1px solid var(--surface-border);
+        border-radius: 1.25rem;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+    }
+    .growth-advice-card p {
+        margin-bottom: 0.7rem;
+        color: var(--text-secondary);
+    }
+    .growth-choice-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    .growth-choice-buttons .btn {
+        min-width: 10rem;
+    }
+    .theme-dark .growth-advice-card {
+        box-shadow: 0 18px 40px rgba(7, 11, 28, 0.45);
+    }
+    .growth-advice-meta {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
     .recent-section {
         margin-bottom: 3rem;
     }
@@ -440,6 +466,34 @@
                     <span class="feature-value">{% with diff=resultado.diferencia_pct %}{% if diff is not None %}{{ diff|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
                 </div>
             </div>
+            {% if growth_insight %}
+            <div class="growth-advice-card mt-4">
+                <p>Detectamos un crecimiento compuesto de <strong>{{ growth_insight.detected_pct|floatformat:2 }}%</strong>, por encima del umbral recomendado de {{ growth_insight.threshold_pct|floatformat:0 }}%.</p>
+                {% if analyst_growth_pct is not None %}
+                <p class="growth-advice-meta">Referencias de analistas: ~{{ analyst_growth_pct|floatformat:2 }}% de crecimiento proyectado.</p>
+                {% endif %}
+                {% if growth_prompt %}
+                <div class="growth-choice-buttons mt-2">
+                    <a href="{{ growth_choice_urls.aggressive }}" class="btn btn-primary btn-sm">Mantener {{ growth_insight.detected_pct|floatformat:2 }}%</a>
+                    <a href="{{ growth_choice_urls.conservative }}" class="btn btn-outline-primary btn-sm">Usar {{ growth_insight.conservative_pct|floatformat:2 }}% conservador</a>
+                </div>
+                {% else %}
+                    {% if growth_insight.selection == "conservative" %}
+                    <p class="mb-2">Estás aplicando un crecimiento conservador del {{ growth_insight.conservative_pct|floatformat:2 }}%. Podés volver al escenario agresivo cuando quieras.</p>
+                    <div class="growth-choice-buttons">
+                        <a href="{{ growth_choice_urls.aggressive }}" class="btn btn-outline-primary btn-sm">Usar {{ growth_insight.detected_pct|floatformat:2 }}%</a>
+                        <a href="{{ growth_choice_urls.auto }}" class="btn btn-secondary btn-sm">Decidir después</a>
+                    </div>
+                    {% elif growth_insight.selection == "aggressive" %}
+                    <p class="mb-2">Mantienes el crecimiento alto del {{ growth_insight.detected_pct|floatformat:2 }}%. También podés optar por un enfoque conservador.</p>
+                    <div class="growth-choice-buttons">
+                        <a href="{{ growth_choice_urls.conservative }}" class="btn btn-outline-primary btn-sm">Usar {{ growth_insight.conservative_pct|floatformat:2 }}%</a>
+                        <a href="{{ growth_choice_urls.auto }}" class="btn btn-secondary btn-sm">Decidir después</a>
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endif %}
             {% else %}
             <h1 class="hero-title">Descubrí el valor intrínseco de tus inversiones</h1>
             <p class="hero-subtitle">Combinamos flujos de caja descontados con datos confiables del mercado para ayudarte a decidir con mayor claridad.</p>
@@ -555,7 +609,7 @@
                     </div>
                     <div class="recent-actions">
                         {% with fuente_param=record.fuente_solicitada|default:record.fuente_utilizada %}
-                        <a class="btn btn-sm btn-outline-primary" href="{% url 'home' %}?ticker={{ record.ticker }}&metodo={{ record.metodo }}&fuente={{ fuente_param|urlencode }}{% if record.company_name %}&company_name={{ record.company_name|urlencode }}{% endif %}{% if record.company_exchange %}&company_exchange={{ record.company_exchange|urlencode }}{% endif %}">Reanalizar</a>
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'home' %}?ticker={{ record.ticker }}&metodo={{ record.metodo }}&fuente={{ fuente_param|urlencode }}&growth_pref=auto{% if record.company_name %}&company_name={{ record.company_name|urlencode }}{% endif %}{% if record.company_exchange %}&company_exchange={{ record.company_exchange|urlencode }}{% endif %}">Reanalizar</a>
                         {% endwith %}
                     </div>
                 </article>
@@ -896,6 +950,7 @@
         <input type="hidden" name="ticker" value="{{ ticker }}">
         <input type="hidden" name="metodo" value="{{ metodo }}">
         <input type="hidden" name="fuente" value="{{ fuente }}">
+        <input type="hidden" name="growth_pref" value="{{ growth_pref }}">
         <button type="submit" class="btn btn-outline-primary btn-lg px-5">Descargar PDF</button>
     </form>
 </div>
