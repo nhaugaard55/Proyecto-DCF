@@ -63,7 +63,7 @@
 
         .theme-toggle-btn {
             border: 1px solid rgba(255, 255, 255, 0.35);
-            color: inherit;
+            color: #f8fafc;
             background: transparent;
             border-radius: 999px;
             padding: 0.35rem 0.85rem;
@@ -79,6 +79,9 @@
             background: rgba(255, 255, 255, 0.12);
             border-color: rgba(255, 255, 255, 0.55);
             color: inherit;
+        }
+        .theme-dark .theme-toggle-btn {
+            color: #e2e8f0;
         }
 
         .theme-dark {
@@ -174,10 +177,7 @@
 </head>
 <body>
     <nav class="navbar navbar-dark glass-nav shadow-sm py-3">
-        <div class="container">
-            <a class="navbar-brand m-0 text-white text-decoration-none" href="{% url 'home' %}">
-                <span>Proyecto DCF</span>
-            </a>
+        <div class="container d-flex justify-content-end">
             <button type="button" class="theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema">
                 <span id="theme-toggle-icon" aria-hidden="true">🌙</span>
                 <span id="theme-toggle-text">Modo oscuro</span>
