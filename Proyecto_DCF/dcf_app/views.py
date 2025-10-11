@@ -1,7 +1,7 @@
 import io
 import re
-from datetime import datetime
-from decimal import Decimal
+from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, cast
 from urllib.parse import urlencode
 
@@ -12,6 +12,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 from xhtml2pdf import pisa
+
+from .models import AnalysisRecord
 
 from dcf_core.DCF_Main import ejecutar_dcf
 from dcf_core.search import CompanySearchResult, search_companies
@@ -42,6 +44,32 @@ def _resolver_ticker(raw_ticker: str, raw_query: str) -> str:
         return coincidencias[0].symbol.upper()
 
     return potencial or query_limpio.upper()
+
+
+def _normalize_metodo(value: str | None) -> str:
+    return value if value in ("1", "2") else "1"
+
+
+def _normalize_fuente(value: str | None) -> str:
+    permitido = {"auto", "fmp", "yfinance"}
+    value = (value or "auto").lower()
+    return value if value in permitido else "auto"
+
+
+def _to_decimal(value, *, places: int | None = 4):
+    if value in (None, "", "N/D"):
+        return None
+    if isinstance(value, Decimal):
+        dec_value = value
+    else:
+        try:
+            dec_value = Decimal(str(value))
+        except (InvalidOperation, TypeError, ValueError):
+            return None
+    if places is None:
+        return dec_value
+    quant = Decimal("1." + ("0" * places))
+    return dec_value.quantize(quant, rounding=ROUND_HALF_UP)
 
 
 def _clean_numeric(value):
@@ -104,9 +132,56 @@ def _build_chart_data(resultado):
     }
 
 
-
-
 NEWS_PAGE_SIZE = 6
+
+
+def _guardar_analisis(
+    *,
+    ticker: str,
+    metodo: str,
+    fuente_solicitada: str,
+    company_name: str,
+    company_exchange: str,
+    resultado: dict[str, Any] | None,
+):
+    if not ticker or not isinstance(resultado, dict):
+        return None
+
+    nombre_empresa = (company_name or resultado.get("nombre") or ticker).strip()
+    sector = (resultado.get("sector") or "").strip()
+    fuente_utilizada = (resultado.get("fuente_datos") or "").strip()
+
+    valor_intrinseco = _to_decimal(resultado.get("valor_intrinseco"), places=4)
+    precio_actual = _to_decimal(resultado.get("precio_actual"), places=4)
+    diferencia_pct = _to_decimal(resultado.get("diferencia_pct"), places=2)
+
+    ventana_reciente = timezone.now() - timedelta(minutes=5)
+    duplicado = AnalysisRecord.objects.filter(
+        ticker=ticker,
+        metodo=metodo,
+        fuente_utilizada=fuente_utilizada,
+        valor_intrinseco=valor_intrinseco,
+        precio_actual=precio_actual,
+        diferencia_pct=diferencia_pct,
+        created_at__gte=ventana_reciente,
+    ).exists()
+
+    if duplicado:
+        return None
+
+    return AnalysisRecord.objects.create(
+        ticker=ticker,
+        company_name=nombre_empresa,
+        company_exchange=company_exchange,
+        sector=sector,
+        metodo=metodo,
+        fuente_solicitada=fuente_solicitada,
+        fuente_utilizada=fuente_utilizada,
+        valor_intrinseco=valor_intrinseco,
+        precio_actual=precio_actual,
+        diferencia_pct=diferencia_pct,
+        estado=(resultado.get("estado") or "").strip(),
+    )
 
 
 def _serialize_news_item(item: dict) -> dict:
@@ -133,8 +208,8 @@ def dcf_view(request):
     resultado = None
     error = None
     ticker = ""
-    metodo = request.GET.get("metodo", "1")
-    fuente = request.GET.get("fuente", "auto")
+    metodo = _normalize_metodo(request.GET.get("metodo"))
+    fuente = _normalize_fuente(request.GET.get("fuente"))
     valor_busqueda = request.GET.get("company_query", "").strip()
     company_name = request.GET.get("company_name", "").strip()
     company_exchange = request.GET.get("company_exchange", "").strip()
@@ -157,8 +232,8 @@ def dcf_view(request):
         valor_busqueda = request.POST.get("company_query", "").strip()
         company_name = request.POST.get("company_name", "").strip()
         company_exchange = request.POST.get("company_exchange", "").strip()
-        metodo = request.POST.get("metodo", "1")
-        fuente = request.POST.get("fuente", "auto")
+        metodo = _normalize_metodo(request.POST.get("metodo"))
+        fuente = _normalize_fuente(request.POST.get("fuente"))
         ticker_resuelto = _resolver_ticker(request.POST.get("ticker", ""), valor_busqueda)
 
         if ticker_resuelto:
@@ -183,6 +258,15 @@ def dcf_view(request):
         except Exception as exc:
             error = f"Ocurrió un error al analizar el ticker: {exc}"
             resultado = None
+        else:
+            _guardar_analisis(
+                ticker=ticker,
+                metodo=metodo,
+                fuente_solicitada=fuente,
+                company_name=company_name,
+                company_exchange=company_exchange,
+                resultado=resultado,
+            )
 
     chart_data = _build_chart_data(resultado)
 
@@ -207,6 +291,7 @@ def dcf_view(request):
     base_query_string = base_query.urlencode()
 
     news_payload = [_serialize_news_item(item) for item in news_list]
+    recent_records = AnalysisRecord.objects.all()[:6]
 
     context = {
         "resultado": resultado,
@@ -228,6 +313,7 @@ def dcf_view(request):
             "initial_page": page_number,
             "base_query": base_query_string,
         },
+        "recent_records": recent_records,
     }
 
     return render(request, "dcf_app/index.html", context)

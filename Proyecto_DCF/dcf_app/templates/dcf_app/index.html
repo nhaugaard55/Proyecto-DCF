@@ -123,6 +123,119 @@
     .form-card .btn {
         box-shadow: 0 12px 25px rgba(37, 99, 235, 0.25);
     }
+    .recent-section {
+        margin-bottom: 3rem;
+    }
+    .recent-section .section-header {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    @media (min-width: 768px) {
+        .recent-section .section-header {
+            flex-direction: row;
+            align-items: baseline;
+            justify-content: space-between;
+        }
+    }
+    .recent-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    }
+    .recent-card {
+        background: var(--surface-card);
+        border: 1px solid var(--surface-border);
+        border-radius: 1.25rem;
+        padding: 1rem 1.2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        color: var(--text-primary);
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    }
+    .recent-card .recent-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+    .recent-card .recent-ticker {
+        font-size: 1.05rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+    .recent-card .recent-date {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+    .recent-card .recent-metrics {
+        display: grid;
+        gap: 0.35rem;
+    }
+    .recent-card .recent-metrics .text-muted {
+        font-size: 0.75rem;
+    }
+    .recent-card .recent-actions {
+        margin-top: 0.25rem;
+    }
+    .estado-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border-radius: 999px;
+        padding: 0.2rem 0.65rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .estado-pill--subvaluada {
+        background: rgba(22, 163, 74, 0.18);
+        color: #166534;
+    }
+    .estado-pill--sobrevaluada {
+        background: rgba(220, 38, 38, 0.18);
+        color: #991b1b;
+    }
+    .estado-pill--razonable {
+        background: rgba(59, 130, 246, 0.16);
+        color: #1d4ed8;
+    }
+    .theme-dark .estado-pill--subvaluada {
+        background: rgba(34, 197, 94, 0.22);
+        color: #bbf7d0;
+    }
+    .theme-dark .estado-pill--sobrevaluada {
+        background: rgba(248, 113, 113, 0.24);
+        color: #fecaca;
+    }
+    .theme-dark .estado-pill--razonable {
+        background: rgba(59, 130, 246, 0.3);
+        color: #bfdbfe;
+    }
+    .recent-diff {
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .recent-diff.positive {
+        color: #166534;
+    }
+    .recent-diff.negative {
+        color: #b91c1c;
+    }
+    .recent-diff.neutral {
+        color: var(--text-muted);
+    }
+    .theme-dark .recent-card {
+        box-shadow: 0 18px 40px rgba(7, 11, 28, 0.45);
+    }
+    .theme-dark .recent-diff.positive {
+        color: #bbf7d0;
+    }
+    .theme-dark .recent-diff.negative {
+        color: #fca5a5;
+    }
     .soft-card {
         border: 1px solid var(--surface-border);
         border-radius: 1.5rem;
@@ -389,6 +502,69 @@
         </div>
     </div>
 </section>
+
+{% if recent_records %}
+<section class="recent-section">
+    <div class="card soft-card shadow-lg border-0">
+        <div class="card-body">
+            <div class="section-header">
+                <h2 class="h5 mb-0">Análisis recientes</h2>
+                <p class="text-muted small mb-0">Accedé rápidamente a los últimos escenarios evaluados.</p>
+            </div>
+            <div class="recent-grid mt-3">
+                {% for record in recent_records %}
+                <article class="recent-card">
+                    <div class="recent-header">
+                        <div>
+                            <span class="recent-ticker">{{ record.ticker }}</span>
+                            {% if record.company_name %}
+                            <div class="text-muted small">{{ record.company_name }}</div>
+                            {% endif %}
+                        </div>
+                        {% with diff=record.diferencia_pct %}
+                            {% if diff is not None %}
+                                <span class="recent-diff {% if diff > 0 %}positive{% elif diff < 0 %}negative{% else %}neutral{% endif %}">
+                                    {{ diff|floatformat:2 }}%
+                                </span>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                    <div class="recent-date">{{ record.created_at|date:"d/m/Y H:i" }}</div>
+                    <div class="recent-metrics">
+                        <div>
+                            <span class="text-muted d-block">Estado</span>
+                            {% if record.estado %}
+                                {% with estado=record.estado|lower %}
+                                    <span class="estado-pill estado-pill--{{ estado }}">{{ record.estado|title }}</span>
+                                {% endwith %}
+                            {% else %}
+                                <span class="text-muted small">Sin determinar</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <span class="text-muted d-block">Valor intrínseco</span>
+                            <span class="fw-semibold">{% if record.valor_intrinseco is not None %}${{ record.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</span>
+                        </div>
+                        <div>
+                            <span class="text-muted d-block">Precio actual</span>
+                            <span class="fw-semibold">{% if record.precio_actual is not None %}${{ record.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}</span>
+                        </div>
+                        <div class="text-muted small">
+                            Método: {{ record.get_metodo_display }} · Fuente: {{ record.fuente_display }}
+                        </div>
+                    </div>
+                    <div class="recent-actions">
+                        {% with fuente_param=record.fuente_solicitada|default:record.fuente_utilizada %}
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'home' %}?ticker={{ record.ticker }}&metodo={{ record.metodo }}&fuente={{ fuente_param|urlencode }}{% if record.company_name %}&company_name={{ record.company_name|urlencode }}{% endif %}{% if record.company_exchange %}&company_exchange={{ record.company_exchange|urlencode }}{% endif %}">Reanalizar</a>
+                        {% endwith %}
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
 
 {% if resultado %}
 <section class="results-section">
