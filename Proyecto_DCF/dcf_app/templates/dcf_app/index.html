@@ -289,7 +289,15 @@
             {% endif %}
         </div>
         <div class="col-lg-5 ms-lg-auto">
-            <div class="form-card shadow-lg">
+            {% if resultado %}
+            <div class="form-card shadow-lg mb-3" id="new-search-card">
+                <span class="badge bg-primary-subtle text-primary-emphasis mb-2">Nuevo análisis</span>
+                <h2 class="h4 mb-2">¿Querés analizar otra compañía?</h2>
+                <p class="text-muted small mb-4">Al tocar el botón vas a volver a la búsqueda para iniciar un nuevo escenario.</p>
+                <button type="button" class="btn btn-primary btn-lg w-100" id="new-search-trigger">Hacer nuevo análisis</button>
+            </div>
+            {% endif %}
+            <div class="form-card shadow-lg{% if resultado %} d-none{% endif %}" id="analysis-form-card">
                 <span class="badge bg-primary-subtle text-primary-emphasis mb-2">Iniciar análisis</span>
                 <h2 class="h4 mb-2">Configura tu escenario</h2>
                 <p class="text-muted small mb-4">Buscá una compañía y elegí la metodología de crecimiento que mejor se ajuste a tu caso.</p>
@@ -683,6 +691,29 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const analysisFormCard = document.getElementById("analysis-form-card");
+    const newSearchTrigger = document.getElementById("new-search-trigger");
+    const newSearchCard = document.getElementById("new-search-card");
+    if (newSearchTrigger && analysisFormCard) {
+        newSearchTrigger.addEventListener("click", function () {
+            if (newSearchCard) {
+                newSearchCard.classList.add("d-none");
+            }
+            analysisFormCard.classList.remove("d-none");
+            analysisFormCard.scrollIntoView({ behavior: "smooth", block: "start" });
+            const focusTarget = document.getElementById("company-query");
+            if (focusTarget) {
+                requestAnimationFrame(() => {
+                    try {
+                        focusTarget.focus({ preventScroll: true });
+                    } catch (err) {
+                        focusTarget.focus();
+                    }
+                });
+            }
+        });
+    }
+
     const input = document.getElementById("company-query");
     const hiddenTicker = document.getElementById("ticker-value");
     const hiddenName = document.getElementById("company-name-value");
