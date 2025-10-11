@@ -13,7 +13,7 @@ from .finanzas import (
 )
 
 from .finnhub import FinnhubError, obtener_noticias_finnhub
-from .fmp import FCFEntry
+from .fmp import FCFEntry, FMPClientError, obtener_noticias_empresa as obtener_noticias_fmp
 
 MAX_NEWS_ITEMS = 18
 
@@ -413,27 +413,53 @@ def analizar_empresa(
         restante = MAX_NEWS_ITEMS - len(noticias)
         if restante > 0:
             try:
-                noticias_finnhub = obtener_noticias_finnhub(ticker, limite=restante)
-            except FinnhubError as exc:
+                noticias_fmp = obtener_noticias_fmp(ticker, limite=restante)
+            except FMPClientError as exc:
                 mensaje = _limpiar_mensaje_api(str(exc))
                 noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
             except Exception as exc:  # pragma: no cover - dependiente de la red
-                mensaje = f"No se pudieron obtener noticias desde Finnhub ({_limpiar_mensaje_api(str(exc))})."
+                mensaje = f"No se pudieron obtener noticias desde Financial Modeling Prep ({_limpiar_mensaje_api(str(exc))})."
                 noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
             else:
-                if noticias_finnhub:
-                    noticias_fuentes.add("finnhub")
-                    for noticia in noticias_finnhub:
+                if noticias_fmp:
+                    noticias_fuentes.add("fmp")
+                    for noticia in noticias_fmp:
                         noticias.append(
                             {
                                 "titulo": noticia.title,
-                                "fuente": noticia.source,
+                                "fuente": noticia.site,
                                 "resumen": noticia.summary,
                                 "url": noticia.url,
                                 "imagen": noticia.image,
                                 "fecha": noticia.published_at,
                             }
                         )
+
+        if len(noticias) < MAX_NEWS_ITEMS:
+            restante = MAX_NEWS_ITEMS - len(noticias)
+            if restante > 0:
+                try:
+                    noticias_finnhub = obtener_noticias_finnhub(ticker, limite=restante)
+                except FinnhubError as exc:
+                    mensaje = _limpiar_mensaje_api(str(exc))
+                    noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
+                except Exception as exc:  # pragma: no cover - dependiente de la red
+                    mensaje = f"No se pudieron obtener noticias desde Finnhub ({_limpiar_mensaje_api(str(exc))})."
+                    noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
+                else:
+                    if noticias_finnhub:
+                        noticias_fuentes.add("finnhub")
+                        for noticia in noticias_finnhub:
+                            noticias.append(
+                                {
+                                    "titulo": noticia.title,
+                                    "fuente": noticia.source,
+                                    "resumen": noticia.summary,
+                                    "url": noticia.url,
+                                    "imagen": noticia.image,
+                                    "fecha": noticia.published_at,
+                                }
+                            )
 
     noticias_por_url: dict[str, dict] = {}
     for item in noticias:
@@ -463,6 +489,7 @@ def analizar_empresa(
 
     mapa_fuentes = {
         "yfinance": "YFinance",
+        "fmp": "Financial Modeling Prep",
         "finnhub": "Finnhub",
     }
     fuentes_detectadas = [mapa_fuentes.get(f, f.title()) for f in sorted(noticias_fuentes)]
