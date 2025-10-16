@@ -138,10 +138,130 @@
             justify-content: space-between;
         }
     }
-    .recent-grid {
-        display: grid;
-        gap: 1rem;
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    .recent-history-list {
+        list-style: none;
+        margin: 1.25rem 0 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+    }
+    .recent-history-item {
+        margin: 0;
+    }
+    .recent-chip {
+        background: var(--surface-card);
+        border: 1px solid var(--surface-border);
+        border-radius: 1rem;
+        padding: 0.75rem 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        width: 100%;
+        text-align: left;
+        color: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .recent-chip:hover {
+        border-color: rgba(59, 130, 246, 0.35);
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+        transform: translateY(-1px);
+    }
+    .recent-history-item.is-expanded .recent-chip {
+        border-color: rgba(59, 130, 246, 0.5);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+    }
+    .theme-dark .recent-chip {
+        background: rgba(15, 23, 42, 0.65);
+        border-color: rgba(148, 163, 184, 0.2);
+    }
+    .recent-chip:focus-visible {
+        outline: 3px solid rgba(59, 130, 246, 0.35);
+        outline-offset: 2px;
+    }
+    .recent-chip-symbol {
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        font-size: 1rem;
+    }
+    .recent-chip-company {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+    .recent-chip-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border-radius: 999px;
+        padding: 0.25rem 0.65rem;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+    }
+    .recent-chip-status--subvaluada {
+        background: rgba(34, 197, 94, 0.18);
+        color: #166534;
+    }
+    .recent-chip-status--sobrevaluada {
+        background: rgba(220, 38, 38, 0.18);
+        color: #991b1b;
+    }
+    .recent-chip-status--razonable {
+        background: rgba(100, 116, 139, 0.25);
+        color: #475569;
+    }
+    .theme-dark .recent-chip-status--subvaluada {
+        background: rgba(34, 197, 94, 0.22);
+        color: #bbf7d0;
+    }
+    .theme-dark .recent-chip-status--sobrevaluada {
+        background: rgba(248, 113, 113, 0.24);
+        color: #fecaca;
+    }
+    .theme-dark .recent-chip-status--razonable {
+        background: rgba(148, 163, 184, 0.35);
+        color: #e2e8f0;
+    }
+    .recent-chip-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+    }
+    .recent-chip-metrics {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        flex: 1 1 auto;
+    }
+    .recent-chip-value {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 110px;
+    }
+    .recent-chip-value-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+    .recent-chip-value-amount {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .recent-chip-date {
+        margin-left: auto;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        flex-shrink: 0;
+    }
+    .recent-history-details {
+        margin-top: 0.75rem;
     }
     .recent-card {
         background: var(--surface-card);
@@ -178,6 +298,18 @@
     }
     .recent-card .recent-actions {
         margin-top: 0.25rem;
+    }
+    .recent-history-main {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    @media (min-width: 576px) {
+        .recent-history-main {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
     }
     .estado-pill {
         display: inline-flex;
@@ -511,59 +643,125 @@
                 <h2 class="h5 mb-0">Análisis recientes</h2>
                 <p class="text-muted small mb-0">Accedé rápidamente a los últimos escenarios evaluados.</p>
             </div>
-            <div class="recent-grid mt-3">
+            <ul class="recent-history-list" data-recent-history data-limit="{{ recent_records_limit }}">
                 {% for record in recent_records %}
-                <article class="recent-card">
-                    <div class="recent-header">
-                        <div>
-                            <span class="recent-ticker">{{ record.ticker }}</span>
+                {% with estado_slug=record.estado|default:''|slugify %}
+                <li class="recent-history-item{% if forloop.counter > recent_records_limit %} d-none{% endif %}" data-history-item>
+                    <button type="button" class="recent-chip" data-history-open aria-label="Ver detalle del análisis de {{ record.ticker }}">
+                        <div class="recent-chip-group">
+                            <span class="recent-chip-symbol">{{ record.ticker }}</span>
                             {% if record.company_name %}
-                            <div class="text-muted small">{{ record.company_name }}</div>
+                            <span class="recent-chip-company">{{ record.company_name }}</span>
                             {% endif %}
                         </div>
-                        {% with diff=record.diferencia_pct %}
-                            {% if diff is not None %}
-                                <span class="recent-diff {% if diff > 0 %}positive{% elif diff < 0 %}negative{% else %}neutral{% endif %}">
-                                    {{ diff|floatformat:2 }}%
-                                </span>
-                            {% endif %}
-                        {% endwith %}
-                    </div>
-                    <div class="recent-date">{{ record.created_at|date:"d/m/Y H:i" }}</div>
-                    <div class="recent-metrics">
-                        <div>
-                            <span class="text-muted d-block">Estado</span>
+                        <div class="recent-chip-metrics">
                             {% if record.estado %}
-                                {% with estado=record.estado|lower %}
-                                    <span class="estado-pill estado-pill--{{ estado }}">{{ record.estado|title }}</span>
-                                {% endwith %}
+                            <span class="recent-chip-status recent-chip-status--{{ estado_slug }}">{{ record.estado|title }}</span>
                             {% else %}
-                                <span class="text-muted small">Sin determinar</span>
+                            <span class="recent-chip-status recent-chip-status--razonable">Sin determinar</span>
                             {% endif %}
+                            <div class="recent-chip-value">
+                                <span class="recent-chip-value-label">Valor intrínseco</span>
+                                <span class="recent-chip-value-amount">
+                                    {% if record.valor_intrinseco is not None %}${{ record.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}
+                                </span>
+                            </div>
+                            <div class="recent-chip-value">
+                                <span class="recent-chip-value-label">Precio actual</span>
+                                <span class="recent-chip-value-amount">
+                                    {% if record.precio_actual is not None %}${{ record.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}
+                                </span>
+                            </div>
+                            {% with diff=record.diferencia_pct %}
+                                {% if diff is not None %}
+                                <div class="recent-chip-value">
+                                    <span class="recent-chip-value-label">Margen</span>
+                                    <span class="recent-chip-value-amount {% if diff > 0 %}text-success{% elif diff < 0 %}text-danger{% else %}text-muted{% endif %}">
+                                        {{ diff|floatformat:2 }}%
+                                    </span>
+                                </div>
+                                {% endif %}
+                            {% endwith %}
                         </div>
-                        <div>
-                            <span class="text-muted d-block">Valor intrínseco</span>
-                            <span class="fw-semibold">{% if record.valor_intrinseco is not None %}${{ record.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</span>
-                        </div>
-                        <div>
-                            <span class="text-muted d-block">Precio actual</span>
-                            <span class="fw-semibold">{% if record.precio_actual is not None %}${{ record.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}</span>
-                        </div>
-                        <div class="text-muted small">
-                            Método: {{ record.get_metodo_display }} · Fuente: {{ record.fuente_display }}
-                        </div>
+                        <span class="recent-chip-date">{{ record.created_at|date:"d/m/Y H:i" }}</span>
+                    </button>
+                    <div class="recent-history-details d-none" data-history-details>
+                        <article class="recent-card">
+                            <div class="recent-header">
+                                <div>
+                                    <span class="recent-ticker">{{ record.ticker }}</span>
+                                    {% if record.company_name %}
+                                    <div class="text-muted small">{{ record.company_name }}</div>
+                                    {% endif %}
+                                </div>
+                                {% with diff=record.diferencia_pct %}
+                                    {% if diff is not None %}
+                                        <span class="recent-diff {% if diff > 0 %}positive{% elif diff < 0 %}negative{% else %}neutral{% endif %}">
+                                            {{ diff|floatformat:2 }}%
+                                        </span>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                            <div class="recent-date">{{ record.created_at|date:"d/m/Y H:i" }}</div>
+                            <div class="recent-metrics mt-3">
+                                <div>
+                                    <span class="text-muted d-block">Estado</span>
+                                    {% if record.estado %}
+                                        {% with estado=record.estado|slugify %}
+                                            <span class="estado-pill estado-pill--{{ estado }}">{{ record.estado|title }}</span>
+                                        {% endwith %}
+                                    {% else %}
+                                        <span class="text-muted small">Sin determinar</span>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <span class="text-muted d-block">Valor intrínseco</span>
+                                    <span class="fw-semibold">{% if record.valor_intrinseco is not None %}${{ record.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</span>
+                                </div>
+                                <div>
+                                    <span class="text-muted d-block">Precio actual</span>
+                                    <span class="fw-semibold">{% if record.precio_actual is not None %}${{ record.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}</span>
+                                </div>
+                                <div class="text-muted small">
+                                    Método: {{ record.get_metodo_display }} · Fuente: {{ record.fuente_display }}
+                                </div>
+                            </div>
+                            <div class="recent-actions">
+                                {% with fuente_param=record.fuente_solicitada|default:record.fuente_utilizada %}
+                                <a class="btn btn-sm btn-outline-primary" href="{% url 'home' %}?ticker={{ record.ticker }}&metodo={{ record.metodo }}&fuente={{ fuente_param|urlencode }}{% if record.company_name %}&company_name={{ record.company_name|urlencode }}{% endif %}{% if record.company_exchange %}&company_exchange={{ record.company_exchange|urlencode }}{% endif %}">Reanalizar</a>
+                                {% endwith %}
+                            </div>
+                        </article>
                     </div>
-                    <div class="recent-actions">
-                        {% with fuente_param=record.fuente_solicitada|default:record.fuente_utilizada %}
-                        <a class="btn btn-sm btn-outline-primary" href="{% url 'home' %}?ticker={{ record.ticker }}&metodo={{ record.metodo }}&fuente={{ fuente_param|urlencode }}{% if record.company_name %}&company_name={{ record.company_name|urlencode }}{% endif %}{% if record.company_exchange %}&company_exchange={{ record.company_exchange|urlencode }}{% endif %}">Reanalizar</a>
-                        {% endwith %}
-                    </div>
-                </article>
+                </li>
+                {% endwith %}
                 {% endfor %}
+            </ul>
+            {% if recent_records|length > recent_records_limit %}
+            <div class="text-center mt-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-show-history>Ver más</button>
             </div>
+            {% endif %}
         </div>
     </div>
 </section>
+{% endif %}
+
+{% if recent_records %}
+<div class="modal fade" id="recent-record-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content soft-card border-0">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Detalle del análisis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" data-modal-body></div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 {% if resultado %}
@@ -915,7 +1113,89 @@
 {{ chart_data|json_script:"dcf-chart-data" }}
 
 <script>
+function initRecentHistory() {
+    const container = document.querySelector("[data-recent-history]");
+    if (!container) {
+        return;
+    }
+
+    const limitValue = parseInt(container.getAttribute("data-limit") || "", 10);
+    const limit = Number.isNaN(limitValue) ? 0 : limitValue;
+    const historyItems = Array.from(container.querySelectorAll("[data-history-item]"));
+    const showMoreButton = document.querySelector("[data-show-history]");
+
+    const modalElement = document.getElementById("recent-record-modal");
+    const modalBody = modalElement ? modalElement.querySelector("[data-modal-body]") : null;
+
+    function getModalInstance() {
+        if (!modalElement) {
+            return null;
+        }
+        if (typeof window.bootstrap === "undefined" || typeof window.bootstrap.Modal === "undefined") {
+            return null;
+        }
+        return window.bootstrap.Modal.getOrCreateInstance(modalElement);
+    }
+
+    function collapseAllDetails() {
+        historyItems.forEach((entry) => {
+            const detail = entry.querySelector("[data-history-details]");
+            if (detail) {
+                detail.classList.add("d-none");
+            }
+            entry.classList.remove("is-expanded");
+        });
+    }
+
+    historyItems.forEach((entry) => {
+        const trigger = entry.querySelector("[data-history-open]");
+        const detail = entry.querySelector("[data-history-details]");
+        if (!trigger || !detail) {
+            return;
+        }
+
+        trigger.addEventListener("click", () => {
+            const modalInstance = getModalInstance();
+            if (modalInstance && modalBody) {
+                modalBody.innerHTML = detail.innerHTML;
+                modalInstance.show();
+                return;
+            }
+
+            const willShow = detail.classList.contains("d-none");
+            collapseAllDetails();
+            if (willShow) {
+                detail.classList.remove("d-none");
+                entry.classList.add("is-expanded");
+            }
+        });
+    });
+
+    if (limit <= 0 || !historyItems.length) {
+        if (showMoreButton) {
+            showMoreButton.classList.add("d-none");
+        }
+        return;
+    }
+
+    const hiddenItems = historyItems.slice(limit);
+    if (!hiddenItems.length) {
+        if (showMoreButton) {
+            showMoreButton.classList.add("d-none");
+        }
+        return;
+    }
+
+    if (showMoreButton) {
+        showMoreButton.addEventListener("click", function () {
+            hiddenItems.forEach((item) => item.classList.remove("d-none"));
+            showMoreButton.classList.add("d-none");
+        });
+    }
+}
 document.addEventListener("DOMContentLoaded", function () {
+    initRecentHistory();
+
     const analysisFormCard = document.getElementById("analysis-form-card");
     const newSearchTrigger = document.getElementById("new-search-trigger");
     const newSearchCard = document.getElementById("new-search-card");

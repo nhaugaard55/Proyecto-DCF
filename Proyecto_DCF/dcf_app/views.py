@@ -133,6 +133,8 @@ def _build_chart_data(resultado):
 
 
 NEWS_PAGE_SIZE = 6
+RECENT_HISTORY_VISIBLE_LIMIT = 5
+RECENT_HISTORY_FETCH_LIMIT = 25
 
 
 def _guardar_analisis(
@@ -291,7 +293,8 @@ def dcf_view(request):
     base_query_string = base_query.urlencode()
 
     news_payload = [_serialize_news_item(item) for item in news_list]
-    recent_records = AnalysisRecord.objects.all()[:6]
+    recent_records_queryset = AnalysisRecord.objects.all()
+    recent_records = list(recent_records_queryset[:RECENT_HISTORY_FETCH_LIMIT])
 
     context = {
         "resultado": resultado,
@@ -314,6 +317,7 @@ def dcf_view(request):
             "base_query": base_query_string,
         },
         "recent_records": recent_records,
+        "recent_records_limit": RECENT_HISTORY_VISIBLE_LIMIT,
     }
 
     return render(request, "dcf_app/index.html", context)
