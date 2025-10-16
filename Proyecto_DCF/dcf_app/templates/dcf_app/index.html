@@ -123,6 +123,11 @@
     .form-card .btn {
         box-shadow: 0 12px 25px rgba(37, 99, 235, 0.25);
     }
+    .recent-toggle-container {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 0.75rem;
+    }
     .recent-section {
         margin-bottom: 3rem;
     }
@@ -636,7 +641,14 @@
 </section>
 
 {% if recent_records %}
-<section class="recent-section">
+{% if resultado %}
+<div class="recent-toggle-container">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-recent-toggle data-open-label="Ocultar últimos análisis" data-closed-label="Ver últimos análisis" aria-expanded="false">
+        Ver últimos análisis
+    </button>
+</div>
+{% endif %}
+<section class="recent-section{% if resultado %} d-none{% endif %}" data-recent-container>
     <div class="card soft-card shadow-lg border-0">
         <div class="card-body">
             <div class="section-header">
@@ -1114,14 +1126,16 @@
 
 <script>
 function initRecentHistory() {
-    const container = document.querySelector("[data-recent-history]");
-    if (!container) {
+    const listContainer = document.querySelector("[data-recent-history]");
+    const recentPanel = document.querySelector("[data-recent-container]");
+    const toggleButton = document.querySelector("[data-recent-toggle]");
+    if (!listContainer) {
         return;
     }
 
-    const limitValue = parseInt(container.getAttribute("data-limit") || "", 10);
+    const limitValue = parseInt(listContainer.getAttribute("data-limit") || "", 10);
     const limit = Number.isNaN(limitValue) ? 0 : limitValue;
-    const historyItems = Array.from(container.querySelectorAll("[data-history-item]"));
+    const historyItems = Array.from(listContainer.querySelectorAll("[data-history-item]"));
     const showMoreButton = document.querySelector("[data-show-history]");
 
     const modalElement = document.getElementById("recent-record-modal");
@@ -1144,6 +1158,34 @@ function initRecentHistory() {
                 detail.classList.add("d-none");
             }
             entry.classList.remove("is-expanded");
+        });
+    }
+
+    if (toggleButton && recentPanel) {
+        const closedLabel = (toggleButton.dataset.closedLabel || toggleButton.textContent || "Ver últimos análisis").trim();
+        const openLabel = (toggleButton.dataset.openLabel || "Ocultar últimos análisis").trim();
+
+        if (!recentPanel.classList.contains("d-none")) {
+            toggleButton.setAttribute("aria-expanded", "true");
+            toggleButton.textContent = openLabel;
+        } else {
+            toggleButton.setAttribute("aria-expanded", "false");
+            toggleButton.textContent = closedLabel;
+        }
+
+        toggleButton.addEventListener("click", () => {
+            const isHidden = recentPanel.classList.contains("d-none");
+            if (isHidden) {
+                recentPanel.classList.remove("d-none");
+                toggleButton.setAttribute("aria-expanded", "true");
+                toggleButton.textContent = openLabel;
+                recentPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+                collapseAllDetails();
+                recentPanel.classList.add("d-none");
+                toggleButton.setAttribute("aria-expanded", "false");
+                toggleButton.textContent = closedLabel;
+            }
         });
     }
 
