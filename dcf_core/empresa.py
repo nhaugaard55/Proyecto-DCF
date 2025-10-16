@@ -12,8 +12,9 @@ from .finanzas import (
     calcular_valor_intrinseco
 )
 
+from .marketaux import MarketauxError, obtener_noticias_marketaux
 from .finnhub import FinnhubError, obtener_noticias_finnhub
-from .fmp import FCFEntry, FMPClientError, obtener_noticias_empresa as obtener_noticias_fmp
+from .fmp import FCFEntry
 
 MAX_NEWS_ITEMS = 18
 
@@ -347,119 +348,124 @@ def analizar_empresa(
     noticias_fuentes: set[str] = set()
     noticias_error: Optional[str] = None
 
-    yfinance_consultado = False
-
     try:
-        raw_news_any = getattr(empresa, "news", None)
+        noticias_marketaux = obtener_noticias_marketaux(ticker, limite=MAX_NEWS_ITEMS)
+    except MarketauxError as exc:
+        mensaje = _limpiar_mensaje_api(str(exc))
+        noticias_error = mensaje
+        noticias_marketaux = []
     except Exception as exc:  # pragma: no cover - dependiente de la red
-        raw_news: list = []
-        noticias_error = f"YFinance no devolvió noticias ({exc})"
-    else:
-        raw_news = list(raw_news_any or [])
-    finally:
-        yfinance_consultado = True
-
-    if raw_news:
-        noticias_fuentes.add("yfinance")
-        for item in raw_news[:MAX_NEWS_ITEMS]:
-            if not isinstance(item, dict):
-                continue
-            titulo = (item.get("title") or item.get("headline") or "").strip()
-            enlace = (item.get("link") or item.get("url") or "").strip()
-            if not titulo or not enlace:
-                continue
-
-            fuente = (item.get("publisher") or item.get("source") or "").strip() or None
-            resumen = (item.get("summary") or item.get("content") or item.get("description") or None)
-            if resumen:
-                resumen = resumen.strip() or None
-
-            imagen = None
-            thumbnail = item.get("thumbnail")
-            if isinstance(thumbnail, dict):
-                url_directa = thumbnail.get("url")
-                if isinstance(url_directa, str) and url_directa.strip():
-                    imagen = url_directa.strip()
-                else:
-                    resoluciones = thumbnail.get("resolutions")
-                    if isinstance(resoluciones, list):
-                        for res in resoluciones:
-                            url_res = (res.get("url") if isinstance(res, dict) else None)
-                            if isinstance(url_res, str) and url_res.strip():
-                                imagen = url_res.strip()
-                                break
-
-            publicado = None
-            marca_tiempo = item.get("providerPublishTime") or item.get("providerPublishTimeUTC") or item.get("datetime")
-            if isinstance(marca_tiempo, (int, float)):
-                try:
-                    publicado = datetime.fromtimestamp(marca_tiempo)
-                except (OSError, ValueError, OverflowError):
-                    publicado = None
-
-            noticias.append({
-                "titulo": titulo,
-                "fuente": fuente,
-                "resumen": resumen,
-                "url": enlace,
-                "imagen": imagen,
-                "fecha": publicado,
-            })
+        mensaje = f"No se pudieron obtener noticias desde Marketaux ({_limpiar_mensaje_api(str(exc))})."
+        noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
+        noticias_marketaux = []
+    if noticias_marketaux:
+        noticias_fuentes.add("marketaux")
+        for noticia in noticias_marketaux:
+            noticias.append(
+                {
+                    "titulo": noticia.title,
+                    "fuente": noticia.source,
+                    "resumen": noticia.summary,
+                    "url": noticia.url,
+                    "imagen": noticia.image,
+                    "fecha": noticia.published_at,
+                }
+            )
 
     if len(noticias) < MAX_NEWS_ITEMS:
-        if not noticias and yfinance_consultado and "yfinance" not in noticias_fuentes and noticias_error is None:
-            noticias_error = "YFinance no reportó noticias recientes para este ticker."
-
         restante = MAX_NEWS_ITEMS - len(noticias)
-        if restante > 0:
-            try:
-                noticias_fmp = obtener_noticias_fmp(ticker, limite=restante)
-            except FMPClientError as exc:
-                mensaje = _limpiar_mensaje_api(str(exc))
-                noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
-            except Exception as exc:  # pragma: no cover - dependiente de la red
-                mensaje = f"No se pudieron obtener noticias desde Financial Modeling Prep ({_limpiar_mensaje_api(str(exc))})."
-                noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
-            else:
-                if noticias_fmp:
-                    noticias_fuentes.add("fmp")
-                    for noticia in noticias_fmp:
-                        noticias.append(
-                            {
-                                "titulo": noticia.title,
-                                "fuente": noticia.site,
-                                "resumen": noticia.summary,
-                                "url": noticia.url,
-                                "imagen": noticia.image,
-                                "fecha": noticia.published_at,
-                            }
-                        )
+        try:
+            noticias_finnhub = obtener_noticias_finnhub(ticker, limite=restante)
+        except FinnhubError as exc:
+            mensaje = _limpiar_mensaje_api(str(exc))
+            noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
+            noticias_finnhub = []
+        except Exception as exc:  # pragma: no cover - dependiente de la red
+            mensaje = f"No se pudieron obtener noticias desde Finnhub ({_limpiar_mensaje_api(str(exc))})."
+            noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
+            noticias_finnhub = []
+        if noticias_finnhub:
+            noticias_fuentes.add("finnhub")
+            for noticia in noticias_finnhub:
+                noticias.append(
+                    {
+                        "titulo": noticia.title,
+                        "fuente": noticia.source,
+                        "resumen": noticia.summary,
+                        "url": noticia.url,
+                        "imagen": noticia.image,
+                        "fecha": noticia.published_at,
+                    }
+                )
 
-        if len(noticias) < MAX_NEWS_ITEMS:
-            restante = MAX_NEWS_ITEMS - len(noticias)
-            if restante > 0:
-                try:
-                    noticias_finnhub = obtener_noticias_finnhub(ticker, limite=restante)
-                except FinnhubError as exc:
-                    mensaje = _limpiar_mensaje_api(str(exc))
-                    noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
-                except Exception as exc:  # pragma: no cover - dependiente de la red
-                    mensaje = f"No se pudieron obtener noticias desde Finnhub ({_limpiar_mensaje_api(str(exc))})."
-                    noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
-                else:
-                    if noticias_finnhub:
-                        noticias_fuentes.add("finnhub")
-                        for noticia in noticias_finnhub:
-                            noticias.append(
-                                {
-                                    "titulo": noticia.title,
-                                    "fuente": noticia.source,
-                                    "resumen": noticia.summary,
-                                    "url": noticia.url,
-                                    "imagen": noticia.image,
-                                    "fecha": noticia.published_at,
-                                }
-                            )
+    yfinance_consultado = False
+    if len(noticias) < MAX_NEWS_ITEMS:
+        restante = MAX_NEWS_ITEMS - len(noticias)
+        try:
+            raw_news_any = getattr(empresa, "news", None)
+        except Exception as exc:  # pragma: no cover - dependiente de la red
+            raw_news = []
+            mensaje = f"YFinance no devolvió noticias ({exc})"
+            noticias_error = f"{noticias_error}. {mensaje}" if noticias_error else mensaje
+        else:
+            raw_news = list(raw_news_any or [])
+        finally:
+            yfinance_consultado = True
+
+        if raw_news:
+            noticias_fuentes.add("yfinance")
+            for item in raw_news[:restante]:
+                if not isinstance(item, dict):
+                    continue
+                titulo = (item.get("title") or item.get("headline") or "").strip()
+                enlace = (item.get("link") or item.get("url") or "").strip()
+                if not titulo or not enlace:
+                    continue
+
+                fuente = (item.get("publisher") or item.get("source") or "").strip() or None
+                resumen = (item.get("summary") or item.get("content") or item.get("description") or None)
+                if resumen:
+                    resumen = resumen.strip() or None
+
+                imagen = None
+                thumbnail = item.get("thumbnail")
+                if isinstance(thumbnail, dict):
+                    url_directa = thumbnail.get("url")
+                    if isinstance(url_directa, str) and url_directa.strip():
+                        imagen = url_directa.strip()
+                    else:
+                        resoluciones = thumbnail.get("resolutions")
+                        if isinstance(resoluciones, list):
+                            for res in resoluciones:
+                                url_res = (res.get("url") if isinstance(res, dict) else None)
+                                if isinstance(url_res, str) and url_res.strip():
+                                    imagen = url_res.strip()
+                                    break
+
+                publicado = None
+                marca_tiempo = (
+                    item.get("providerPublishTime")
+                    or item.get("providerPublishTimeUTC")
+                    or item.get("datetime")
+                )
+                if isinstance(marca_tiempo, (int, float)):
+                    try:
+                        publicado = datetime.fromtimestamp(marca_tiempo)
+                    except (OSError, ValueError, OverflowError):
+                        publicado = None
+
+                noticias.append(
+                    {
+                        "titulo": titulo,
+                        "fuente": fuente,
+                        "resumen": resumen,
+                        "url": enlace,
+                        "imagen": imagen,
+                        "fecha": publicado,
+                    }
+                )
+        elif not noticias and yfinance_consultado and noticias_error is None:
+            noticias_error = "YFinance no reportó noticias recientes para este ticker."
 
     noticias_por_url: dict[str, dict] = {}
     for item in noticias:
@@ -488,9 +494,9 @@ def analizar_empresa(
         noticias_error = "No se encontraron noticias recientes para este ticker."
 
     mapa_fuentes = {
-        "yfinance": "YFinance",
-        "fmp": "Financial Modeling Prep",
+        "marketaux": "Marketaux",
         "finnhub": "Finnhub",
+        "yfinance": "YFinance",
     }
     fuentes_detectadas = [mapa_fuentes.get(f, f.title()) for f in sorted(noticias_fuentes)]
     noticias_fuente_descripcion = ", ".join(fuentes_detectadas) if fuentes_detectadas else None
