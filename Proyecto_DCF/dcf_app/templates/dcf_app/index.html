@@ -1,5 +1,13 @@
 {% extends "dcf_app/base.html" %}
 
+{% block nav_actions %}
+{% if recent_records %}
+<button type="button" class="btn btn-outline-light btn-sm" data-recent-toggle data-open-label="Ocultar historial de análisis" data-closed-label="Historial de análisis" aria-expanded="false">
+    Historial de análisis
+</button>
+{% endif %}
+{% endblock %}
+
 {% block extra_head %}
 <style>
     .hero-section {
@@ -122,11 +130,6 @@
     }
     .form-card .btn {
         box-shadow: 0 12px 25px rgba(37, 99, 235, 0.25);
-    }
-    .recent-toggle-container {
-        display: flex;
-        justify-content: flex-end;
-        margin-bottom: 0.75rem;
     }
     .recent-section {
         margin-bottom: 3rem;
@@ -641,13 +644,6 @@
 </section>
 
 {% if recent_records %}
-{% if resultado %}
-<div class="recent-toggle-container">
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-recent-toggle data-open-label="Ocultar últimos análisis" data-closed-label="Ver últimos análisis" aria-expanded="false">
-        Ver últimos análisis
-    </button>
-</div>
-{% endif %}
 <section class="recent-section{% if resultado %} d-none{% endif %}" data-recent-container>
     <div class="card soft-card shadow-lg border-0">
         <div class="card-body">
@@ -757,9 +753,7 @@
         </div>
     </div>
 </section>
-{% endif %}
 
-{% if recent_records %}
 <div class="modal fade" id="recent-record-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content soft-card border-0">
@@ -1162,8 +1156,8 @@ function initRecentHistory() {
     }
 
     if (toggleButton && recentPanel) {
-        const closedLabel = (toggleButton.dataset.closedLabel || toggleButton.textContent || "Ver últimos análisis").trim();
-        const openLabel = (toggleButton.dataset.openLabel || "Ocultar últimos análisis").trim();
+        const closedLabel = (toggleButton.dataset.closedLabel || toggleButton.textContent || "Historial de análisis").trim();
+        const openLabel = (toggleButton.dataset.openLabel || "Ocultar historial de análisis").trim();
 
         if (!recentPanel.classList.contains("d-none")) {
             toggleButton.setAttribute("aria-expanded", "true");

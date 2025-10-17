@@ -177,7 +177,8 @@
 </head>
 <body>
     <nav class="navbar navbar-dark glass-nav shadow-sm py-3">
-        <div class="container d-flex justify-content-end">
+        <div class="container d-flex justify-content-end align-items-center gap-3 flex-wrap">
+            {% block nav_actions %}{% endblock %}
             <button type="button" class="theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema">
                 <span id="theme-toggle-icon" aria-hidden="true">🌙</span>
                 <span id="theme-toggle-text">Modo oscuro</span>
