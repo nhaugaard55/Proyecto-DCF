@@ -26,6 +26,12 @@ _FALLBACK_MODEL = "facebook/bart-large-cnn"
 _TRANSLATION_MODEL = "Helsinki-NLP/opus-mt-en-es"
 _HF_BASE_URL = "https://api-inference.huggingface.co/models"
 
+# Mantener el prompt dentro de una ventana que el modelo pueda manejar.
+_MAX_NOTICIAS_PROMPT = 8
+_MAX_TITULO_CHARS = 140
+_MAX_RESUMEN_CHARS = 320
+_MAX_PROMPT_CHARS = 4200
+
 
 def _sanitize(text: str) -> str:
     if not text:
@@ -38,19 +44,9 @@ def _sanitize(text: str) -> str:
 
 def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> str:
     noticias = list(noticias)
+    if _MAX_NOTICIAS_PROMPT and len(noticias) > _MAX_NOTICIAS_PROMPT:
+        noticias = noticias[:_MAX_NOTICIAS_PROMPT]
     empresa = str(noticias[0].get("empresa")) if noticias else "la compañía analizada"
-    partes: list[str] = []
-    for indice, noticia in enumerate(noticias, start=1):
-        titulo = str(noticia.get("titulo") or "").strip()
-        resumen = str(noticia.get("resumen") or "").strip()
-        fuente = str(noticia.get("fuente") or "").strip()
-        fragmento = f"{indice}. Título: {titulo}."
-        if fuente:
-            fragmento += f" Fuente: {fuente}."
-        if resumen:
-            fragmento += f" Resumen: {resumen}"
-        partes.append(fragmento)
-    cuerpo = "\n".join(partes)
     instruccion = (
         f"Eres un analista financiero hispanohablante. Analiza solo las noticias listadas sobre {empresa}. "
         f"Redacta en {idioma} un resumen fluido y natural, con tono periodístico latino, que conecte los hechos en un mismo relato. "
@@ -58,6 +54,33 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
         "Cierra con una frase que indique si el tono general resulta positivo, negativo o mixto. Sé conciso (máximo tres frases), "
         "evita traducciones literales y no añadas información externa ni menciones a otras empresas."
     )
+    partes: list[str] = []
+    base_prompt_longitud = (
+        len("<|system|>\n")
+        + len("</s>\n")
+        + len("<|user|>\nNoticias:\n")
+        + len("\n\nResumen:<|assistant|>")
+    )
+    longitud_actual = base_prompt_longitud + len(instruccion)
+    for indice, noticia in enumerate(noticias, start=1):
+        titulo = str(noticia.get("titulo") or "").strip()
+        if _MAX_TITULO_CHARS and len(titulo) > _MAX_TITULO_CHARS:
+            titulo = titulo[: _MAX_TITULO_CHARS - 3].rstrip() + "..."
+        resumen = str(noticia.get("resumen") or "").strip()
+        if _MAX_RESUMEN_CHARS and len(resumen) > _MAX_RESUMEN_CHARS:
+            resumen = resumen[: _MAX_RESUMEN_CHARS - 3].rstrip() + "..."
+        fuente = str(noticia.get("fuente") or "").strip()
+        fragmento = f"{indice}. Título: {titulo}."
+        if fuente:
+            fragmento += f" Fuente: {fuente}."
+        if resumen:
+            fragmento += f" Resumen: {resumen}"
+        longitud_fragmento = len(fragmento) + (1 if partes else 0)
+        if _MAX_PROMPT_CHARS and longitud_actual + longitud_fragmento > _MAX_PROMPT_CHARS:
+            break
+        longitud_actual += longitud_fragmento
+        partes.append(fragmento)
+    cuerpo = "\n".join(partes)
     return (
         "<|system|>\n" + instruccion + "</s>\n"\
         + "<|user|>\nNoticias:\n" + cuerpo + "\n\nResumen:<|assistant|>"
@@ -87,6 +110,16 @@ def _solicitar_resumen(
         raise AISummaryError(
             "La API de Hugging Face devolvió 429 (límite de cuota alcanzado). Intenta más tarde."
         )
+
+    if response.status_code == 400:
+        cuerpo = response.text.strip()[:200]
+        cuerpo_sanitizado = _sanitize(cuerpo)
+        if "index out of range" in cuerpo.lower():
+            raise _ModelUnavailableError(
+                modelo,
+                "El modelo principal rechazó el prompt (index out of range). Intentando con el respaldo.",
+            )
+        raise AISummaryError(f"La API de Hugging Face devolvió 400: {cuerpo_sanitizado}")
 
     if response.status_code >= 500:
         raise AISummaryError("La API de Hugging Face está temporalmente indisponible (error 5xx).")
@@ -230,6 +263,7 @@ def generar_resumen_sentimiento(
             modelos_a_probar.append(fallback_modelo)
 
     ultimo_error: Optional[AISummaryError] = None
+    agotado_por_prompt = False
     for modelo_actual in modelos_a_probar:
         try:
             resumen, utilizado = _solicitar_resumen(modelo_actual, headers, payload, prompt)
@@ -244,6 +278,8 @@ def generar_resumen_sentimiento(
             return resumen
         except _ModelUnavailableError as exc:
             ultimo_error = exc
+            if "index out of range" in str(exc).lower():
+                agotado_por_prompt = True
             # Intentamos con el siguiente modelo disponible.
             continue
         except AISummaryError as exc:
@@ -251,6 +287,11 @@ def generar_resumen_sentimiento(
             raise
 
     if ultimo_error:
+        if agotado_por_prompt:
+            raise AISummaryError(
+                "Los modelos disponibles rechazaron el prompt por exceso de contexto. "
+                "Reducimos automáticamente la extensión, pero las noticias siguen siendo demasiado extensas."
+            )
         raise ultimo_error
 
     raise AISummaryError("No se pudo generar el resumen: no hay modelos configurados para intentar.")
