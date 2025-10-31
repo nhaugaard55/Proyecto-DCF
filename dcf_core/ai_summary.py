@@ -32,6 +32,20 @@ _MAX_NOTICIAS_PROMPT = 8
 _MAX_TITULO_CHARS = 140
 _MAX_RESUMEN_CHARS = 320
 _MAX_PROMPT_CHARS = 4200
+_CTA_REGEX = re.compile(
+    r"\b("
+    r"haga\s+clic"
+    r"|haga\s+click"
+    r"|clic[ck]?\s+aquí"
+    r"|click\s+here"
+    r"|lea\s+más"
+    r"|read\s+more"
+    r"|ver\s+más"
+    r"|aprenda\s+más"
+    r"|descarg[ae]"
+    r")\b",
+    re.IGNORECASE,
+)
 
 
 def _sanitize(text: str) -> str:
@@ -43,6 +57,25 @@ def _sanitize(text: str) -> str:
     return text
 
 
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def _limpiar_texto_noticia(texto: str) -> str:
+    if not texto:
+        return ""
+    texto = re.sub(r"http\S+", "", texto)
+    partes = _SENTENCE_SPLIT_RE.split(texto.strip())
+    frases: list[str] = []
+    for frase in partes:
+        limpia = frase.strip()
+        if not limpia:
+            continue
+        if _CTA_REGEX.search(limpia):
+            continue
+        frases.append(limpia)
+    return " ".join(frases).strip()
+
+
 def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> str:
     noticias = list(noticias)
     if _MAX_NOTICIAS_PROMPT and len(noticias) > _MAX_NOTICIAS_PROMPT:
@@ -50,8 +83,11 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
     empresa = str(noticias[0].get("empresa")) if noticias else "la compañía analizada"
     instruccion = (
         f"Eres un analista financiero hispanohablante. Analiza solo las noticias listadas sobre {empresa}. "
-        f"Redacta en {idioma} un resumen fluido y natural, con tono periodístico latino, que conecte los hechos en un mismo relato. "
-        "Incluye las ideas principales de cada noticia (qué ocurrió y por qué importa) y explica cómo influyen en el sentimiento hacia la compañía. "
+        f"Redacta en {idioma} un resumen narrativo y natural, con tono periodístico latino, que conecte los hechos mediante transiciones fluidas y mantenga un hilo conductor. "
+        "Relaciona las noticias destacando vínculos causa-efecto o contrastes, e integra las ideas principales de cada artículo (qué ocurrió y por qué importa) con interpretaciones breves sobre su impacto en el sentimiento hacia la compañía. "
+        "Escribe al menos tres frases enlazadas con conectores naturales (por ejemplo, 'además', 'sin embargo', 'mientras tanto', 'por su parte') y redacta con tus propias palabras, sin reproducir textualmente las notas. "
+        "Evita enumeraciones rígidas, expresiones mecánicas o frases aisladas; escribe en un único párrafo coherente con conectores variados. "
+        "Ignora frases promocionales o llamadas a la acción presentes en las noticias (por ejemplo, 'haga clic', 'lea más') y omite invitaciones a descargar o leer contenidos externos. "
         "Cierra con una frase que indique si el tono general resulta positivo, negativo o mixto. Sé conciso, evita redundancias y usa únicamente las frases necesarias, "
         "sin añadir información externa ni menciones a otras empresas."
     )
@@ -67,7 +103,7 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
         titulo = str(noticia.get("titulo") or "").strip()
         if _MAX_TITULO_CHARS and len(titulo) > _MAX_TITULO_CHARS:
             titulo = titulo[: _MAX_TITULO_CHARS - 3].rstrip() + "..."
-        resumen = str(noticia.get("resumen") or "").strip()
+        resumen = _limpiar_texto_noticia(noticia.get("resumen") or "")
         if _MAX_RESUMEN_CHARS and len(resumen) > _MAX_RESUMEN_CHARS:
             resumen = resumen[: _MAX_RESUMEN_CHARS - 3].rstrip() + "..."
         fuente = str(noticia.get("fuente") or "").strip()
