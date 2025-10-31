@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import re
 from typing import Iterable, Mapping, Optional
@@ -51,8 +52,8 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
         f"Eres un analista financiero hispanohablante. Analiza solo las noticias listadas sobre {empresa}. "
         f"Redacta en {idioma} un resumen fluido y natural, con tono periodístico latino, que conecte los hechos en un mismo relato. "
         "Incluye las ideas principales de cada noticia (qué ocurrió y por qué importa) y explica cómo influyen en el sentimiento hacia la compañía. "
-        "Cierra con una frase que indique si el tono general resulta positivo, negativo o mixto. Sé conciso (máximo tres frases), "
-        "evita traducciones literales y no añadas información externa ni menciones a otras empresas."
+        "Cierra con una frase que indique si el tono general resulta positivo, negativo o mixto. Sé conciso, evita redundancias y usa únicamente las frases necesarias, "
+        "sin añadir información externa ni menciones a otras empresas."
     )
     partes: list[str] = []
     base_prompt_longitud = (
@@ -84,6 +85,70 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
     return (
         "<|system|>\n" + instruccion + "</s>\n"\
         + "<|user|>\nNoticias:\n" + cuerpo + "\n\nResumen:<|assistant|>"
+    )
+
+
+def _dividir_noticias_en_bloques(noticias: list[Mapping[str, object]]) -> list[list[Mapping[str, object]]]:
+    total = len(noticias)
+    if total <= 1:
+        return [noticias]
+
+    # Buscamos un tamaño de bloque que reduzca el contexto y respete los límites configurados.
+    chunk_size = max(1, min(6, math.ceil(total / 4)))
+    if _MAX_NOTICIAS_PROMPT:
+        chunk_size = min(chunk_size, _MAX_NOTICIAS_PROMPT)
+    if chunk_size >= total:
+        chunk_size = max(1, total - 1)
+
+    bloques: list[list[Mapping[str, object]]] = []
+    for inicio in range(0, total, chunk_size):
+        bloques.append(noticias[inicio : inicio + chunk_size])
+    return bloques
+
+
+def _resumir_en_bloques(
+    noticias: list[Mapping[str, object]],
+    idioma: str,
+    modelo: Optional[str],
+    nivel_actual: int,
+) -> str:
+    bloques = _dividir_noticias_en_bloques(noticias)
+    if len(bloques) <= 1:
+        raise AISummaryError(
+            "Los modelos disponibles rechazaron el prompt incluso tras intentar dividir las noticias."
+        )
+
+    res_parciales: list[str] = []
+    for bloque in bloques:
+        parcial = generar_resumen_sentimiento(
+            bloque,
+            idioma,
+            modelo=modelo,
+            _permitir_bloques=True,
+            _nivel=nivel_actual + 1,
+        )
+        res_parciales.append(parcial)
+
+    empresa = str(noticias[0].get("empresa")) if noticias else "la compañía analizada"
+    noticias_parciales: list[Mapping[str, object]] = [
+        {
+            "titulo": f"Resumen parcial {indice}",
+            "resumen": parcial,
+            "fuente": "Síntesis IA",
+            "empresa": empresa,
+        }
+        for indice, parcial in enumerate(res_parciales, start=1)
+    ]
+
+    if len(noticias_parciales) == 1:
+        return str(noticias_parciales[0].get("resumen") or "").strip()
+
+    return generar_resumen_sentimiento(
+        noticias_parciales,
+        idioma,
+        modelo=modelo,
+        _permitir_bloques=True,
+        _nivel=nivel_actual + 1,
     )
 
 
@@ -223,6 +288,8 @@ def generar_resumen_sentimiento(
     noticias: Iterable[Mapping[str, object]],
     idioma: str = "es",
     modelo: Optional[str] = None,
+    _permitir_bloques: bool = True,
+    _nivel: int = 0,
 ) -> str:
     noticias = list(noticias)
     if not noticias:
@@ -236,7 +303,7 @@ def generar_resumen_sentimiento(
     payload = {
         "inputs": prompt,
         "parameters": {
-            "max_new_tokens": 160,
+            "max_new_tokens": 320,
             "temperature": 0.3,
             "top_p": 0.9,
             "do_sample": True,
@@ -285,9 +352,17 @@ def generar_resumen_sentimiento(
         except AISummaryError as exc:
             # Errores diferentes a disponibilidad se devuelven inmediatamente.
             raise
-
     if ultimo_error:
         if agotado_por_prompt:
+            if (
+                _permitir_bloques
+                and len(noticias) > 1
+                and _nivel < 5
+            ):
+                try:
+                    return _resumir_en_bloques(noticias, idioma, modelo, _nivel)
+                except AISummaryError:
+                    pass
             raise AISummaryError(
                 "Los modelos disponibles rechazaron el prompt por exceso de contexto. "
                 "Reducimos automáticamente la extensión, pero las noticias siguen siendo demasiado extensas."
