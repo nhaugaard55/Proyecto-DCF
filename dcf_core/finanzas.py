@@ -1,17 +1,21 @@
 import math
+import os
 import requests
 
 # Obtiene la tasa libre de riesgo desde la API de la Fed
 
+_FRED_API_KEY_DEFAULT = "03b0d61b2efbea3313f92d4d117af8df"
+
 
 def obtener_tasa_libre_riesgo():
     """Obtiene la tasa libre de riesgo desde la API de la Fed."""
+    fred_api_key = os.environ.get("FRED_API_KEY", _FRED_API_KEY_DEFAULT)
     try:
         response = requests.get(
             "https://api.stlouisfed.org/fred/series/observations",
             params={
                 "series_id": "DGS10",
-                "api_key": "03b0d61b2efbea3313f92d4d117af8df",
+                "api_key": fred_api_key,
                 "file_type": "json",
                 "sort_order": "desc",
                 "limit": 1

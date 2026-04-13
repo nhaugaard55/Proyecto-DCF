@@ -14,10 +14,9 @@ from .fmp import (
 )
 
 
-def _obtener_fcf_yfinance(ticker: str, limite: int = 5) -> List[float]:
+def _obtener_fcf_yfinance(ticker: str, empresa_yf: yf.Ticker, limite: int = 5) -> List[float]:
     """Devuelve los valores históricos de FCF usando yfinance."""
-    empresa_temp = yf.Ticker(ticker)
-    cashflow_temp = getattr(empresa_temp, "cashflow", None)
+    cashflow_temp = getattr(empresa_yf, "cashflow", None)
 
     if cashflow_temp is None or cashflow_temp.empty or "Free Cash Flow" not in cashflow_temp.index:
         return []
@@ -38,12 +37,11 @@ def _obtener_fcf_yfinance(ticker: str, limite: int = 5) -> List[float]:
     return valores
 
 
-def _obtener_metricas_yfinance(ticker: str, limite: int = 5) -> tuple[Optional[float], Dict[int, float], Optional[float], Dict[int, float]]:
+def _obtener_metricas_yfinance(ticker: str, empresa_yf: yf.Ticker, limite: int = 5) -> tuple[Optional[float], Dict[int, float], Optional[float], Dict[int, float]]:
     """Calcula métricas de tasa y costo de deuda usando yfinance."""
 
-    empresa = yf.Ticker(ticker)
-    financials = getattr(empresa, "financials", None)
-    balance = getattr(empresa, "balance_sheet", None)
+    financials = getattr(empresa_yf, "financials", None)
+    balance = getattr(empresa_yf, "balance_sheet", None)
 
     tasas: Dict[int, float] = {}
     costos: Dict[int, float] = {}
@@ -162,6 +160,8 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
     fmp_error: str | None = None
     metricas_fuente: Dict[str, dict] = {}
 
+    empresa_yf = yf.Ticker(ticker)
+
     usar_fmp = fuente_solicitada in ("auto", "fmp")
 
     if usar_fmp:
@@ -175,7 +175,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
                 fuente_utilizada = "fmp"
 
     if fuente_utilizada != "fmp":
-        valores_para_crecimiento = _obtener_fcf_yfinance(ticker, limite=5)
+        valores_para_crecimiento = _obtener_fcf_yfinance(ticker, empresa_yf, limite=5)
         fuente_utilizada = "yfinance"
 
         if usar_fmp:
@@ -232,7 +232,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
     metricas_yf: Optional[tuple[Optional[float], Dict[int, float], Optional[float], Dict[int, float]]] = None
 
     if tax_rate_override is None or cost_of_debt_override is None:
-        metricas_yf = _obtener_metricas_yfinance(ticker, limite=5)
+        metricas_yf = _obtener_metricas_yfinance(ticker, empresa_yf, limite=5)
         tasa_yf, tasas_yf, costo_yf, costos_yf = metricas_yf
 
         if tax_rate_override is None and tasa_yf is not None:
@@ -305,6 +305,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
         tax_rate_override=tax_rate_override,
         cost_of_debt_override=cost_of_debt_override,
         metricas_fuente=metricas_fuente,
+        empresa_yf=empresa_yf,
     )
 
     descripcion_fuentes = {

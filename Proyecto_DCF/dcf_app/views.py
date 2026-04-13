@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, cast
 from urllib.parse import urlencode
 
+from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
@@ -20,6 +21,19 @@ from dcf_core.search import CompanySearchResult, search_companies
 
 
 _SYMBOL_PATTERN = re.compile(r"^\s*([A-Za-z0-9.\-:]+)")
+
+_DCF_CACHE_TTL = 600  # 10 minutos
+
+
+def _cached_ejecutar_dcf(ticker: str, metodo: str, fuente: str) -> dict:
+    """Ejecuta DCF con caché de 10 minutos por ticker/método/fuente."""
+    cache_key = f"dcf_result_{ticker}_{metodo}_{fuente}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    resultado = ejecutar_dcf(ticker, metodo, fuente)
+    cache.set(cache_key, resultado, _DCF_CACHE_TTL)
+    return resultado
 
 
 def _resolver_ticker(raw_ticker: str, raw_query: str) -> str:
@@ -206,6 +220,19 @@ def _serialize_news_item(item: dict) -> dict:
     }
 
 
+def _parse_page(value: str | None, default: int = 1) -> int:
+    if value is None:
+        return default
+    value = value.strip()
+    if not value:
+        return default
+    try:
+        numero = int(value)
+        return numero if numero > 0 else default
+    except (TypeError, ValueError):
+        return default
+
+
 def dcf_view(request):
     resultado = None
     error = None
@@ -215,18 +242,6 @@ def dcf_view(request):
     valor_busqueda = request.GET.get("company_query", "").strip()
     company_name = request.GET.get("company_name", "").strip()
     company_exchange = request.GET.get("company_exchange", "").strip()
-
-    def _parse_page(value: str | None, default: int = 1) -> int:
-        if value is None:
-            return default
-        value = value.strip()
-        if not value:
-            return default
-        try:
-            numero = int(value)
-            return numero if numero > 0 else default
-        except (TypeError, ValueError):
-            return default
 
     page_number = _parse_page(request.GET.get("page"))
 
@@ -256,7 +271,7 @@ def dcf_view(request):
 
     if ticker:
         try:
-            resultado = ejecutar_dcf(ticker, metodo, fuente)
+            resultado = _cached_ejecutar_dcf(ticker, metodo, fuente)
         except Exception as exc:
             error = f"Ocurrió un error al analizar el ticker: {exc}"
             resultado = None
@@ -341,7 +356,7 @@ def dcf_pdf_view(request):
         return HttpResponse("Ticker inválido", status=400)
 
     try:
-        resultado = ejecutar_dcf(ticker, metodo, fuente)
+        resultado = _cached_ejecutar_dcf(ticker, metodo, fuente)
     except Exception as exc:
         return HttpResponse(f"No se pudo generar el informe: {exc}", status=500)
 

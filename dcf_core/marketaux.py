@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional
 
 import requests
+
+from .utils import parse_datetime_iso
 
 
 class MarketauxError(RuntimeError):
@@ -34,26 +36,6 @@ def _get_api_key() -> str:
         )
     return key
 
-
-def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
-    if not value:
-        return None
-    value = value.strip()
-    if not value:
-        return None
-
-    normalized = value.replace("Z", "+00:00") if value.endswith("Z") else value
-    try:
-        parsed = datetime.fromisoformat(normalized)
-    except ValueError:
-        try:
-            parsed = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            return None
-
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed
 
 
 def obtener_noticias_marketaux(ticker: str, limite: int = 6) -> List[MarketauxNewsItem]:
@@ -131,7 +113,7 @@ def obtener_noticias_marketaux(ticker: str, limite: int = 6) -> List[MarketauxNe
         )
         image = str(imagen).strip() if imagen else None
 
-        published = _parse_datetime(entry.get("published_at") or entry.get("created_at"))
+        published = parse_datetime_iso(entry.get("published_at") or entry.get("created_at"))
 
         items.append(
             MarketauxNewsItem(

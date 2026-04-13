@@ -9,6 +9,8 @@ from typing import List, Optional
 
 import requests
 
+from .utils import parse_datetime_epoch
+
 
 class FinnhubError(RuntimeError):
     """Raised when the Finnhub client cannot fulfill a request."""
@@ -34,14 +36,6 @@ def _get_api_key() -> str:
         )
     return key
 
-
-def _parse_datetime(epoch_seconds: Optional[int]) -> Optional[datetime]:
-    if not epoch_seconds:
-        return None
-    try:
-        return datetime.fromtimestamp(int(epoch_seconds), tz=timezone.utc)
-    except (ValueError, OSError, OverflowError):
-        return None
 
 
 def obtener_noticias_finnhub(ticker: str, limite: int = 6, lookback_dias: int = 45) -> List[FinnhubNewsItem]:
@@ -99,7 +93,7 @@ def obtener_noticias_finnhub(ticker: str, limite: int = 6, lookback_dias: int = 
         fuente = (item.get("source") or item.get("publisher") or "").strip() or None
         resumen = (item.get("summary") or item.get("text") or "").strip() or None
         imagen = (item.get("image") or item.get("thumbnail") or "").strip() or None
-        publicado = _parse_datetime(item.get("datetime") or item.get("publishedTime"))
+        publicado = parse_datetime_epoch(item.get("datetime") or item.get("publishedTime"))
 
         elementos.append(
             FinnhubNewsItem(
