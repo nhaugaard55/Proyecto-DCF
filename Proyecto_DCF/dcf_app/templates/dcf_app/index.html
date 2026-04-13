@@ -955,7 +955,10 @@
                             <tbody>
                                 {% for filtro in resultado.filtros %}
                                 <tr>
-                                    <td>{{ filtro.nombre }}</td>
+                                    <td>
+                                        <strong>{{ filtro.nombre }}</strong>
+                                        {% if filtro.descripcion %}<br><small class="text-muted">{{ filtro.descripcion }}</small>{% endif %}
+                                    </td>
                                     <td>{{ filtro.valor }}</td>
                                     <td>{{ filtro.criterio }}</td>
                                     <td>

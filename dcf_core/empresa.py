@@ -432,48 +432,56 @@ def analizar_empresa(
     filtros = [
         {
             "nombre": "P/E",
+            "descripcion": "Price to Earnings — Precio por cada peso de ganancia neta",
             "valor": f"{pe_ratio:.2f}" if pe_ratio is not None else "N/D",
             "criterio": "< 20",
             "cumple": pe_ratio is not None and pe_ratio <= 20,
         },
         {
             "nombre": "P/S",
+            "descripcion": "Price to Sales — Precio por cada peso de ventas",
             "valor": f"{ps_ratio:.2f}" if ps_ratio is not None else "N/D",
             "criterio": "< 2",
             "cumple": ps_ratio is not None and ps_ratio <= 2,
         },
         {
             "nombre": "P/B",
+            "descripcion": "Price to Book — Precio sobre el valor contable de la empresa",
             "valor": f"{pb_ratio:.2f}" if pb_ratio is not None else "N/D",
             "criterio": "< 1",
             "cumple": pb_ratio is not None and pb_ratio <= 1,
         },
         {
             "nombre": "ROE",
+            "descripcion": "Return on Equity — Rentabilidad sobre el patrimonio neto",
             "valor": f"{roe:.2%}" if isinstance(roe, (int, float)) else "N/D",
             "criterio": "> 10%",
             "cumple": isinstance(roe, (int, float)) and roe > 0.10,
         },
         {
             "nombre": "Debt/Capital",
+            "descripcion": "Deuda total sobre el capital total (deuda + equity)",
             "valor": f"{debt_to_capital:.2%}",
             "criterio": "< 25%",
             "cumple": debt_to_capital < 0.25,
         },
         {
             "nombre": "Volumen",
+            "descripcion": "Volumen diario de acciones operadas en el mercado",
             "valor": f"{volume:,.0f}" if volume else "N/D",
             "criterio": "> 250k",
             "cumple": bool(volume and volume > 250000),
         },
         {
             "nombre": "Revenue Growth",
+            "descripcion": "Crecimiento anual de los ingresos de la empresa",
             "valor": f"{revenue_growth:.2%}" if isinstance(revenue_growth, (int, float)) else "N/D",
             "criterio": "> 0%",
             "cumple": isinstance(revenue_growth, (int, float)) and revenue_growth > 0,
         },
         {
             "nombre": "ICR",
+            "descripcion": "Interest Coverage Ratio — Capacidad de cubrir intereses con el EBITDA",
             "valor": f"{icr:.2f}" if isinstance(icr, (int, float)) else "N/D",
             "criterio": "> 2",
             "cumple": isinstance(icr, (int, float)) and icr > 2,
@@ -518,6 +526,7 @@ def analizar_empresa(
 
     filtros.append({
         "nombre": "Safety Margin",
+        "descripcion": "Margen de seguridad — Diferencia entre valor intrínseco y precio de mercado",
         "valor": f"{safety_margin:.2%}" if isinstance(safety_margin, (int, float)) else "N/D",
         "criterio": "> 0%",
         "cumple": isinstance(safety_margin, (int, float)) and safety_margin > 0,
