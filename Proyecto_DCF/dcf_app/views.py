@@ -311,6 +311,10 @@ def dcf_view(request):
     recent_records_queryset = AnalysisRecord.objects.all()
     recent_records = list(recent_records_queryset[:RECENT_HISTORY_FETCH_LIMIT])
 
+    tradingview_symbol = ticker
+    if company_exchange and ticker:
+        tradingview_symbol = f"{company_exchange.upper()}:{ticker}"
+
     context = {
         "resultado": resultado,
         "error": error,
@@ -320,6 +324,7 @@ def dcf_view(request):
         "search_value": valor_busqueda or ticker,
         "company_name": company_name,
         "company_exchange": company_exchange,
+        "tradingview_symbol": tradingview_symbol,
         "chart_data": chart_data,
         "news_data": news_payload,
         "news_total": news_total,

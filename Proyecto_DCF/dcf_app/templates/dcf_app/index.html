@@ -1117,104 +1117,74 @@
             </div>
         </div>
 
-        <!-- ===== PASO 3: ANÁLISIS TÉCNICO (detalle) ===== -->
-        {% if resultado.analisis_tecnico.disponible %}
+        <!-- ===== PASO 3: ANÁLISIS TÉCNICO (TradingView) ===== -->
+        {% if ticker %}
         <div class="col-12">
             <div class="card soft-card">
                 <div class="card-body">
-                    <h3 class="h5 mb-1">Paso 3 — Análisis técnico</h3>
-                    <p class="text-muted small mb-4">Indicadores de precio para identificar buenos puntos de entrada</p>
-
-                    <!-- Señal general -->
-                    <div class="mb-4 p-3 rounded-3" style="background: var(--surface-card); border: 1px solid var(--bs-border-color);">
-                        <div class="d-flex align-items-center gap-3 flex-wrap">
-                            <div>
-                                <div class="text-muted small">Señal general</div>
-                                <div class="fw-semibold fs-5">
-                                    {% if resultado.analisis_tecnico.senal == "buena" %}✅
-                                    {% elif resultado.analisis_tecnico.senal == "oportunidad" %}⚡
-                                    {% elif resultado.analisis_tecnico.senal == "sobrecomprado" %}⛔
-                                    {% elif resultado.analisis_tecnico.senal == "esperar" %}❌
-                                    {% else %}🔄{% endif %}
-                                    {{ resultado.analisis_tecnico.senal_texto }}
-                                </div>
-                            </div>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+                        <h3 class="h5 mb-0">Paso 3 — Análisis técnico</h3>
+                        {% if resultado.analisis_tecnico.disponible %}
+                        <div class="d-flex align-items-center gap-3">
                             {% if resultado.analisis_tecnico.rsi is not None %}
-                            <div class="ms-auto text-end">
-                                <div class="text-muted small">RSI (14 días)</div>
-                                <div class="fw-bold fs-4
+                            <span class="small text-muted">
+                                RSI (14):
+                                <strong class="
                                     {% if resultado.analisis_tecnico.rsi > 70 %}text-danger
                                     {% elif resultado.analisis_tecnico.rsi < 30 %}text-warning
                                     {% else %}text-success{% endif %}">
                                     {{ resultado.analisis_tecnico.rsi|floatformat:1 }}
-                                </div>
-                                <div class="text-muted small">
-                                    {% if resultado.analisis_tecnico.rsi > 70 %}Sobrecomprado
-                                    {% elif resultado.analisis_tecnico.rsi < 30 %}Sobrevendido
-                                    {% else %}Zona neutral{% endif %}
-                                </div>
-                            </div>
+                                    {% if resultado.analisis_tecnico.rsi > 70 %}· Sobrecomprado
+                                    {% elif resultado.analisis_tecnico.rsi < 30 %}· Sobrevendido
+                                    {% else %}· Neutral{% endif %}
+                                </strong>
+                            </span>
                             {% endif %}
-                        </div>
-
-                        {% if resultado.analisis_tecnico.rsi is not None %}
-                        <div class="mt-3">
-                            <div class="d-flex justify-content-between small text-muted mb-1">
-                                <span>Sobrevendido (0–30)</span>
-                                <span>Neutral (30–70)</span>
-                                <span>Sobrecomprado (70–100)</span>
-                            </div>
-                            <div class="progress" style="height: 10px; border-radius: 6px;">
-                                <div class="progress-bar
-                                    {% if resultado.analisis_tecnico.rsi > 70 %}bg-danger
-                                    {% elif resultado.analisis_tecnico.rsi < 30 %}bg-warning
-                                    {% else %}bg-success{% endif %}"
-                                    role="progressbar"
-                                    style="width: {{ resultado.analisis_tecnico.rsi|floatformat:0 }}%"
-                                    aria-valuenow="{{ resultado.analisis_tecnico.rsi|floatformat:0 }}"
-                                    aria-valuemin="0" aria-valuemax="100">
-                                </div>
-                            </div>
+                            {% if resultado.analisis_tecnico.sma_50 %}
+                            <span class="small text-muted">SMA 50: <strong>${{ resultado.analisis_tecnico.sma_50|floatformat:2 }}</strong></span>
+                            {% endif %}
+                            {% if resultado.analisis_tecnico.sma_200 %}
+                            <span class="small text-muted">SMA 200: <strong>${{ resultado.analisis_tecnico.sma_200|floatformat:2 }}</strong></span>
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>
+                    <p class="text-muted small mb-3">Gráfico interactivo de TradingView · Usá el panel derecho para agregar indicadores adicionales</p>
 
-                    <!-- Medias móviles y filtros -->
-                    <div class="table-responsive">
-                        <table class="table align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Indicador</th>
-                                    <th>Valor de referencia</th>
-                                    <th>Criterio</th>
-                                    <th>Resultado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for f in resultado.analisis_tecnico.filtros %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ f.nombre }}</strong>
-                                        {% if f.descripcion %}<br><small class="text-muted">{{ f.descripcion }}</small>{% endif %}
-                                    </td>
-                                    <td>{{ f.valor }}</td>
-                                    <td>{{ f.criterio }}</td>
-                                    <td>
-                                        {% if not f.disponible %}
-                                        <span class="badge bg-secondary">Sin datos</span>
-                                        {% elif f.cumple %}
-                                        <span class="badge bg-success">Cumple</span>
-                                        {% else %}
-                                        <span class="badge bg-danger">No cumple</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <!-- TradingView Widget -->
+                    <div class="tradingview-widget-container" style="height: 500px;">
+                        <div id="tradingview_chart_{{ ticker }}" style="height: 100%;"></div>
                     </div>
+                    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+                    <script type="text/javascript">
+                    (function() {
+                        var isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark'
+                                  || document.body.classList.contains('theme-dark');
+                        new TradingView.widget({
+                            "autosize": true,
+                            "symbol": "{{ tradingview_symbol }}",
+                            "interval": "D",
+                            "timezone": "America/New_York",
+                            "theme": isDark ? "dark" : "light",
+                            "style": "1",
+                            "locale": "es",
+                            "enable_publishing": false,
+                            "allow_symbol_change": false,
+                            "hide_top_toolbar": false,
+                            "hide_legend": false,
+                            "save_image": false,
+                            "studies": [
+                                "RSI@tv-basicstudies",
+                                { "id": "MASimple@tv-basicstudies", "inputs": { "length": 20 } },
+                                { "id": "MASimple@tv-basicstudies", "inputs": { "length": 50 } },
+                                { "id": "MASimple@tv-basicstudies", "inputs": { "length": 200 } }
+                            ],
+                            "container_id": "tradingview_chart_{{ ticker }}"
+                        });
+                    })();
+                    </script>
 
-                    <p class="text-muted small mt-2 mb-0">
+                    <p class="text-muted small mt-3 mb-0">
                         El análisis técnico indica <em>cuándo</em> entrar. Usarlo siempre junto al análisis fundamental (Pasos 1 y 2).
                     </p>
                 </div>
