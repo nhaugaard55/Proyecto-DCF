@@ -843,31 +843,31 @@
                             {% endwith %}
                         </div>
                         <div class="col-6">
-                            <span class="text-muted small d-block">Acciones</span>
+                            <span class="text-muted small d-block">Acciones en circulación</span>
                             {% with valor=resultado.datos_empresa.acciones_billones %}
                                 <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
                             {% endwith %}
                         </div>
                         <div class="col-6">
-                            <span class="text-muted small d-block">Market Cap</span>
+                            <span class="text-muted small d-block">Market Cap — Capitalización de mercado</span>
                             {% with valor=resultado.datos_empresa.market_cap_billones %}
                                 <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
                             {% endwith %}
                         </div>
                         <div class="col-6">
-                            <span class="text-muted small d-block">Deuda</span>
+                            <span class="text-muted small d-block">Deuda (largo plazo)</span>
                             {% with valor=resultado.datos_empresa.deuda_billones %}
                                 <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
                             {% endwith %}
                         </div>
                         <div class="col-6">
-                            <span class="text-muted small d-block">Beta</span>
+                            <span class="text-muted small d-block">Beta — Sensibilidad al mercado</span>
                             {% with valor=resultado.datos_empresa.beta %}
                                 <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
                             {% endwith %}
                         </div>
                         <div class="col-6">
-                            <span class="text-muted small d-block">Tasa impositiva</span>
+                            <span class="text-muted small d-block">Tasa impositiva efectiva</span>
                             {% with valor=resultado.datos_empresa.tasa_impositiva_pct %}
                                 <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
                             {% endwith %}
@@ -878,7 +878,7 @@
                             {% endwith %}
                         </div>
                         <div class="col-6">
-                            <span class="text-muted small d-block">Cost of Debt</span>
+                            <span class="text-muted small d-block">Cost of Debt — Costo de la deuda</span>
                             {% with valor=resultado.datos_empresa.cost_of_debt_pct %}
                                 <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
                             {% endwith %}
@@ -902,13 +902,34 @@
                 <div class="card-body">
                     <h3 class="h5 mb-3">Métricas clave</h3>
                     <ul class="list-group list-group-flush rounded-3 overflow-hidden">
-                        <li class="list-group-item d-flex justify-content-between"><span>Rf</span><span>{% with valor=resultado.metricas.tasa_rf_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                        <li class="list-group-item d-flex justify-content-between"><span>Rm</span><span>{% with valor=resultado.metricas.market_return_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                        <li class="list-group-item d-flex justify-content-between"><span>CAPM</span><span>{% with valor=resultado.metricas.capm_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                        <li class="list-group-item d-flex justify-content-between"><span>WACC</span><span>{% with valor=resultado.metricas.wacc_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                        <li class="list-group-item d-flex justify-content-between"><span>Crecimiento utilizado</span><span>{% with valor=resultado.metricas.crecimiento_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                        <li class="list-group-item d-flex justify-content-between"><span>CAGR estimado</span><span>{% with valor=resultado.metricas.crecimiento_cagr_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
-                        <li class="list-group-item d-flex justify-content-between"><span>Crecimiento promedio</span><span>{% with valor=resultado.metricas.crecimiento_promedio_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><strong>Rf</strong><br><small class="text-muted">Tasa libre de riesgo</small></span>
+                            <span>{% with valor=resultado.metricas.tasa_rf_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><strong>Rm</strong><br><small class="text-muted">Retorno esperado del mercado</small></span>
+                            <span>{% with valor=resultado.metricas.market_return_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><strong>CAPM</strong><br><small class="text-muted">Costo del capital propio (Rf + β × (Rm − Rf))</small></span>
+                            <span>{% with valor=resultado.metricas.capm_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><strong>WACC</strong><br><small class="text-muted">Costo promedio ponderado de capital</small></span>
+                            <span>{% with valor=resultado.metricas.wacc_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><strong>Crecimiento utilizado</strong><br><small class="text-muted">Tasa aplicada en la proyección de FCF</small></span>
+                            <span>{% with valor=resultado.metricas.crecimiento_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><strong>CAGR estimado</strong><br><small class="text-muted">Tasa de crecimiento anual compuesta del FCF histórico</small></span>
+                            <span>{% with valor=resultado.metricas.crecimiento_cagr_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><strong>Crecimiento promedio</strong><br><small class="text-muted">Promedio simple de variaciones año a año del FCF</small></span>
+                            <span>{% with valor=resultado.metricas.crecimiento_promedio_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                        </li>
                     </ul>
                     {% if resultado.metricas.valor_terminal %}
                     <div class="pt-3 small text-muted">Valor terminal estimado: ${{ resultado.metricas.valor_terminal|floatformat:2 }}B</div>
