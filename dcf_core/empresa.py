@@ -2,6 +2,8 @@ import re
 from datetime import datetime
 from typing import Dict, List, Optional, Sequence, Tuple
 
+import pandas as pd
+
 import yfinance as yf
 
 from .ai_summary import AISummaryError, generar_resumen_sentimiento
@@ -324,6 +326,127 @@ def _generate_ai_summary(
 # Función principal
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Análisis técnico
+# ---------------------------------------------------------------------------
+
+def _calcular_rsi(close: "pd.Series", period: int = 14) -> Optional[float]:
+    if len(close) < period + 1:
+        return None
+    delta = close.diff()
+    gain = delta.where(delta > 0, 0.0)
+    loss = -delta.where(delta < 0, 0.0)
+    avg_gain = gain.rolling(window=period, min_periods=period).mean()
+    avg_loss = loss.rolling(window=period, min_periods=period).mean()
+    last_loss = avg_loss.iloc[-1]
+    if last_loss == 0:
+        return 100.0
+    rs = avg_gain.iloc[-1] / last_loss
+    return round(100 - (100 / (1 + rs)), 2)
+
+
+def calcular_analisis_tecnico(empresa_yf: yf.Ticker, precio_actual: float) -> dict:
+    """Calcula indicadores técnicos básicos: SMAs y RSI."""
+    try:
+        hist = empresa_yf.history(period="1y")
+    except Exception:
+        hist = None
+
+    if hist is None or hist.empty or "Close" not in hist.columns:
+        return {"disponible": False}
+
+    close = hist["Close"].dropna()
+    n = len(close)
+
+    def sma(period: int) -> Optional[float]:
+        if n < period:
+            return None
+        val = close.rolling(period).mean().iloc[-1]
+        return round(float(val), 2) if pd.notna(val) else None
+
+    sma_20 = sma(20)
+    sma_50 = sma(50)
+    sma_200 = sma(200)
+    rsi = _calcular_rsi(close)
+
+    def vs_sma(sma_val: Optional[float]) -> Optional[str]:
+        if sma_val is None or not precio_actual:
+            return None
+        return "encima" if precio_actual >= sma_val else "debajo"
+
+    filtros_tecnicos = [
+        {
+            "nombre": "Precio vs SMA 200",
+            "descripcion": "Precio sobre la media móvil de 200 días — tendencia de largo plazo",
+            "valor": f"${sma_200:.2f}" if sma_200 else "N/D",
+            "criterio": "Precio encima",
+            "cumple": vs_sma(sma_200) == "encima",
+            "disponible": sma_200 is not None,
+        },
+        {
+            "nombre": "Precio vs SMA 50",
+            "descripcion": "Precio sobre la media móvil de 50 días — tendencia de mediano plazo",
+            "valor": f"${sma_50:.2f}" if sma_50 else "N/D",
+            "criterio": "Precio encima",
+            "cumple": vs_sma(sma_50) == "encima",
+            "disponible": sma_50 is not None,
+        },
+        {
+            "nombre": "Precio vs SMA 20",
+            "descripcion": "Precio sobre la media móvil de 20 días — tendencia de corto plazo",
+            "valor": f"${sma_20:.2f}" if sma_20 else "N/D",
+            "criterio": "Precio encima",
+            "cumple": vs_sma(sma_20) == "encima",
+            "disponible": sma_20 is not None,
+        },
+        {
+            "nombre": "RSI (14)",
+            "descripcion": "Relative Strength Index — momentum del precio (30–70 es zona neutral)",
+            "valor": f"{rsi:.1f}" if rsi is not None else "N/D",
+            "criterio": "30 – 70",
+            "cumple": rsi is not None and 30 <= rsi <= 70,
+            "disponible": rsi is not None,
+        },
+    ]
+
+    # Señal general de entrada
+    encima_sma50 = vs_sma(sma_50) == "encima"
+    encima_sma200 = vs_sma(sma_200) == "encima"
+    rsi_ok = rsi is not None and 30 <= rsi <= 70
+    rsi_sobrecomprado = rsi is not None and rsi > 70
+    rsi_sobrevendido = rsi is not None and rsi < 30
+
+    if rsi_sobrecomprado:
+        senal = "sobrecomprado"
+        senal_texto = "Sobrecomprado — esperar corrección"
+    elif encima_sma50 and rsi_ok:
+        senal = "buena"
+        senal_texto = "Buen punto de entrada"
+    elif not encima_sma200 and not rsi_sobrevendido:
+        senal = "esperar"
+        senal_texto = "Tendencia bajista — esperar recuperación"
+    elif rsi_sobrevendido:
+        senal = "oportunidad"
+        senal_texto = "Posible oportunidad — precio sobrevendido"
+    else:
+        senal = "neutral"
+        senal_texto = "Señal neutral — seguir monitoreando"
+
+    return {
+        "disponible": True,
+        "sma_20": sma_20,
+        "sma_50": sma_50,
+        "sma_200": sma_200,
+        "rsi": rsi,
+        "precio_vs_sma20": vs_sma(sma_20),
+        "precio_vs_sma50": vs_sma(sma_50),
+        "precio_vs_sma200": vs_sma(sma_200),
+        "senal": senal,
+        "senal_texto": senal_texto,
+        "filtros": filtros_tecnicos,
+    }
+
+
 def analizar_empresa(
     ticker,
     metodo_crecimiento="1",
@@ -590,6 +713,7 @@ def analizar_empresa(
         "fifty_two_week_low": info.get("fiftyTwoWeekLow"),
     }
 
+    analisis_tecnico = calcular_analisis_tecnico(empresa_yf, precio)
     noticias, noticias_fuentes, noticias_error = _fetch_news(ticker, empresa_yf, nombre)
     resumen_noticias, resumen_noticias_error = _generate_ai_summary(noticias, ticker, nombre)
 
@@ -631,4 +755,5 @@ def analizar_empresa(
         "noticias_fuente_descripcion": noticias_fuente_descripcion,
         "resumen_noticias": resumen_noticias,
         "resumen_noticias_error": resumen_noticias_error,
+        "analisis_tecnico": analisis_tecnico,
     }
