@@ -911,6 +911,63 @@
         </div>
         <!-- ===== FIN SECUENCIA ===== -->
 
+        <!-- ── SEPARADOR PASO 1 ── -->
+        <div class="col-12">
+            <div class="d-flex align-items-center gap-3 mt-2">
+                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">1</span>
+                <span class="fw-semibold fs-5">Ratios fundamentales</span>
+                <hr class="flex-grow-1 my-0 opacity-25">
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card soft-card">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Filtros fundamentales</h3>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Indicador</th>
+                                    <th>Valor</th>
+                                    <th>Criterio</th>
+                                    <th>Resultado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for filtro in resultado.filtros %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ filtro.nombre }}</strong>
+                                        {% if filtro.descripcion %}<br><small class="text-muted">{{ filtro.descripcion }}</small>{% endif %}
+                                    </td>
+                                    <td>{{ filtro.valor }}</td>
+                                    <td>{{ filtro.criterio }}</td>
+                                    <td>
+                                        {% if filtro.cumple %}
+                                        <span class="badge bg-success">Cumple</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">No cumple</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── SEPARADOR PASO 2 ── -->
+        <div class="col-12">
+            <div class="d-flex align-items-center gap-3 mt-2">
+                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">2</span>
+                <span class="fw-semibold fs-5">Valuación DCF</span>
+                <hr class="flex-grow-1 my-0 opacity-25">
+            </div>
+        </div>
+
         <div class="col-lg-6">
             <div class="card soft-card h-100">
                 <div class="card-body">
@@ -1018,45 +1075,6 @@
             </div>
         </div>
 
-        <div class="col-12">
-            <div class="card soft-card">
-                <div class="card-body">
-                    <h3 class="h5 mb-3">Filtros fundamentales</h3>
-                    <div class="table-responsive">
-                        <table class="table align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Indicador</th>
-                                    <th>Valor</th>
-                                    <th>Criterio</th>
-                                    <th>Resultado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for filtro in resultado.filtros %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ filtro.nombre }}</strong>
-                                        {% if filtro.descripcion %}<br><small class="text-muted">{{ filtro.descripcion }}</small>{% endif %}
-                                    </td>
-                                    <td>{{ filtro.valor }}</td>
-                                    <td>{{ filtro.criterio }}</td>
-                                    <td>
-                                        {% if filtro.cumple %}
-                                        <span class="badge bg-success">Cumple</span>
-                                        {% else %}
-                                        <span class="badge bg-danger">No cumple</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="col-lg-6">
             <div class="card soft-card h-100">
                 <div class="card-body">
@@ -1114,6 +1132,49 @@
                     <p class="text-muted mb-0">No se pudo proyectar el flujo.</p>
                     {% endif %}
                 </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card soft-card">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Dividendos y otros</h3>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <span class="text-muted small d-block">Dividend Yield</span>
+                            {% with valor=resultado.dividendos.yield_pct %}
+                                <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                        <div class="col-md-3">
+                            <span class="text-muted small d-block">Net Worth / Share</span>
+                            {% with valor=resultado.dividendos.net_worth_per_share %}
+                                <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                        <div class="col-md-3">
+                            <span class="text-muted small d-block">Safety Margin</span>
+                            {% with valor=resultado.dividendos.safety_margin_pct %}
+                                <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                        <div class="col-md-3">
+                            <span class="text-muted small d-block">52-week low</span>
+                            {% with valor=resultado.dividendos.fifty_two_week_low %}
+                                <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── SEPARADOR PASO 3 ── -->
+        <div class="col-12">
+            <div class="d-flex align-items-center gap-3 mt-2">
+                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">3</span>
+                <span class="fw-semibold fs-5">Análisis técnico</span>
+                <hr class="flex-grow-1 my-0 opacity-25">
             </div>
         </div>
 
@@ -1192,40 +1253,6 @@
         </div>
         {% endif %}
         <!-- ===== FIN PASO 3 ===== -->
-
-        <div class="col-12">
-            <div class="card soft-card">
-                <div class="card-body">
-                    <h3 class="h5 mb-3">Dividendos y otros</h3>
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <span class="text-muted small d-block">Dividend Yield</span>
-                            {% with valor=resultado.dividendos.yield_pct %}
-                                <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
-                            {% endwith %}
-                        </div>
-                        <div class="col-md-3">
-                            <span class="text-muted small d-block">Net Worth / Share</span>
-                            {% with valor=resultado.dividendos.net_worth_per_share %}
-                                <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
-                            {% endwith %}
-                        </div>
-                        <div class="col-md-3">
-                            <span class="text-muted small d-block">Safety Margin</span>
-                            {% with valor=resultado.dividendos.safety_margin_pct %}
-                                <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}</span>
-                            {% endwith %}
-                        </div>
-                        <div class="col-md-3">
-                            <span class="text-muted small d-block">52-week low</span>
-                            {% with valor=resultado.dividendos.fifty_two_week_low %}
-                                <span class="fw-semibold">{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
-                            {% endwith %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         {% if news_total > 0 %}
         <div class="col-12">
