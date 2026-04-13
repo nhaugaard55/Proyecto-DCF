@@ -1,0 +1,234 @@
+<!-- Módulo: Ciclo Económico -->
+<div class="card shadow-sm mb-4" id="business-cycle-card">
+  <div class="card-header d-flex align-items-center gap-2">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+      <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+      <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+    </svg>
+    <strong>Ciclo Económico</strong>
+    <span id="bc-phase-badge" class="badge ms-auto" style="display:none;"></span>
+  </div>
+
+  <div class="card-body">
+
+    <!-- Spinner mientras carga -->
+    <div id="bc-loading" class="text-center py-4">
+      <div class="spinner-border spinner-border-sm text-secondary me-2" role="status"></div>
+      <span class="text-muted small">Cargando indicadores macro y rotación sectorial…</span>
+    </div>
+
+    <!-- Error -->
+    <div id="bc-error" class="alert alert-warning small" style="display:none;"></div>
+
+    <!-- Contenido cargado -->
+    <div id="bc-content" style="display:none;">
+
+      <!-- Curva SVG -->
+      <div class="mb-3" style="overflow-x:auto;">
+        <svg id="bc-svg" viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg"
+             style="width:100%;max-width:800px;display:block;margin:auto;">
+
+          <!-- Fondo de fases -->
+          <!-- Early Expansion: x 30..215 -->
+          <rect x="30" y="40" width="185" height="260" rx="6" fill="#22c55e" fill-opacity="0.08"/>
+          <!-- Late Expansion: x 215..400 -->
+          <rect x="215" y="40" width="185" height="260" rx="6" fill="#84cc16" fill-opacity="0.08"/>
+          <!-- Early Contraction: x 400..585 -->
+          <rect x="400" y="40" width="185" height="260" rx="6" fill="#f97316" fill-opacity="0.08"/>
+          <!-- Late Contraction: x 585..770 -->
+          <rect x="585" y="40" width="185" height="260" rx="6" fill="#ef4444" fill-opacity="0.08"/>
+
+          <!-- Línea central horizontal -->
+          <line x1="30" y1="230" x2="770" y2="230" stroke="#6b7280" stroke-width="1" stroke-dasharray="4 4"/>
+
+          <!-- Curva sinusoidal (t: 0→1, x: 30→770, y=230-170*sin(π*t)) -->
+          <path id="bc-curve"
+            d="M30,230
+               C100,230 130,60 215,60
+               C300,60 330,230 400,230
+               C470,230 500,400 585,400
+               C670,400 700,230 770,230"
+            fill="none" stroke="url(#bcGradient)" stroke-width="3" stroke-linecap="round"/>
+
+          <!-- Degradado de color para la curva -->
+          <defs>
+            <linearGradient id="bcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stop-color="#22c55e"/>
+              <stop offset="27%"  stop-color="#84cc16"/>
+              <stop offset="55%"  stop-color="#f97316"/>
+              <stop offset="100%" stop-color="#ef4444"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Etiquetas de fase -->
+          <text x="122" y="32" text-anchor="middle" font-size="11" font-weight="600" fill="#22c55e">Expansión</text>
+          <text x="122" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#22c55e">Temprana</text>
+          <text x="307" y="32" text-anchor="middle" font-size="11" font-weight="600" fill="#84cc16">Expansión</text>
+          <text x="307" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#84cc16">Tardía</text>
+          <text x="492" y="32" text-anchor="middle" font-size="11" font-weight="600" fill="#f97316">Contracción</text>
+          <text x="492" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#f97316">Temprana</text>
+          <text x="677" y="32" text-anchor="middle" font-size="11" font-weight="600" fill="#ef4444">Contracción</text>
+          <text x="677" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#ef4444">Tardía</text>
+
+          <!-- Etiquetas de sectores -->
+          <text x="122" y="290" text-anchor="middle" font-size="10" fill="#6b7280">XLK · XLY</text>
+          <text x="307" y="290" text-anchor="middle" font-size="10" fill="#6b7280">XLI · XLB · XLV</text>
+          <text x="492" y="290" text-anchor="middle" font-size="10" fill="#6b7280">XLE · XLP</text>
+          <text x="677" y="290" text-anchor="middle" font-size="10" fill="#6b7280">XLU · XLF · IYZ</text>
+
+          <!-- Marcador animado -->
+          <circle id="bc-marker-outer" cx="122" cy="60" r="12" fill="none" stroke="#22c55e" stroke-width="2" opacity="0.4">
+            <animate attributeName="r" values="10;16;10" dur="2s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite"/>
+          </circle>
+          <circle id="bc-marker" cx="122" cy="60" r="7" fill="#22c55e" stroke="white" stroke-width="2"/>
+
+          <!-- Separadores verticales -->
+          <line x1="215" y1="50" x2="215" y2="310" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3 3"/>
+          <line x1="400" y1="50" x2="400" y2="310" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3 3"/>
+          <line x1="585" y1="50" x2="585" y2="310" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3 3"/>
+        </svg>
+      </div>
+
+      <!-- Fila: Indicadores macro + sectores -->
+      <div class="row g-3 mt-1">
+
+        <!-- Señales macro -->
+        <div class="col-md-6">
+          <p class="small fw-semibold mb-2 text-muted text-uppercase" style="letter-spacing:.05em;">
+            Indicadores Macro (FRED)
+          </p>
+          <table class="table table-sm table-borderless mb-0" id="bc-macro-table">
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <!-- Rotación sectorial + sectores favorables -->
+        <div class="col-md-6">
+          <p class="small fw-semibold mb-2 text-muted text-uppercase" style="letter-spacing:.05em;">
+            Rotación Sectorial (90 días vs SPY)
+          </p>
+          <table class="table table-sm table-borderless mb-0" id="bc-sector-table">
+            <tbody></tbody>
+          </table>
+
+          <p class="small fw-semibold mb-1 mt-3 text-muted text-uppercase" style="letter-spacing:.05em;">
+            Sectores Favorables en esta fase
+          </p>
+          <div id="bc-favorable" class="d-flex flex-wrap gap-2"></div>
+        </div>
+
+      </div><!-- /row -->
+
+      <!-- Confianza y score -->
+      <div class="mt-3 pt-2 border-top d-flex align-items-center gap-3 flex-wrap">
+        <span class="small text-muted">
+          Confianza: <strong id="bc-confidence"></strong>
+        </span>
+        <span class="small text-muted">
+          Score combinado: <strong id="bc-score"></strong>
+        </span>
+        <span class="ms-auto small text-muted fst-italic">
+          Macro 60% · Sectorial 40% · Actualizado cada 10 min
+        </span>
+      </div>
+
+    </div><!-- /bc-content -->
+  </div><!-- /card-body -->
+</div><!-- /card -->
+
+<script>
+(function () {
+  function scoreColor(s) {
+    if (s >= 1.5) return 'text-success';
+    if (s >= 0.5) return 'text-success';
+    if (s <= -1.5) return 'text-danger';
+    if (s <= -0.5) return 'text-warning';
+    return 'text-secondary';
+  }
+
+  function scoreArrow(s) {
+    if (s > 0.5) return '▲';
+    if (s < -0.5) return '▼';
+    return '→';
+  }
+
+  function relColor(v) {
+    if (v > 1) return 'text-success';
+    if (v < -1) return 'text-danger';
+    return 'text-secondary';
+  }
+
+  fetch('/api/business-cycle/')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d.error) throw new Error(d.error);
+
+      // Badge fase
+      var badge = document.getElementById('bc-phase-badge');
+      badge.textContent = d.phase_label;
+      badge.style.background = d.color;
+      badge.style.color = '#fff';
+      badge.style.display = '';
+
+      // Mover marcador
+      var marker = document.getElementById('bc-marker');
+      var markerOuter = document.getElementById('bc-marker-outer');
+      if (marker && d.marker_x !== undefined) {
+        var mx = d.marker_x;
+        var my = d.marker_y;
+        marker.setAttribute('cx', mx);
+        marker.setAttribute('cy', my);
+        marker.setAttribute('fill', d.color);
+        markerOuter.setAttribute('cx', mx);
+        markerOuter.setAttribute('cy', my);
+        markerOuter.setAttribute('stroke', d.color);
+      }
+
+      // Tabla macro
+      var macroTbody = document.querySelector('#bc-macro-table tbody');
+      (d.macro_signals || []).forEach(function (sig) {
+        var row = document.createElement('tr');
+        row.innerHTML =
+          '<td class="py-1 text-muted small">' + sig.nombre + '</td>' +
+          '<td class="py-1 small text-end fw-medium">' + sig.valor + '</td>' +
+          '<td class="py-1 text-end ' + scoreColor(sig.score) + '">' + scoreArrow(sig.score) + '</td>';
+        macroTbody.appendChild(row);
+      });
+
+      // Tabla sectores (top resultados)
+      var sectorTbody = document.querySelector('#bc-sector-table tbody');
+      (d.sector_results || []).slice(0, 6).forEach(function (s) {
+        var row = document.createElement('tr');
+        row.innerHTML =
+          '<td class="py-1 small"><strong>' + s.ticker + '</strong> <span class="text-muted">' + s.nombre + '</span></td>' +
+          '<td class="py-1 small text-end ' + relColor(s.retorno_rel) + '">' +
+          (s.retorno_rel >= 0 ? '+' : '') + s.retorno_rel.toFixed(1) + '%</td>';
+        sectorTbody.appendChild(row);
+      });
+
+      // Sectores favorables
+      var favDiv = document.getElementById('bc-favorable');
+      (d.favorable_sectors || []).forEach(function (f) {
+        var span = document.createElement('span');
+        span.className = 'badge rounded-pill text-bg-secondary';
+        span.textContent = f.ticker + ' · ' + f.nombre;
+        favDiv.appendChild(span);
+      });
+
+      // Confianza y score
+      document.getElementById('bc-confidence').textContent = d.confidence;
+      document.getElementById('bc-score').textContent = d.score;
+
+      // Mostrar contenido
+      document.getElementById('bc-loading').style.display = 'none';
+      document.getElementById('bc-content').style.display = '';
+    })
+    .catch(function (err) {
+      document.getElementById('bc-loading').style.display = 'none';
+      var errEl = document.getElementById('bc-error');
+      errEl.textContent = 'No se pudo cargar el ciclo económico: ' + err.message;
+      errEl.style.display = '';
+    });
+})();
+</script>

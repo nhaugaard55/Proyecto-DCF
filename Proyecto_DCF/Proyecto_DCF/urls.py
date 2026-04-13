@@ -16,11 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from dcf_app.views import dcf_view, dcf_pdf_view, search_companies_view
+from dcf_app.views import dcf_view, dcf_pdf_view, search_companies_view, business_cycle_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', dcf_view, name='home'),
     path('dcf/pdf/', dcf_pdf_view, name='dcf_pdf'),
     path('api/search_companies/', search_companies_view, name='company_search'),
+    path('api/business-cycle/', business_cycle_view, name='business_cycle'),
 ]

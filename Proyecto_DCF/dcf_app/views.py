@@ -17,6 +17,7 @@ from xhtml2pdf import pisa
 from .models import AnalysisRecord
 
 from dcf_core.DCF_Main import ejecutar_dcf
+from dcf_core.business_cycle import get_business_cycle_phase
 from dcf_core.search import CompanySearchResult, search_companies
 
 
@@ -383,6 +384,25 @@ def dcf_pdf_view(request):
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="DCF_{ticker}.pdf"'
     return response
+
+
+_BUSINESS_CYCLE_CACHE_TTL = 600  # 10 minutos
+
+
+@require_GET
+def business_cycle_view(request):
+    """Devuelve la fase del ciclo económico detectada (JSON)."""
+    cache_key = "business_cycle_phase"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse(cached)
+
+    try:
+        data = get_business_cycle_phase()
+        cache.set(cache_key, data, _BUSINESS_CYCLE_CACHE_TTL)
+        return JsonResponse(data)
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
 
 
 @require_GET
