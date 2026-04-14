@@ -1613,7 +1613,7 @@
                 <div class="accordion-body">
                   <p class="text-muted small mb-3">Multiplica el Revenue por acción por el P/S de referencia del sector.</p>
                   <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">Revenue TTM</span>{% with v=resultado.datos_empresa.revenue_ttm %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Revenue TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">P/S sector (ref.)</span>{% with v=resultado.datos_empresa.ps_ratio_raw %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
@@ -1638,7 +1638,7 @@
                 <div class="accordion-body">
                   <p class="text-muted small mb-3">Multiplica el Gross Profit por acción por el P/GP de referencia del sector.</p>
                   <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">Gross Profit TTM</span>{% with v=resultado.datos_empresa.gross_profit_ttm %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Gross Profit TTM</span>{% with v=resultado.datos_empresa.gross_profit_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
@@ -1648,7 +1648,42 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 6. P/FCF Trailing ── #}
+            {# ── 6. TAM asistido ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.tam %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-tam" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
+                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                </button>
+              </h2>
+              <div id="acc-tam" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Estima el tamaño del mercado direccionable a partir del revenue actual, supuestos de penetración por etapa y un múltiplo P/S capturado del sector.</p>
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">Revenue TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">TAM estimado</span>{% with v=m.tam_estimado_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Ingreso objetivo</span>{% with v=m.revenue_objetivo_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Penetración actual</span>{% with v=m.penetracion_actual_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Penetración objetivo</span>{% with v=m.penetracion_objetivo_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Descuento ejecución</span>{% with v=m.execution_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:0 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  <div class="row g-3 mt-1">
+                    <div class="col-md-3"><span class="text-muted small d-block">Factor sectorial</span>{% with v=m.sector_scale %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:2 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">P/S objetivo</span>{% with v=m.ps_objetivo %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:2 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Factor de descuento</span>{% with v=m.discount_factor_pct %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Ingreso desc.</span>{% with v=m.revenue_objetivo_desc_billones %}<span class="fw-semibold">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 7. P/FCF Trailing ── #}
             {% if multi_model %}{% with m=multi_model.modelos.pfcf_trailing %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -1662,7 +1697,7 @@
                 <div class="accordion-body">
                   <p class="text-muted small mb-3">Multiplica el Free Cash Flow por acción por el P/FCF de referencia del sector.</p>
                   <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">FCF TTM</span>{% with v=resultado.datos_empresa.fcf_ttm %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">FCF TTM</span>{% with v=resultado.datos_empresa.fcf_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
@@ -1672,7 +1707,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 7. Forward Earnings ── #}
+            {# ── 8. Forward Earnings ── #}
             {% if multi_model %}{% with m=multi_model.modelos.fwd_earnings %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -1697,7 +1732,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 8. Forward FCF ── #}
+            {# ── 9. Forward FCF ── #}
             {% if multi_model %}{% with m=multi_model.modelos.fwd_fcf %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -1711,7 +1746,7 @@
                 <div class="accordion-body">
                   <p class="text-muted small mb-3">Proyecta el FCF del próximo año y aplica el múltiplo P/FCF del sector.</p>
                   <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">FCF TTM</span>{% with v=resultado.datos_empresa.fcf_ttm %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">FCF TTM</span>{% with v=resultado.datos_empresa.fcf_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Crecimiento estimado</span>{% with v=resultado.metricas.crecimiento_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>

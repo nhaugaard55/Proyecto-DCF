@@ -1,7 +1,7 @@
 """
 Motor de valuación multi-modelo.
 
-Calcula el valor intrínseco de una empresa usando 8 modelos distintos,
+Calcula el valor intrínseco de una empresa usando 9 modelos distintos,
 los pondera según la etapa del ciclo de vida detectada por company_stage.py,
 y produce un precio consenso final.
 
@@ -43,6 +43,28 @@ _DEFAULT_RATIOS: dict[str, float] = {
     "pe": 20.0, "ps": 3.0, "pgp": 7.0, "pfcf": 18.0, "pe_fwd": 18.0
 }
 
+_SECTOR_TAM_SCALE: dict[str, float] = {
+    "Technology": 1.25,
+    "Healthcare": 1.15,
+    "Consumer Cyclical": 1.00,
+    "Consumer Defensive": 0.85,
+    "Financial Services": 0.90,
+    "Energy": 0.75,
+    "Industrials": 0.95,
+    "Utilities": 0.70,
+    "Basic Materials": 0.80,
+    "Real Estate": 0.85,
+}
+
+_STAGE_TAM_ASSUMPTIONS: dict[int, dict[str, float]] = {
+    1: {"current_pen": 0.02, "target_pen": 0.10, "execution": 0.45, "ps_capture": 0.55},
+    2: {"current_pen": 0.04, "target_pen": 0.12, "execution": 0.60, "ps_capture": 0.65},
+    3: {"current_pen": 0.07, "target_pen": 0.14, "execution": 0.72, "ps_capture": 0.80},
+    4: {"current_pen": 0.10, "target_pen": 0.18, "execution": 0.82, "ps_capture": 0.90},
+    5: {"current_pen": 0.14, "target_pen": 0.18, "execution": 0.90, "ps_capture": 0.95},
+    6: {"current_pen": 0.16, "target_pen": 0.12, "execution": 0.60, "ps_capture": 0.70},
+}
+
 
 # ---------------------------------------------------------------------------
 # Pesos por etapa del ciclo de vida
@@ -58,6 +80,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 0.5, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
+        "tam": 1.0,
         "tam_note": True, "asset_note": False,
     },
     2: {  # Hyper Growth
@@ -65,6 +88,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
+        "tam": 1.0,
         "tam_note": True, "asset_note": False,
     },
     3: {  # Break Even
@@ -72,6 +96,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.5, "fwd_fcf": 0.5,
+        "tam": 0.5,
         "tam_note": False, "asset_note": False,
     },
     4: {  # Operating Leverage
@@ -79,6 +104,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.5, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.5,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
+        "tam": 0.5,
         "tam_note": False, "asset_note": False,
     },
     5: {  # Capital Return
@@ -86,6 +112,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 1.0, "ps": 0.5,
         "pgp": 0.5, "pfcf_trailing": 1.0,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
+        "tam": 0.0,
         "tam_note": False, "asset_note": False,
     },
     6: {  # Decline — los modelos de crecimiento pierden relevancia
@@ -93,12 +120,13 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 0.0,
         "pgp": 0.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
+        "tam": 0.0,
         "tam_note": False, "asset_note": True,
     },
 }
 
 _MODEL_KEYS = ["dcf", "reverse_dcf", "pe_trailing", "ps", "pgp",
-               "pfcf_trailing", "fwd_earnings", "fwd_fcf"]
+               "tam", "pfcf_trailing", "fwd_earnings", "fwd_fcf"]
 
 _MODEL_NOMBRES = {
     "dcf":           "DCF",
@@ -106,6 +134,7 @@ _MODEL_NOMBRES = {
     "pe_trailing":   "P/E Trailing",
     "ps":            "Price to Sales",
     "pgp":           "Price to Gross Profit",
+    "tam":           "TAM asistido",
     "pfcf_trailing": "P/FCF Trailing",
     "fwd_earnings":  "P/E Forward",
     "fwd_fcf":       "P/FCF Forward",
@@ -137,6 +166,22 @@ def _ratios(sector: Optional[str]) -> dict[str, float]:
         if key.lower() in (sector or "").lower():
             return ratios
     return _DEFAULT_RATIOS
+
+
+def _tam_sector_scale(sector: Optional[str]) -> float:
+    """Factor heurístico de amplitud TAM según sector."""
+    if not sector:
+        return 1.0
+    for key, scale in _SECTOR_TAM_SCALE.items():
+        if key.lower() in (sector or "").lower():
+            return scale
+    return 1.0
+
+
+def _to_billions(value: Optional[float]) -> Optional[float]:
+    if value is None:
+        return None
+    return round(value / 1_000_000_000, 2)
 
 
 def _confianza(n_modelos: int) -> str:
@@ -318,8 +363,59 @@ def _modelo_pgp(financials: dict, ratios: dict) -> dict:
     }
 
 
+def _modelo_tam(financials: dict, ratios: dict, stage: int, wacc: float) -> dict:
+    """Modelo 6 — TAM asistido con supuestos sectoriales y por etapa."""
+    datos = financials.get("datos_empresa") or {}
+    revenue = _sf(datos.get("revenue_ttm"))
+    acciones = _sf(datos.get("acciones"))
+    sector = datos.get("sector")
+
+    if revenue is None or revenue <= 0 or acciones is None or not acciones:
+        return {
+            "valor": None,
+            "aplicable": False,
+            "detalle": "Revenue TTM o acciones no disponibles para estimar TAM.",
+        }
+
+    assumptions = _STAGE_TAM_ASSUMPTIONS.get(stage, _STAGE_TAM_ASSUMPTIONS[4])
+    current_pen = assumptions["current_pen"]
+    target_pen = assumptions["target_pen"]
+    execution = assumptions["execution"]
+    ps_capture = assumptions["ps_capture"]
+
+    sector_scale = _tam_sector_scale(sector)
+    tam_estimado = (revenue / current_pen) * sector_scale
+    revenue_objetivo = tam_estimado * target_pen * execution
+    discount_factor = 1 / ((1 + max(wacc, 0.01)) ** 5)
+    revenue_objetivo_desc = revenue_objetivo * discount_factor
+    ps_objetivo = ratios["ps"] * ps_capture
+    valor = (revenue_objetivo_desc / acciones) * ps_objetivo
+
+    detalle = (
+        f"TAM estimado ${_to_billions(tam_estimado):.2f}B con penetración actual "
+        f"asumida del {current_pen*100:.1f}%. Se modela capturar {target_pen*100:.1f}% "
+        f"del TAM, con descuento de ejecución del {execution*100:.0f}% y P/S objetivo "
+        f"de {ps_objetivo:.1f}x, descontado 5 años al WACC."
+    )
+
+    return {
+        "valor": round(valor, 2),
+        "aplicable": True,
+        "detalle": detalle,
+        "tam_estimado_billones": _to_billions(tam_estimado),
+        "revenue_objetivo_billones": _to_billions(revenue_objetivo),
+        "revenue_objetivo_desc_billones": _to_billions(revenue_objetivo_desc),
+        "penetracion_actual_pct": round(current_pen * 100, 2),
+        "penetracion_objetivo_pct": round(target_pen * 100, 2),
+        "execution_pct": round(execution * 100, 2),
+        "discount_factor_pct": round(discount_factor * 100, 2),
+        "ps_objetivo": round(ps_objetivo, 2),
+        "sector_scale": round(sector_scale, 2),
+    }
+
+
 def _modelo_pfcf_trailing(financials: dict, ratios: dict) -> dict:
-    """Modelo 6 — Price to FCF Trailing."""
+    """Modelo 7 — Price to FCF Trailing."""
     datos = financials.get("datos_empresa") or {}
     fcf_ttm = _sf(datos.get("fcf_ttm"))
     acciones = _sf(datos.get("acciones"))
@@ -339,7 +435,7 @@ def _modelo_pfcf_trailing(financials: dict, ratios: dict) -> dict:
 
 
 def _modelo_fwd_earnings(financials: dict, ratios: dict) -> dict:
-    """Modelo 7 — Price to Forward Earnings."""
+    """Modelo 8 — Price to Forward Earnings."""
     datos = financials.get("datos_empresa") or {}
     eps_fwd = _sf(datos.get("eps_forward"))
     pe_fwd_sector = ratios.get("pe_fwd", ratios["pe"])
@@ -370,7 +466,7 @@ def _modelo_fwd_earnings(financials: dict, ratios: dict) -> dict:
 
 
 def _modelo_fwd_fcf(financials: dict, ratios: dict) -> dict:
-    """Modelo 8 — Price to Forward FCF."""
+    """Modelo 9 — Price to Forward FCF."""
     datos = financials.get("datos_empresa") or {}
     fcf_ttm = _sf(datos.get("fcf_ttm"))
     acciones = _sf(datos.get("acciones"))
@@ -444,7 +540,7 @@ def run_all_models(
     wacc: float,
 ) -> dict:
     """
-    Ejecuta los 8 modelos de valuación y calcula el precio consenso ponderado.
+    Ejecuta los 9 modelos de valuación y calcula el precio consenso ponderado.
 
     Parámetros:
         ticker:     Símbolo bursátil (solo para contexto en el retorno).
@@ -468,6 +564,7 @@ def run_all_models(
         "pe_trailing":   _modelo_pe_trailing(financials, ratios),
         "ps":            _modelo_ps(financials, ratios),
         "pgp":           _modelo_pgp(financials, ratios),
+        "tam":           _modelo_tam(financials, ratios, stage, wacc),
         "pfcf_trailing": _modelo_pfcf_trailing(financials, ratios),
         "fwd_earnings":  _modelo_fwd_earnings(financials, ratios),
         "fwd_fcf":       _modelo_fwd_fcf(financials, ratios),
@@ -509,6 +606,16 @@ def run_all_models(
             entry["g_implicita_pct"] = r.get("g_implicita_pct")
             entry["cagr_historico_pct"] = r.get("cagr_historico_pct")
             entry["veredicto"] = r.get("veredicto")
+        elif key == "tam":
+            entry["tam_estimado_billones"] = r.get("tam_estimado_billones")
+            entry["revenue_objetivo_billones"] = r.get("revenue_objetivo_billones")
+            entry["revenue_objetivo_desc_billones"] = r.get("revenue_objetivo_desc_billones")
+            entry["penetracion_actual_pct"] = r.get("penetracion_actual_pct")
+            entry["penetracion_objetivo_pct"] = r.get("penetracion_objetivo_pct")
+            entry["execution_pct"] = r.get("execution_pct")
+            entry["discount_factor_pct"] = r.get("discount_factor_pct")
+            entry["ps_objetivo"] = r.get("ps_objetivo")
+            entry["sector_scale"] = r.get("sector_scale")
 
         modelos[key] = entry
 
@@ -582,9 +689,8 @@ def run_all_models(
     nota_especial: Optional[str] = None
     if raw_weights.get("tam_note"):
         nota_especial = (
-            "En etapas tempranas el precio consenso tiene alta incertidumbre. "
-            "El TAM y la trayectoria de crecimiento son más relevantes que "
-            "cualquier modelo cuantitativo."
+            "En etapas tempranas el consenso depende más de la oportunidad de mercado. "
+            "El modelo TAM asistido y la trayectoria de crecimiento pesan más que los flujos actuales."
         )
     elif raw_weights.get("asset_note"):
         nota_especial = (
