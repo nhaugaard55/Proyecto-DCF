@@ -48,47 +48,51 @@ _DEFAULT_RATIOS: dict[str, float] = {
 # Pesos por etapa del ciclo de vida
 # ---------------------------------------------------------------------------
 
+# Matriz alineada con el gráfico "Valuation by Stage" de Brian Feroldi.
+# 1.0 = Útil, 0.5 = Algo útil, 0.0 = No útil.
+# Luego los pesos se renormalizan sólo entre los modelos aplicables
+# que realmente aportan un precio al consenso.
 WEIGHTS: dict[int, dict[str, float | bool]] = {
     1: {  # Startup
-        "dcf": 0.00, "reverse_dcf": 0.00,
-        "pe_trailing": 0.00, "ps": 0.40,
-        "pgp": 0.40, "pfcf_trailing": 0.00,
-        "fwd_earnings": 0.00, "fwd_fcf": 0.00,
+        "dcf": 0.0, "reverse_dcf": 0.0,
+        "pe_trailing": 0.0, "ps": 1.0,
+        "pgp": 0.5, "pfcf_trailing": 0.0,
+        "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam_note": True, "asset_note": False,
     },
     2: {  # Hyper Growth
-        "dcf": 0.00, "reverse_dcf": 0.00,
-        "pe_trailing": 0.00, "ps": 0.40,
-        "pgp": 0.35, "pfcf_trailing": 0.00,
-        "fwd_earnings": 0.00, "fwd_fcf": 0.25,
+        "dcf": 0.0, "reverse_dcf": 0.0,
+        "pe_trailing": 0.0, "ps": 1.0,
+        "pgp": 1.0, "pfcf_trailing": 0.0,
+        "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam_note": True, "asset_note": False,
     },
     3: {  # Break Even
-        "dcf": 0.15, "reverse_dcf": 0.10,
-        "pe_trailing": 0.00, "ps": 0.25,
-        "pgp": 0.20, "pfcf_trailing": 0.00,
-        "fwd_earnings": 0.15, "fwd_fcf": 0.15,
+        "dcf": 0.5, "reverse_dcf": 0.5,
+        "pe_trailing": 0.0, "ps": 1.0,
+        "pgp": 1.0, "pfcf_trailing": 0.0,
+        "fwd_earnings": 0.5, "fwd_fcf": 0.5,
         "tam_note": False, "asset_note": False,
     },
     4: {  # Operating Leverage
-        "dcf": 0.20, "reverse_dcf": 0.10,
-        "pe_trailing": 0.15, "ps": 0.10,
-        "pgp": 0.10, "pfcf_trailing": 0.15,
-        "fwd_earnings": 0.10, "fwd_fcf": 0.10,
+        "dcf": 0.5, "reverse_dcf": 0.5,
+        "pe_trailing": 0.5, "ps": 1.0,
+        "pgp": 1.0, "pfcf_trailing": 0.5,
+        "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam_note": False, "asset_note": False,
     },
     5: {  # Capital Return
-        "dcf": 0.30, "reverse_dcf": 0.15,
-        "pe_trailing": 0.20, "ps": 0.00,
-        "pgp": 0.00, "pfcf_trailing": 0.20,
-        "fwd_earnings": 0.10, "fwd_fcf": 0.05,
+        "dcf": 1.0, "reverse_dcf": 1.0,
+        "pe_trailing": 1.0, "ps": 0.5,
+        "pgp": 0.5, "pfcf_trailing": 1.0,
+        "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam_note": False, "asset_note": False,
     },
-    6: {  # Decline — todos en cero; se muestra aviso especial
-        "dcf": 0.00, "reverse_dcf": 0.00,
-        "pe_trailing": 0.00, "ps": 0.00,
-        "pgp": 0.00, "pfcf_trailing": 0.00,
-        "fwd_earnings": 0.00, "fwd_fcf": 0.00,
+    6: {  # Decline — los modelos de crecimiento pierden relevancia
+        "dcf": 0.0, "reverse_dcf": 0.0,
+        "pe_trailing": 0.0, "ps": 0.0,
+        "pgp": 0.0, "pfcf_trailing": 0.0,
+        "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam_note": False, "asset_note": True,
     },
 }
@@ -142,6 +146,15 @@ def _confianza(n_modelos: int) -> str:
     if n_modelos >= 3:
         return "Media"
     return "Baja"
+
+
+def _relevancia_desde_peso(peso_raw: float) -> str:
+    """Convierte el peso categórico a la etiqueta visible en UI."""
+    if peso_raw >= 1.0:
+        return "Útil"
+    if peso_raw > 0.0:
+        return "Algo útil"
+    return "No útil"
 
 
 # ---------------------------------------------------------------------------
@@ -470,12 +483,7 @@ def run_all_models(
         peso_raw = float(raw_weights.get(key, 0.0)) if isinstance(raw_weights.get(key), (int, float)) else 0.0
         peso_final = pesos_ajustados.get(key, 0.0)
 
-        if peso_raw == 0.0:
-            relevancia = "No útil"
-        elif key in ("dcf", "reverse_dcf", "pe_trailing", "pfcf_trailing", "fwd_earnings", "fwd_fcf"):
-            relevancia = "Útil" if peso_raw >= 0.15 else "Algo útil"
-        else:
-            relevancia = "Útil" if peso_raw >= 0.20 else "Algo útil"
+        relevancia = _relevancia_desde_peso(peso_raw)
 
         valor_modelo = r.get("valor")
         if valor_modelo is not None and precio_actual and key != "reverse_dcf":
@@ -584,13 +592,15 @@ def run_all_models(
             "limitada. Considerá el valor de liquidación y los dividendos."
         )
 
-    utiles_keys = [k for k in _MODEL_KEYS if float(raw_weights.get(k, 0) or 0) > 0]
+    utiles_keys = [k for k in _MODEL_KEYS if float(raw_weights.get(k, 0) or 0) >= 1.0]
+    algo_utiles_keys = [k for k in _MODEL_KEYS if 0.0 < float(raw_weights.get(k, 0) or 0) < 1.0]
     no_utiles_keys = [k for k in _MODEL_KEYS if float(raw_weights.get(k, 0) or 0) == 0]
 
     stage_context = {
         "stage": stage,
         "stage_name": meta["nombre"],
         "modelos_utiles": [_MODEL_NOMBRES[k] for k in utiles_keys],
+        "modelos_algo_utiles": [_MODEL_NOMBRES[k] for k in algo_utiles_keys],
         "modelos_no_utiles": [_MODEL_NOMBRES[k] for k in no_utiles_keys],
         "nota_especial": nota_especial,
     }

@@ -34,9 +34,9 @@ STAGE_META = {
             "El DCF produce resultados poco confiables en etapas iniciales. "
             "Con FCFs negativos o inexistentes, las proyecciones son especulativas."
         ),
-        "metricas_utiles": ["P/S", "Price / Gross Profit", "Revenue Growth", "TAM"],
-        "metricas_algo_utiles": ["P/B"],
-        "metricas_no_utiles": ["P/E", "P/FCF", "DCF", "Reverse DCF", "ROE", "Safety Margin"],
+        "metricas_utiles": ["TAM", "P/S"],
+        "metricas_algo_utiles": ["Price / Gross Profit"],
+        "metricas_no_utiles": ["P/Forward Earnings", "P/Forward FCF", "P/E", "P/FCF", "DCF", "Reverse DCF"],
     },
     2: {
         "nombre": "Hyper Growth",
@@ -51,9 +51,9 @@ STAGE_META = {
             "Con FCFs negativos o muy volátiles, el DCF produce valuaciones "
             "inconsistentes. El mercado premia el crecimiento, no los flujos actuales."
         ),
-        "metricas_utiles": ["P/S", "Revenue Growth", "Price / Gross Profit"],
-        "metricas_algo_utiles": ["P/B", "P/Forward Earnings"],
-        "metricas_no_utiles": ["P/E", "P/FCF", "DCF", "ROE", "Safety Margin"],
+        "metricas_utiles": ["TAM", "P/S", "Price / Gross Profit"],
+        "metricas_algo_utiles": [],
+        "metricas_no_utiles": ["P/Forward Earnings", "P/Forward FCF", "P/E", "P/FCF", "DCF", "Reverse DCF"],
     },
     3: {
         "nombre": "Break Even",
@@ -68,9 +68,9 @@ STAGE_META = {
             "El DCF puede funcionar, pero las proyecciones de FCF aún tienen "
             "alta incertidumbre. Usarlo junto a múltiplos de revenue."
         ),
-        "metricas_utiles": ["P/S", "P/Forward Earnings", "Revenue Growth"],
-        "metricas_algo_utiles": ["P/E", "P/B", "DCF", "P/FCF"],
-        "metricas_no_utiles": ["ROE", "Safety Margin"],
+        "metricas_utiles": ["P/S", "Price / Gross Profit"],
+        "metricas_algo_utiles": ["TAM", "P/Forward Earnings", "P/Forward FCF", "DCF", "Reverse DCF"],
+        "metricas_no_utiles": ["P/E", "P/FCF"],
     },
     4: {
         "nombre": "Operating Leverage",
@@ -80,10 +80,13 @@ STAGE_META = {
             "a medida que crece. El FCF crece más rápido que los ingresos."
         ),
         "color": "success",
-        "dcf_utility": "Útil",
-        "dcf_warning": None,
-        "metricas_utiles": ["P/E", "P/S", "P/FCF", "DCF", "Reverse DCF", "ROE"],
-        "metricas_algo_utiles": ["P/B", "Safety Margin"],
+        "dcf_utility": "Algo útil",
+        "dcf_warning": (
+            "En esta etapa el DCF ya aporta señal, pero todavía conviene "
+            "contrastarlo con múltiplos forward y de márgenes."
+        ),
+        "metricas_utiles": ["P/S", "Price / Gross Profit", "P/Forward Earnings", "P/Forward FCF"],
+        "metricas_algo_utiles": ["TAM", "P/E", "P/FCF", "DCF", "Reverse DCF"],
         "metricas_no_utiles": [],
     },
     5: {
@@ -94,11 +97,11 @@ STAGE_META = {
             "lo devuelve a accionistas mediante dividendos o buybacks."
         ),
         "color": "success",
-        "dcf_utility": "Muy útil",
+        "dcf_utility": "Útil",
         "dcf_warning": None,
-        "metricas_utiles": ["P/E", "P/FCF", "DCF", "Safety Margin", "Dividend Yield", "ROE"],
-        "metricas_algo_utiles": ["P/S", "P/B"],
-        "metricas_no_utiles": [],
+        "metricas_utiles": ["P/Forward Earnings", "P/Forward FCF", "P/E", "P/FCF", "DCF", "Reverse DCF"],
+        "metricas_algo_utiles": ["P/S", "Price / Gross Profit"],
+        "metricas_no_utiles": ["TAM"],
     },
     6: {
         "nombre": "Decline",
@@ -108,21 +111,21 @@ STAGE_META = {
             "competitiva. El FCF puede deteriorarse rápidamente."
         ),
         "color": "danger",
-        "dcf_utility": "Algo útil",
+        "dcf_utility": "No es útil",
         "dcf_warning": (
-            "El DCF puede subestimar el riesgo de deterioro si no se ajustan "
-            "las proyecciones a la baja con un escenario pesimista explícito."
+            "En declive, los modelos basados en crecimiento y flujos suelen "
+            "ser poco representativos. El foco debería pasar al valor de activos o liquidación."
         ),
-        "metricas_utiles": ["Debt/Capital", "Dividend Yield", "ICR"],
-        "metricas_algo_utiles": ["P/E", "DCF"],
-        "metricas_no_utiles": ["P/S", "P/FCF", "ROE", "Revenue Growth"],
+        "metricas_utiles": [],
+        "metricas_algo_utiles": [],
+        "metricas_no_utiles": ["TAM", "P/S", "Price / Gross Profit", "P/Forward Earnings", "P/Forward FCF", "P/E", "P/FCF", "DCF", "Reverse DCF"],
     },
 }
 
 # Relevancia de las métricas que ya calcula la app, por etapa
 # "u" = útil, "a" = algo útil, "n" = no útil
 _METRIC_RELEVANCE: dict[str, dict[int, str]] = {
-    "P/E":            {1: "n", 2: "n", 3: "a", 4: "u", 5: "u", 6: "a"},
+    "P/E":            {1: "n", 2: "n", 3: "n", 4: "a", 5: "u", 6: "n"},
     "P/S":            {1: "u", 2: "u", 3: "u", 4: "u", 5: "a", 6: "n"},
     "P/B":            {1: "u", 2: "u", 3: "a", 4: "a", 5: "a", 6: "n"},
     "ROE":            {1: "n", 2: "n", 3: "a", 4: "u", 5: "u", 6: "n"},

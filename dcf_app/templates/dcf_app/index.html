@@ -1551,7 +1551,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-rdcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="fw-semibold me-2">Reverse DCF</span>
                   {% if rdcf.g_implicita_pct is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">g implícita {{ rdcf.g_implicita_pct|floatformat:1 }}%</span>{% endif %}
-                  <span class="badge {% if rdcf.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ rdcf.relevancia }}</span>
+                  <span class="badge {% if rdcf.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif rdcf.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ rdcf.relevancia }}</span>
                 </button>
               </h2>
               <div id="acc-rdcf" class="accordion-collapse collapse">
@@ -1581,7 +1581,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pe" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
                 </button>
               </h2>
               <div id="acc-pe" class="accordion-collapse collapse">
@@ -1606,7 +1606,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-ps" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
                 </button>
               </h2>
               <div id="acc-ps" class="accordion-collapse collapse">
@@ -1631,7 +1631,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pgp" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
                 </button>
               </h2>
               <div id="acc-pgp" class="accordion-collapse collapse">
@@ -1655,7 +1655,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pfcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
                 </button>
               </h2>
               <div id="acc-pfcf" class="accordion-collapse collapse">
@@ -1673,13 +1673,13 @@
             {% endif %}{% endwith %}{% endif %}
 
             {# ── 7. Forward Earnings ── #}
-            {% if multi_model %}{% with m=multi_model.modelos.forward_earnings %}{% if m %}
+            {% if multi_model %}{% with m=multi_model.modelos.fwd_earnings %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-fwd-e" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
                 </button>
               </h2>
               <div id="acc-fwd-e" class="accordion-collapse collapse">
@@ -1698,13 +1698,13 @@
             {% endif %}{% endwith %}{% endif %}
 
             {# ── 8. Forward FCF ── #}
-            {% if multi_model %}{% with m=multi_model.modelos.forward_fcf %}{% if m %}
+            {% if multi_model %}{% with m=multi_model.modelos.fwd_fcf %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-fwd-fcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
                 </button>
               </h2>
               <div id="acc-fwd-fcf" class="accordion-collapse collapse">
