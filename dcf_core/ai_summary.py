@@ -25,7 +25,7 @@ class _ModelUnavailableError(AISummaryError):
 _DEFAULT_MODEL = "HuggingFaceH4/zephyr-7b-beta"
 _FALLBACK_MODEL = "facebook/bart-large-cnn"
 _TRANSLATION_MODEL = "Helsinki-NLP/opus-mt-en-es"
-_HF_BASE_URL = "https://api-inference.huggingface.co/models"
+_HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
 
 # Mantener el prompt dentro de una ventana que el modelo pueda manejar.
 _MAX_NOTICIAS_PROMPT = 8
