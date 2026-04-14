@@ -27,11 +27,15 @@ _FALLBACK_MODEL = "facebook/bart-large-cnn"
 _TRANSLATION_MODEL = "Helsinki-NLP/opus-mt-en-es"
 _HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
 
-# Mantener el prompt dentro de una ventana que el modelo pueda manejar.
-_MAX_NOTICIAS_PROMPT = 8
-_MAX_TITULO_CHARS = 140
-_MAX_RESUMEN_CHARS = 320
-_MAX_PROMPT_CHARS = 4200
+# Límites por llamada al modelo
+_MAX_NOTICIAS_PROMPT = 12     # noticias por bloque / por llamada directa
+_MAX_TITULO_CHARS = 160
+_MAX_RESUMEN_CHARS = 400
+_MAX_PROMPT_CHARS = 7000
+
+# Si hay más noticias que este umbral, se usan bloques proactivamente
+# para garantizar que todas las noticias queden cubiertas.
+_BLOCK_THRESHOLD = 10
 _CTA_REGEX = re.compile(
     r"\b("
     r"haga\s+clic"
@@ -82,14 +86,18 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
         noticias = noticias[:_MAX_NOTICIAS_PROMPT]
     empresa = str(noticias[0].get("empresa")) if noticias else "la compañía analizada"
     instruccion = (
-        f"Eres un analista financiero hispanohablante. Analiza solo las noticias listadas sobre {empresa}. "
-        f"Redacta en {idioma} un resumen narrativo y natural, con tono periodístico latino, que conecte los hechos mediante transiciones fluidas y mantenga un hilo conductor. "
-        "Relaciona las noticias destacando vínculos causa-efecto o contrastes, e integra las ideas principales de cada artículo (qué ocurrió y por qué importa) con interpretaciones breves sobre su impacto en el sentimiento hacia la compañía. "
-        "Escribe al menos tres frases enlazadas con conectores naturales (por ejemplo, 'además', 'sin embargo', 'mientras tanto', 'por su parte') y redacta con tus propias palabras, sin reproducir textualmente las notas. "
-        "Evita enumeraciones rígidas, expresiones mecánicas o frases aisladas; escribe en un único párrafo coherente con conectores variados. "
-        "Ignora frases promocionales o llamadas a la acción presentes en las noticias (por ejemplo, 'haga clic', 'lea más') y omite invitaciones a descargar o leer contenidos externos. "
-        "Cierra con una frase que indique si el tono general resulta positivo, negativo o mixto. Sé conciso, evita redundancias y usa únicamente las frases necesarias, "
-        "sin añadir información externa ni menciones a otras empresas."
+        f"Eres un analista financiero hispanohablante experto en mercados de capitales. "
+        f"Se te entregan TODAS las noticias recientes disponibles sobre {empresa}. "
+        f"Tu tarea es redactar en {idioma} un resumen completo y narrativo que cubra TODAS las noticias listadas, sin omitir ninguna. "
+        "Organiza el resumen en dos o tres párrafos bien conectados, usando tono periodístico latino con transiciones fluidas ('además', 'sin embargo', 'mientras tanto', 'por su parte', 'en paralelo'). "
+        "Primer párrafo: los hechos más relevantes y recientes. "
+        "Segundo párrafo: contexto adicional, tendencias o contrastes que aporten las otras noticias. "
+        "Si corresponde, tercer párrafo: perspectivas, riesgos o catalizadores mencionados. "
+        "Integra el impacto de cada noticia en el sentimiento hacia la compañía. "
+        "Redacta con tus propias palabras, sin reproducir textualmente los títulos ni los resúmenes. "
+        "Ignora frases promocionales, llamadas a la acción ('haga clic', 'lea más') e invitaciones a descargar contenidos externos. "
+        "Cierra con una frase que indique si el tono general es positivo, negativo o mixto, y por qué. "
+        "No añadas información externa ni menciones a empresas distintas de la analizada."
     )
     partes: list[str] = []
     base_prompt_longitud = (
@@ -331,6 +339,11 @@ def generar_resumen_sentimiento(
     if not noticias:
         raise AISummaryError("No hay noticias para resumir.")
 
+    # Cuando hay muchas noticias, usar bloques proactivamente para garantizar
+    # que todas queden cubiertas sin esperar a que el modelo falle.
+    if len(noticias) > _BLOCK_THRESHOLD and _permitir_bloques and _nivel < 5:
+        return _resumir_en_bloques(noticias, idioma, modelo, _nivel)
+
     api_token = os.environ.get("HUGGINGFACE_API_TOKEN", "").strip()
     if not api_token:
         raise AISummaryError("Definí HUGGINGFACE_API_TOKEN para habilitar el resumen con IA.")
@@ -339,7 +352,7 @@ def generar_resumen_sentimiento(
     payload = {
         "inputs": prompt,
         "parameters": {
-            "max_new_tokens": 320,
+            "max_new_tokens": 512,
             "temperature": 0.3,
             "top_p": 0.9,
             "do_sample": True,
