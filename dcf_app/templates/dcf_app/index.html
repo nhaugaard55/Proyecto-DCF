@@ -881,23 +881,31 @@
                         {% endwith %}
                         {% endwith %}
 
-                        <!-- Paso 2: Valuación DCF -->
+                        <!-- Paso 2: Valuación -->
                         <div class="col-12 col-md-4">
                             <div class="p-3 rounded-3 h-100 border" style="border-color: var(--bs-border-color)!important;">
                                 <div class="fs-2 mb-1">📐</div>
                                 <div class="fw-bold mb-1">Paso 2 — Valuación</div>
-                                <div class="text-muted small mb-2">Valor intrínseco (DCF)</div>
-                                {% if resultado.estado == "SUBVALUADA" %}
-                                <span class="badge bg-success px-3 py-2">✅ Subvaluada — Comprar</span>
+                                <div class="text-muted small mb-2">Consenso multi-modelo</div>
+                                {% if multi_model and multi_model.consenso and multi_model.consenso.veredicto %}
+                                    {% if multi_model.consenso.veredicto == "Subvaluada" %}
+                                    <span class="badge bg-success px-3 py-2">✅ Subvaluada</span>
+                                    {% elif multi_model.consenso.veredicto == "Sobrevaluada" %}
+                                    <span class="badge bg-danger px-3 py-2">❌ Sobrevaluada</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark px-3 py-2">⚠️ Precio razonable</span>
+                                    {% endif %}
+                                    {% if multi_model.consenso.upside_pct is not None %}
+                                    <div class="text-muted small mt-2">{{ multi_model.consenso.upside_pct|floatformat:1 }}% vs precio actual</div>
+                                    {% endif %}
+                                {% elif resultado.estado == "SUBVALUADA" %}
+                                <span class="badge bg-success px-3 py-2">✅ Subvaluada</span>
                                 {% elif resultado.estado == "SOBREVALUADA" %}
-                                <span class="badge bg-danger px-3 py-2">❌ Sobrevaluada — Esperar</span>
+                                <span class="badge bg-danger px-3 py-2">❌ Sobrevaluada</span>
                                 {% elif resultado.estado == "RAZONABLE" %}
                                 <span class="badge bg-warning text-dark px-3 py-2">⚠️ Precio razonable</span>
                                 {% else %}
                                 <span class="badge bg-secondary px-3 py-2">N/D</span>
-                                {% endif %}
-                                {% if resultado.diferencia_pct is not None %}
-                                <div class="text-muted small mt-2">Diferencia: {{ resultado.diferencia_pct|floatformat:1 }}%</div>
                                 {% endif %}
                             </div>
                         </div>
@@ -1122,15 +1130,132 @@
         <div class="col-12">
             <div class="d-flex align-items-center gap-3 mt-2">
                 <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">2</span>
-                <span class="fw-semibold fs-5">Valuación DCF</span>
+                <span class="fw-semibold fs-5">Valuación</span>
                 <hr class="flex-grow-1 my-0 opacity-25">
             </div>
         </div>
 
-        <div class="col-lg-6">
-            <div class="card soft-card h-100">
-                <div class="card-body">
-                    <h3 class="h5 mb-3">Datos generales</h3>
+        {# ── Consenso multi-modelo (siempre visible) ── #}
+        {% if multi_model and multi_model.consenso %}
+        {% with mm=multi_model consenso=multi_model.consenso ctx=multi_model.stage_context %}
+        <div class="col-12">
+          <div class="card soft-card">
+            <div class="card-body">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <h3 class="h5 fw-bold mb-0">Consenso multi-modelo</h3>
+                <span class="badge bg-primary-subtle text-primary-emphasis small">{{ ctx.stage_name }}</span>
+              </div>
+              <p class="text-muted small mb-4">Precio consenso ponderado según la etapa del ciclo de vida empresarial.
+                {% if ctx.nota_especial %}<span class="fw-semibold text-warning">⚠ {{ ctx.nota_especial }}</span>{% endif %}
+              </p>
+              <div class="row g-4">
+                <div class="col-md-4">
+                  <div class="p-4 rounded-3 h-100 d-flex flex-column justify-content-between" style="background:var(--surface-card); border:1px solid var(--surface-border);">
+                    <div>
+                      <p class="text-muted small text-uppercase fw-semibold mb-1" style="letter-spacing:.05em;">Precio consenso</p>
+                      {% if consenso.precio is not None %}
+                      <div class="display-6 fw-bold mb-1">${{ consenso.precio|floatformat:2 }}</div>
+                      <div class="small text-muted mb-3">Precio actual: ${{ consenso.precio_actual|floatformat:2 }}</div>
+                      {% if consenso.upside_pct is not None %}
+                      <div class="fs-5 fw-semibold mb-3 {% if consenso.upside_pct >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        {% if consenso.upside_pct >= 0 %}▲{% else %}▼{% endif %} {{ consenso.upside_pct|floatformat:1 }}%
+                      </div>
+                      {% endif %}
+                      {% if consenso.veredicto %}
+                      <span class="badge px-3 py-2 fs-6 {% if consenso.veredicto == 'Subvaluada' %}bg-success{% elif consenso.veredicto == 'Sobrevaluada' %}bg-danger{% else %}bg-secondary{% endif %}">{{ consenso.veredicto }}</span>
+                      {% endif %}
+                      {% else %}
+                      <div class="text-muted fs-5">Sin datos suficientes</div>
+                      {% endif %}
+                    </div>
+                    <div class="mt-3 pt-3" style="border-top:1px solid var(--surface-border);">
+                      <div class="small text-muted">{{ consenso.modelos_usados }} modelo{{ consenso.modelos_usados|pluralize:"s" }} usados</div>
+                      <div class="small text-muted">Confianza: <strong>{{ consenso.confianza }}</strong></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-8">
+                  <div class="p-4 rounded-3 h-100" style="background:var(--surface-card); border:1px solid var(--surface-border);">
+                    <p class="text-muted small text-uppercase fw-semibold mb-3" style="letter-spacing:.05em;">Rango de valuación</p>
+                    {% if consenso.rango_min is not None and consenso.rango_max is not None %}
+                    <div id="valuation-range-bar" data-min="{{ consenso.rango_min }}" data-max="{{ consenso.rango_max }}" data-consenso="{{ consenso.precio|default:0 }}" data-actual="{{ consenso.precio_actual }}">
+                      <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>${{ consenso.rango_min|floatformat:2 }}</span>
+                        <span>Rango de modelos</span>
+                        <span>${{ consenso.rango_max|floatformat:2 }}</span>
+                      </div>
+                      <div class="position-relative rounded-pill" style="height:12px; background:linear-gradient(to right, rgba(220,38,38,0.3), rgba(251,191,36,0.4), rgba(34,197,94,0.3)); overflow:visible;">
+                        <div id="marker-actual" class="position-absolute" style="top:-6px; transform:translateX(-50%); width:4px; height:24px; background:#ef4444; border-radius:2px;" title="Precio actual"></div>
+                        <div id="marker-consenso" class="position-absolute" style="top:-8px; transform:translateX(-50%); width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-bottom:14px solid #2563eb;" title="Precio consenso"></div>
+                      </div>
+                      <div class="d-flex justify-content-between small mt-2">
+                        <span class="text-danger fw-semibold">● Precio actual</span>
+                        <span class="text-primary fw-semibold">▲ Precio consenso</span>
+                      </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small">No hay suficientes modelos aplicables para mostrar el rango.</p>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle" style="background:var(--table-bg); color:var(--table-text); font-size:0.84rem;">
+                    <thead style="background:var(--table-header-bg);">
+                      <tr>
+                        <th>Modelo</th><th class="text-end">Valor estimado</th><th class="text-end">vs Precio actual</th><th class="text-end">Peso</th><th class="text-center">Relevancia</th><th>Detalle</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for key, m in mm.modelos.items %}
+                      <tr {% if m.peso == 0 %}style="opacity:0.45;"{% endif %}>
+                        <td class="fw-semibold {% if m.peso == 0 %}text-decoration-line-through text-muted{% endif %}">{{ m.nombre }}</td>
+                        <td class="text-end">
+                          {% if key == "reverse_dcf" %}{% if m.g_implicita_pct is not None %}<span class="text-muted fst-italic small">g = {{ m.g_implicita_pct|floatformat:1 }}%</span>{% else %}N/A{% endif %}
+                          {% elif m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+                        </td>
+                        <td class="text-end">
+                          {% if key != "reverse_dcf" and m.valor is not None %}<span class="small {% if m.valor >= consenso.precio_actual %}text-success{% else %}text-danger{% endif %}">${{ m.valor|floatformat:2 }}</span>{% else %}—{% endif %}
+                        </td>
+                        <td class="text-end">{% if m.peso > 0 %}<span class="fw-semibold">{{ m.peso_pct|floatformat:1 }}%</span>{% else %}—{% endif %}</td>
+                        <td class="text-center">{% if m.relevancia == "Útil" %}✅ Útil{% elif m.relevancia == "Algo útil" %}⚠️ Algo útil{% else %}❌ No útil{% endif %}</td>
+                        <td class="text-muted small">{{ m.detalle }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endwith %}
+        {% endif %}
+
+        {# ── Accordions por modelo ── #}
+        <div class="col-12">
+          <div class="accordion accordion-flush" id="modelos-accordion">
+
+            {# ── 1. DCF (abierto por defecto) ── #}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#acc-dcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">Flujo de Caja Descontado (DCF)</span>
+                  {% if resultado.valor_intrinseco is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ resultado.valor_intrinseco|floatformat:2 }}</span>{% endif %}
+                  {% if resultado.estado == "SUBVALUADA" %}<span class="badge bg-success ms-2 small">Subvaluada</span>
+                  {% elif resultado.estado == "SOBREVALUADA" %}<span class="badge bg-danger ms-2 small">Sobrevaluada</span>
+                  {% elif resultado.estado == "RAZONABLE" %}<span class="badge bg-warning text-dark ms-2 small">Razonable</span>{% endif %}
+                </button>
+              </h2>
+              <div id="acc-dcf" class="accordion-collapse collapse show">
+                <div class="accordion-body p-0">
+                  <div class="row g-3 p-3">
+
+                    <div class="col-lg-6">
+                        <div class="card soft-card h-100">
+                            <div class="card-body">
+                                <h3 class="h5 mb-3">Datos generales</h3>
                     <div class="row g-3">
                         <div class="col-6">
                             <span class="text-muted small d-block">Precio actual</span>
@@ -1328,6 +1453,264 @@
             </div>
         </div>
 
+                    {# ── Escenarios DCF ── #}
+                    {% if resultado.escenarios %}
+                    <div class="col-12 mt-2">
+                      <h5 class="fw-bold mb-3">Escenarios de valuación DCF</h5>
+                      <div class="row g-3">
+                        {% with bear=resultado.escenarios.bear base=resultado.escenarios.base bull=resultado.escenarios.bull %}
+                        <div class="col-md-4">
+                          <div class="p-4 rounded-3 border h-100" style="background:var(--surface-card); border-color:var(--surface-border)!important;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                              <span class="fw-semibold">🐻 Pesimista</span>
+                              {% if bear.estado %}<span class="badge {% if bear.estado == 'SUBVALUADA' %}bg-success{% elif bear.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %} small">{{ bear.estado }}</span>{% endif %}
+                            </div>
+                            <div class="small text-muted mb-1">Crecimiento: <strong>{{ bear.tasa_crecimiento_pct|floatformat:1 }}%</strong></div>
+                            <div class="fs-4 fw-bold mt-1">{% if bear.valor_intrinseco is not None %}${{ bear.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</div>
+                            {% if bear.diferencia_pct is not None %}<div class="small mt-1 {% if bear.diferencia_pct >= 0 %}text-success{% else %}text-danger{% endif %}">{{ bear.diferencia_pct|floatformat:1 }}% vs precio actual</div>{% endif %}
+                          </div>
+                        </div>
+                        <div class="col-md-4">
+                          <div class="p-4 rounded-3 border h-100" style="background:var(--surface-card); border-color:var(--surface-border)!important;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                              <span class="fw-semibold">📊 Base</span>
+                              {% if base.estado %}<span class="badge {% if base.estado == 'SUBVALUADA' %}bg-success{% elif base.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %} small">{{ base.estado }}</span>{% endif %}
+                            </div>
+                            <div class="small text-muted mb-1">Crecimiento: <strong>{{ base.tasa_crecimiento_pct|floatformat:1 }}%</strong></div>
+                            <div class="fs-4 fw-bold mt-1">{% if base.valor_intrinseco is not None %}${{ base.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</div>
+                            {% if base.diferencia_pct is not None %}<div class="small mt-1 {% if base.diferencia_pct >= 0 %}text-success{% else %}text-danger{% endif %}">{{ base.diferencia_pct|floatformat:1 }}% vs precio actual</div>{% endif %}
+                          </div>
+                        </div>
+                        <div class="col-md-4">
+                          <div class="p-4 rounded-3 border h-100" style="background:var(--surface-card); border-color:var(--surface-border)!important;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                              <span class="fw-semibold">🐂 Optimista</span>
+                              {% if bull.estado %}<span class="badge {% if bull.estado == 'SUBVALUADA' %}bg-success{% elif bull.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %} small">{{ bull.estado }}</span>{% endif %}
+                            </div>
+                            <div class="small text-muted mb-1">Crecimiento: <strong>{{ bull.tasa_crecimiento_pct|floatformat:1 }}%</strong></div>
+                            <div class="fs-4 fw-bold mt-1">{% if bull.valor_intrinseco is not None %}${{ bull.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</div>
+                            {% if bull.diferencia_pct is not None %}<div class="small mt-1 {% if bull.diferencia_pct >= 0 %}text-success{% else %}text-danger{% endif %}">{{ bull.diferencia_pct|floatformat:1 }}% vs precio actual</div>{% endif %}
+                          </div>
+                        </div>
+                        {% endwith %}
+                      </div>
+                    </div>
+                    {% endif %}
+
+                    {# ── Tabla de sensibilidad ── #}
+                    {% if resultado.tabla_sensibilidad %}
+                    <div class="col-12 mt-2">
+                      <h5 class="fw-bold mb-1">Tabla de sensibilidad</h5>
+                      <p class="text-muted small mb-3">Valor intrínseco según WACC y tasa de crecimiento. <span class="text-success fw-semibold">Verde</span> = subvaluada, <span class="text-danger fw-semibold">Rojo</span> = sobrevaluada.</p>
+                      <div class="table-responsive">
+                        <table class="table table-bordered table-sm text-center align-middle" id="sensitivity-table" style="background:var(--table-bg); color:var(--table-text); border-color:var(--table-border); font-size:0.82rem;" data-precio="{{ resultado.tabla_sensibilidad.precio_actual|default:0 }}">
+                          <thead><tr style="background:var(--table-header-bg);"><th style="min-width:80px;">WACC \ Crec.</th>{% for g in resultado.tabla_sensibilidad.crecimientos %}<th>{{ g }}%</th>{% endfor %}</tr></thead>
+                          <tbody>
+                            {% for row in resultado.tabla_sensibilidad.rows %}
+                            <tr><th style="background:var(--table-header-bg);">{{ row.wacc }}%</th>{% for val in row.cells %}<td data-val="{% if val is not None %}{{ val }}{% endif %}">{% if val is not None %}${{ val|floatformat:2 }}{% else %}—{% endif %}</td>{% endfor %}</tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    {% endif %}
+
+                    {# ── Precio histórico vs intrínseco ── #}
+                    {% if resultado.precio_historico %}
+                    <div class="col-12 mt-2">
+                      <h5 class="fw-bold mb-3">Precio histórico vs valor intrínseco</h5>
+                      <div style="background:var(--surface-card); border-radius:1rem; padding:1.5rem; border:1px solid var(--surface-border);">
+                        <canvas id="precioHistoricoChart" height="80"></canvas>
+                      </div>
+                    </div>
+                    {% endif %}
+
+                  </div>{# /row g-3 p-3 #}
+                </div>{# /accordion-body #}
+              </div>{# /acc-dcf collapse #}
+            </div>{# /acc-dcf item #}
+
+            {# ── 2. Reverse DCF ── #}
+            {% if multi_model %}{% with rdcf=multi_model.modelos.reverse_dcf consenso_mm=multi_model.consenso %}{% if rdcf %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-rdcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">Reverse DCF</span>
+                  {% if rdcf.g_implicita_pct is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">g implícita {{ rdcf.g_implicita_pct|floatformat:1 }}%</span>{% endif %}
+                  <span class="badge {% if rdcf.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ rdcf.relevancia }}</span>
+                </button>
+              </h2>
+              <div id="acc-rdcf" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="mb-2 text-muted small">Parte del precio de mercado y calcula qué tasa de crecimiento implica ese precio.</p>
+                  {% if rdcf.aplicable and rdcf.g_implicita is not None %}
+                  <div class="row g-3">
+                    <div class="col-md-4"><span class="text-muted small d-block">Crecimiento implícito</span><span class="fs-4 fw-bold">{{ rdcf.g_implicita_pct|floatformat:1 }}%</span></div>
+                    <div class="col-md-4"><span class="text-muted small d-block">CAGR histórico</span><span class="fs-4 fw-bold">{{ rdcf.cagr_historico_pct|floatformat:1 }}%</span></div>
+                    <div class="col-md-4"><span class="text-muted small d-block">Expectativa del mercado</span><span class="fs-4 fw-bold {% if rdcf.veredicto == 'Conservador' %}text-success{% elif rdcf.veredicto == 'Optimista' %}text-danger{% else %}text-warning{% endif %}">{{ rdcf.veredicto }}</span></div>
+                  </div>
+                  <div class="alert alert-light mt-3 small mb-0">
+                    El precio actual de <strong>${{ consenso_mm.precio_actual|floatformat:2 }}</strong> implica un crecimiento del FCF del
+                    <strong>{{ rdcf.g_implicita_pct|floatformat:1 }}% anual</strong> durante 5 años. Vs CAGR histórico de <strong>{{ rdcf.cagr_historico_pct|floatformat:1 }}%</strong> → expectativa
+                    <strong class="{% if rdcf.veredicto == 'Conservador' %}text-success{% elif rdcf.veredicto == 'Optimista' %}text-danger{% else %}text-warning{% endif %}">{{ rdcf.veredicto }}</strong>.
+                  </div>
+                  {% else %}<p class="text-muted mb-0">{{ rdcf.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 3. P/E Trailing ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.pe_trailing %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pe" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
+                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                </button>
+              </h2>
+              <div id="acc-pe" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Multiplica el EPS (ganancias por acción) por el P/E de referencia del sector.</p>
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">EPS TTM</span>{% with v=resultado.datos_empresa.eps_ttm %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">P/E sector (ref.)</span>{% with v=resultado.datos_empresa.pe_ratio_raw %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 4. P/S ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.ps %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-ps" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
+                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                </button>
+              </h2>
+              <div id="acc-ps" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Multiplica el Revenue por acción por el P/S de referencia del sector.</p>
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">Revenue TTM</span>{% with v=resultado.datos_empresa.revenue_ttm %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">P/S sector (ref.)</span>{% with v=resultado.datos_empresa.ps_ratio_raw %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 5. P/Gross Profit ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.pgp %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pgp" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
+                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                </button>
+              </h2>
+              <div id="acc-pgp" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Multiplica el Gross Profit por acción por el P/GP de referencia del sector.</p>
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">Gross Profit TTM</span>{% with v=resultado.datos_empresa.gross_profit_ttm %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 6. P/FCF Trailing ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.pfcf_trailing %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pfcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
+                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                </button>
+              </h2>
+              <div id="acc-pfcf" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Multiplica el Free Cash Flow por acción por el P/FCF de referencia del sector.</p>
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">FCF TTM</span>{% with v=resultado.datos_empresa.fcf_ttm %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 7. Forward Earnings ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.forward_earnings %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-fwd-e" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
+                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                </button>
+              </h2>
+              <div id="acc-fwd-e" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Multiplica el EPS forward (estimado de analistas o proyectado) por el P/E forward del sector.</p>
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">EPS Forward</span>{% with v=resultado.datos_empresa.eps_forward %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">EPS TTM</span>{% with v=resultado.datos_empresa.eps_ttm %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 8. Forward FCF ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.forward_fcf %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-fwd-fcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
+                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                </button>
+              </h2>
+              <div id="acc-fwd-fcf" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Proyecta el FCF del próximo año y aplica el múltiplo P/FCF del sector.</p>
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">FCF TTM</span>{% with v=resultado.datos_empresa.fcf_ttm %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Crecimiento estimado</span>{% with v=resultado.metricas.crecimiento_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+          </div>{# /accordion #}
+        </div>{# /col-12 accordions #}
+
         <!-- ── SEPARADOR PASO 3 ── -->
         <div class="col-12">
             <div class="d-flex align-items-center gap-3 mt-2">
@@ -1461,294 +1844,6 @@
         {% endif %}
     </div>
 </section>
-
-{# ---- Valuación Multi-Modelo ---- #}
-{% if multi_model and multi_model.consenso %}
-{% with mm=multi_model consenso=multi_model.consenso ctx=multi_model.stage_context %}
-<section class="results-section mt-5">
-  <div class="row justify-content-center">
-    <div class="col-lg-11">
-
-      <div class="d-flex align-items-center gap-2 mb-1">
-        <h5 class="fw-bold mb-0">Valuación Multi-Modelo</h5>
-        <span class="badge bg-primary-subtle text-primary-emphasis small">{{ ctx.stage_name }}</span>
-      </div>
-      <p class="text-muted small mb-4">
-        Precio consenso ponderado según la etapa del ciclo de vida empresarial.
-        {% if ctx.nota_especial %}
-        <span class="fw-semibold text-warning">⚠ {{ ctx.nota_especial }}</span>
-        {% endif %}
-      </p>
-
-      <div class="row g-4">
-
-        {# ── A) Card veredicto ── #}
-        <div class="col-md-4">
-          <div class="p-4 rounded-3 h-100 d-flex flex-column justify-content-between"
-               style="background:var(--surface-card); border:1px solid var(--surface-border);">
-            <div>
-              <p class="text-muted small text-uppercase fw-semibold mb-1" style="letter-spacing:.05em;">Precio consenso</p>
-              {% if consenso.precio is not None %}
-              <div class="display-6 fw-bold mb-1">${{ consenso.precio|floatformat:2 }}</div>
-              <div class="small text-muted mb-3">Precio actual: ${{ consenso.precio_actual|floatformat:2 }}</div>
-              {% if consenso.upside_pct is not None %}
-              <div class="fs-5 fw-semibold mb-3 {% if consenso.upside_pct >= 0 %}text-success{% else %}text-danger{% endif %}">
-                {% if consenso.upside_pct >= 0 %}▲{% else %}▼{% endif %} {{ consenso.upside_pct|floatformat:1 }}%
-              </div>
-              {% endif %}
-              {% if consenso.veredicto %}
-              <span class="badge px-3 py-2 fs-6
-                {% if consenso.veredicto == 'Subvaluada' %}bg-success
-                {% elif consenso.veredicto == 'Sobrevaluada' %}bg-danger
-                {% else %}bg-secondary{% endif %}">
-                {{ consenso.veredicto }}
-              </span>
-              {% endif %}
-              {% else %}
-              <div class="text-muted fs-5">Sin datos suficientes</div>
-              {% endif %}
-            </div>
-            <div class="mt-3 pt-3" style="border-top:1px solid var(--surface-border);">
-              <div class="small text-muted">{{ consenso.modelos_usados }} modelo{{ consenso.modelos_usados|pluralize:"s" }} usados</div>
-              <div class="small text-muted">Confianza: <strong>{{ consenso.confianza }}</strong></div>
-            </div>
-          </div>
-        </div>
-
-        {# ── B) Barra de rango ── #}
-        <div class="col-md-8">
-          <div class="p-4 rounded-3 h-100" style="background:var(--surface-card); border:1px solid var(--surface-border);">
-            <p class="text-muted small text-uppercase fw-semibold mb-3" style="letter-spacing:.05em;">Rango de valuación</p>
-            {% if consenso.rango_min is not None and consenso.rango_max is not None %}
-            <div id="valuation-range-bar"
-                 data-min="{{ consenso.rango_min }}"
-                 data-max="{{ consenso.rango_max }}"
-                 data-consenso="{{ consenso.precio|default:0 }}"
-                 data-actual="{{ consenso.precio_actual }}">
-              <div class="d-flex justify-content-between small text-muted mb-1">
-                <span>${{ consenso.rango_min|floatformat:2 }}</span>
-                <span>Rango de modelos</span>
-                <span>${{ consenso.rango_max|floatformat:2 }}</span>
-              </div>
-              <div class="position-relative rounded-pill" style="height:12px; background:linear-gradient(to right, rgba(220,38,38,0.3), rgba(251,191,36,0.4), rgba(34,197,94,0.3)); overflow:visible;">
-                {# Marcador precio actual #}
-                <div id="marker-actual" class="position-absolute" style="top:-6px; transform:translateX(-50%); width:4px; height:24px; background:#ef4444; border-radius:2px;" title="Precio actual"></div>
-                {# Marcador consenso #}
-                <div id="marker-consenso" class="position-absolute" style="top:-8px; transform:translateX(-50%); width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-bottom:14px solid #2563eb;" title="Precio consenso"></div>
-              </div>
-              <div class="d-flex justify-content-between small mt-2">
-                <span class="text-danger fw-semibold">● Precio actual</span>
-                <span class="text-primary fw-semibold">▲ Precio consenso</span>
-              </div>
-            </div>
-            {% else %}
-            <p class="text-muted small">No hay suficientes modelos aplicables para mostrar el rango.</p>
-            {% endif %}
-
-            {# Accordion Reverse DCF #}
-            {% with rdcf=mm.modelos.reverse_dcf %}
-            {% if rdcf.aplicable and rdcf.g_implicita is not None %}
-            <div class="accordion mt-3" id="rdcf-accordion">
-              <div class="accordion-item" style="background:transparent; border:1px solid var(--surface-border);">
-                <h2 class="accordion-header">
-                  <button class="accordion-button collapsed small py-2" type="button"
-                          data-bs-toggle="collapse" data-bs-target="#rdcf-body"
-                          style="background:transparent; color:var(--text-primary); box-shadow:none;">
-                    ¿Qué implica el precio actual? — Reverse DCF
-                  </button>
-                </h2>
-                <div id="rdcf-body" class="accordion-collapse collapse">
-                  <div class="accordion-body small" style="color:var(--text-secondary);">
-                    <p class="mb-1">
-                      El precio actual de <strong>${{ consenso.precio_actual|floatformat:2 }}</strong>
-                      implica que el mercado espera que la empresa crezca su FCF al
-                      <strong>{{ rdcf.g_implicita_pct|floatformat:1 }}% anual</strong>
-                      durante los próximos 5 años.
-                    </p>
-                    <p class="mb-0">
-                      Comparado con el CAGR histórico de <strong>{{ rdcf.cagr_historico_pct|floatformat:1 }}%</strong>,
-                      esta expectativa parece
-                      <strong class="{% if rdcf.veredicto == 'Conservador' %}text-success{% elif rdcf.veredicto == 'Optimista' %}text-danger{% else %}text-warning{% endif %}">
-                        {{ rdcf.veredicto }}
-                      </strong>.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {% endif %}
-            {% endwith %}
-          </div>
-        </div>
-
-      </div>{# end row #}
-
-      {# ── C) Tabla de modelos ── #}
-      <div class="mt-4">
-        <div class="table-responsive">
-          <table class="table table-sm align-middle" style="background:var(--table-bg); color:var(--table-text); font-size:0.84rem;">
-            <thead style="background:var(--table-header-bg);">
-              <tr>
-                <th>Modelo</th>
-                <th class="text-end">Valor estimado</th>
-                <th class="text-end">vs Precio actual</th>
-                <th class="text-end">Peso</th>
-                <th class="text-center">Relevancia</th>
-                <th>Detalle</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for key, m in mm.modelos.items %}
-              <tr {% if m.peso == 0 %}style="opacity:0.45;"{% endif %}>
-                <td class="fw-semibold {% if m.peso == 0 %}text-decoration-line-through text-muted{% endif %}">
-                  {{ m.nombre }}
-                </td>
-                <td class="text-end">
-                  {% if key == "reverse_dcf" %}
-                    {% if m.g_implicita_pct is not None %}
-                      <span class="text-muted fst-italic small">g = {{ m.g_implicita_pct|floatformat:1 }}%</span>
-                    {% else %}N/A{% endif %}
-                  {% elif m.valor is not None %}
-                    ${{ m.valor|floatformat:2 }}
-                  {% else %}
-                    <span class="text-muted">N/A</span>
-                  {% endif %}
-                </td>
-                <td class="text-end">
-                  {% if key != "reverse_dcf" and m.valor is not None %}
-                    <span class="small {% if m.valor >= consenso.precio_actual %}text-success{% else %}text-danger{% endif %}">
-                      ${{ m.valor|floatformat:2 }}
-                    </span>
-                  {% else %}—{% endif %}
-                </td>
-                <td class="text-end">
-                  {% if m.peso > 0 %}
-                  <span class="fw-semibold">{{ m.peso_pct|floatformat:1 }}%</span>
-                  {% else %}—{% endif %}
-                </td>
-                <td class="text-center">
-                  {% if m.relevancia == "Útil" %}✅ Útil
-                  {% elif m.relevancia == "Algo útil" %}⚠️ Algo útil
-                  {% else %}❌ No útil{% endif %}
-                </td>
-                <td class="text-muted small">{{ m.detalle }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-{% endwith %}
-{% endif %}
-
-{# ---- Escenarios bull / base / bear ---- #}
-{% if resultado.escenarios %}
-<section class="results-section mt-5">
-  <div class="row justify-content-center">
-    <div class="col-lg-10">
-      <h5 class="fw-bold mb-3">Escenarios de valuación</h5>
-      <div class="row g-3">
-        {% with bear=resultado.escenarios.bear base=resultado.escenarios.base bull=resultado.escenarios.bull %}
-
-        {# Bear #}
-        <div class="col-md-4">
-          <div class="p-4 rounded-3 border h-100" style="background:var(--surface-card); border-color:var(--surface-border)!important;">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="fw-semibold">🐻 Pesimista</span>
-              {% if bear.estado %}<span class="badge {% if bear.estado == 'SUBVALUADA' %}bg-success{% elif bear.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %} small">{{ bear.estado }}</span>{% endif %}
-            </div>
-            <div class="small text-muted mb-1">Crecimiento: <strong>{{ bear.tasa_crecimiento_pct|floatformat:1 }}%</strong></div>
-            <div class="fs-4 fw-bold mt-1">{% if bear.valor_intrinseco is not None %}${{ bear.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</div>
-            {% if bear.diferencia_pct is not None %}<div class="small mt-1 {% if bear.diferencia_pct >= 0 %}text-success{% else %}text-danger{% endif %}">{{ bear.diferencia_pct|floatformat:1 }}% vs precio actual</div>{% endif %}
-          </div>
-        </div>
-
-        {# Base #}
-        <div class="col-md-4">
-          <div class="p-4 rounded-3 border h-100" style="background:var(--surface-card); border-color:var(--surface-border)!important;">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="fw-semibold">📊 Base</span>
-              {% if base.estado %}<span class="badge {% if base.estado == 'SUBVALUADA' %}bg-success{% elif base.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %} small">{{ base.estado }}</span>{% endif %}
-            </div>
-            <div class="small text-muted mb-1">Crecimiento: <strong>{{ base.tasa_crecimiento_pct|floatformat:1 }}%</strong></div>
-            <div class="fs-4 fw-bold mt-1">{% if base.valor_intrinseco is not None %}${{ base.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</div>
-            {% if base.diferencia_pct is not None %}<div class="small mt-1 {% if base.diferencia_pct >= 0 %}text-success{% else %}text-danger{% endif %}">{{ base.diferencia_pct|floatformat:1 }}% vs precio actual</div>{% endif %}
-          </div>
-        </div>
-
-        {# Bull #}
-        <div class="col-md-4">
-          <div class="p-4 rounded-3 border h-100" style="background:var(--surface-card); border-color:var(--surface-border)!important;">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="fw-semibold">🐂 Optimista</span>
-              {% if bull.estado %}<span class="badge {% if bull.estado == 'SUBVALUADA' %}bg-success{% elif bull.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %} small">{{ bull.estado }}</span>{% endif %}
-            </div>
-            <div class="small text-muted mb-1">Crecimiento: <strong>{{ bull.tasa_crecimiento_pct|floatformat:1 }}%</strong></div>
-            <div class="fs-4 fw-bold mt-1">{% if bull.valor_intrinseco is not None %}${{ bull.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</div>
-            {% if bull.diferencia_pct is not None %}<div class="small mt-1 {% if bull.diferencia_pct >= 0 %}text-success{% else %}text-danger{% endif %}">{{ bull.diferencia_pct|floatformat:1 }}% vs precio actual</div>{% endif %}
-          </div>
-        </div>
-
-        {% endwith %}
-      </div>
-    </div>
-  </div>
-</section>
-{% endif %}
-
-{# ---- Tabla de sensibilidad ---- #}
-{% if resultado.tabla_sensibilidad %}
-<section class="results-section mt-5">
-  <div class="row justify-content-center">
-    <div class="col-lg-10">
-      <h5 class="fw-bold mb-1">Tabla de sensibilidad</h5>
-      <p class="text-muted small mb-3">Valor intrínseco por acción según distintas combinaciones de WACC y tasa de crecimiento. <span class="text-success fw-semibold">Verde</span> = subvaluada, <span class="text-danger fw-semibold">Rojo</span> = sobrevaluada, <span style="color:#92400e" class="fw-semibold">Amarillo</span> = razonable.</p>
-      <div class="table-responsive">
-        <table class="table table-bordered table-sm text-center align-middle" id="sensitivity-table" style="background:var(--table-bg); color:var(--table-text); border-color:var(--table-border); font-size:0.82rem;" data-precio="{{ resultado.tabla_sensibilidad.precio_actual|default:0 }}">
-          <thead>
-            <tr style="background:var(--table-header-bg);">
-              <th style="min-width:80px;">WACC \ Crec.</th>
-              {% for g in resultado.tabla_sensibilidad.crecimientos %}
-              <th>{{ g }}%</th>
-              {% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in resultado.tabla_sensibilidad.rows %}
-            <tr>
-              <th style="background:var(--table-header-bg);">{{ row.wacc }}%</th>
-              {% for val in row.cells %}
-              <td data-val="{% if val is not None %}{{ val }}{% endif %}">
-                {% if val is not None %}${{ val|floatformat:2 }}{% else %}—{% endif %}
-              </td>
-              {% endfor %}
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</section>
-{% endif %}
-
-{# ---- Gráfico precio histórico vs valor intrínseco ---- #}
-{% if resultado.precio_historico %}
-<section class="results-section mt-5">
-  <div class="row justify-content-center">
-    <div class="col-lg-10">
-      <h5 class="fw-bold mb-3">Precio histórico vs valor intrínseco</h5>
-      <div style="background:var(--surface-card); border-radius:1rem; padding:1.5rem; border:1px solid var(--surface-border);">
-        <canvas id="precioHistoricoChart" height="80"></canvas>
-      </div>
-    </div>
-  </div>
-</section>
-{% endif %}
 
 {# ---- Botones de acción ---- #}
 <div class="d-flex flex-wrap justify-content-center gap-3 mt-5 mb-4">
