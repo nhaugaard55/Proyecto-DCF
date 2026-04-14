@@ -23,7 +23,7 @@ class _ModelUnavailableError(AISummaryError):
 
 
 _DEFAULT_MODEL = "HuggingFaceH4/zephyr-7b-beta"
-_FALLBACK_MODEL = "facebook/bart-large-cnn"
+_FALLBACK_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
 _TRANSLATION_MODEL = "Helsinki-NLP/opus-mt-en-es"
 _HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
 
@@ -50,6 +50,30 @@ _CTA_REGEX = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+
+
+_IDIOMA_NOMBRES: dict[str, str] = {
+    "es": "español",
+    "en": "inglés",
+    "pt": "portugués",
+    "fr": "francés",
+    "de": "alemán",
+}
+
+# Modelos seq2seq (ej. BART) que no siguen formato instrucción — reciben texto plano.
+_SEQ2SEQ_MODELS = ("facebook/bart", "google/pegasus", "sshleifer/distilbart")
+
+
+def _idioma_nombre(idioma: str) -> str:
+    """Convierte código de idioma a nombre completo para el prompt."""
+    codigo = (idioma or "es").lower().split("-")[0].split("_")[0]
+    return _IDIOMA_NOMBRES.get(codigo, idioma)
+
+
+def _es_modelo_seq2seq(model_id: str) -> bool:
+    """True si el modelo es seq2seq (BART-like) y no sigue formato de instrucción."""
+    m = (model_id or "").lower()
+    return any(m.startswith(prefijo) for prefijo in _SEQ2SEQ_MODELS)
 
 
 def _sanitize(text: str) -> str:
@@ -85,10 +109,11 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
     if _MAX_NOTICIAS_PROMPT and len(noticias) > _MAX_NOTICIAS_PROMPT:
         noticias = noticias[:_MAX_NOTICIAS_PROMPT]
     empresa = str(noticias[0].get("empresa")) if noticias else "la compañía analizada"
+    nombre_idioma = _idioma_nombre(idioma)
     instruccion = (
         f"Eres un analista financiero hispanohablante experto en mercados de capitales. "
         f"Se te entregan TODAS las noticias recientes disponibles sobre {empresa}. "
-        f"Tu tarea es redactar en {idioma} un resumen completo y narrativo que cubra TODAS las noticias listadas, sin omitir ninguna. "
+        f"Tu tarea es redactar en {nombre_idioma} un resumen completo y narrativo que cubra TODAS las noticias listadas, sin omitir ninguna. "
         "Organiza el resumen en dos o tres párrafos bien conectados, usando tono periodístico latino con transiciones fluidas ('además', 'sin embargo', 'mientras tanto', 'por su parte', 'en paralelo'). "
         "Primer párrafo: los hechos más relevantes y recientes. "
         "Segundo párrafo: contexto adicional, tendencias o contrastes que aporten las otras noticias. "
@@ -127,9 +152,26 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
         partes.append(fragmento)
     cuerpo = "\n".join(partes)
     return (
-        "<|system|>\n" + instruccion + "</s>\n"\
+        "<|system|>\n" + instruccion + "</s>\n"
         + "<|user|>\nNoticias:\n" + cuerpo + "\n\nResumen:<|assistant|>"
     )
+
+
+def _compose_seq2seq_input(noticias: Iterable[Mapping[str, object]]) -> str:
+    """Texto plano para modelos seq2seq (BART) que no siguen formato instrucción."""
+    noticias = list(noticias)
+    if _MAX_NOTICIAS_PROMPT and len(noticias) > _MAX_NOTICIAS_PROMPT:
+        noticias = noticias[:_MAX_NOTICIAS_PROMPT]
+    partes: list[str] = []
+    for noticia in noticias:
+        titulo = str(noticia.get("titulo") or "").strip()
+        resumen = _limpiar_texto_noticia(noticia.get("resumen") or "")
+        fragmento = titulo
+        if resumen:
+            fragmento += ". " + resumen
+        if fragmento.strip():
+            partes.append(fragmento.strip())
+    return " ".join(partes)[: _MAX_PROMPT_CHARS]
 
 
 def _dividir_noticias_en_bloques(noticias: list[Mapping[str, object]]) -> list[list[Mapping[str, object]]]:
@@ -348,8 +390,9 @@ def generar_resumen_sentimiento(
     if not api_token:
         raise AISummaryError("Definí HUGGINGFACE_API_TOKEN para habilitar el resumen con IA.")
 
+    # Prompt para modelos de instrucción (zephyr, mistral, etc.)
     prompt = _compose_prompt(noticias, idioma)
-    payload = {
+    payload_instruccion = {
         "inputs": prompt,
         "parameters": {
             "max_new_tokens": 512,
@@ -360,6 +403,14 @@ def generar_resumen_sentimiento(
         "options": {
             "wait_for_model": True,
         },
+    }
+
+    # Texto plano para modelos seq2seq (BART) que no siguen formato instrucción.
+    seq2seq_input = _compose_seq2seq_input(noticias)
+    payload_seq2seq = {
+        "inputs": seq2seq_input,
+        "parameters": {"clean_up_tokenization_spaces": True},
+        "options": {"wait_for_model": True},
     }
 
     headers = {
@@ -382,7 +433,14 @@ def generar_resumen_sentimiento(
     agotado_por_prompt = False
     for modelo_actual in modelos_a_probar:
         try:
-            resumen, utilizado = _solicitar_resumen(modelo_actual, headers, payload, prompt)
+            # Los modelos seq2seq (BART) reciben texto plano, no el prompt de instrucción.
+            if _es_modelo_seq2seq(modelo_actual):
+                payload_usado = payload_seq2seq
+                prompt_usado = ""
+            else:
+                payload_usado = payload_instruccion
+                prompt_usado = prompt
+            resumen, utilizado = _solicitar_resumen(modelo_actual, headers, payload_usado, prompt_usado)
 
             if idioma.lower().startswith("es"):
                 resumen = _asegurar_espanol(
