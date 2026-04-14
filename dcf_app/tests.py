@@ -1,6 +1,8 @@
+from copy import deepcopy
+
 from django.test import SimpleTestCase
 
-from dcf_core.multi_model_valuation import run_all_models
+from dcf_core.multi_model_valuation import _modelo_reverse_dcf, run_all_models
 
 
 def _sample_financials() -> dict:
@@ -46,3 +48,45 @@ class MultiModelValuationTests(SimpleTestCase):
         self.assertEqual(tam["peso_raw"], 0.0)
         self.assertEqual(tam["peso"], 0.0)
         self.assertNotIn("tam", resultado["consenso"]["modelos_usados_keys"])
+
+    def test_reverse_dcf_allows_explicit_growth_above_wacc(self) -> None:
+        financials = {
+            "precio_actual": 30.0,
+            "metricas": {"crecimiento_cagr": 0.08},
+            "datos_empresa": {
+                "acciones": 100_000_000.0,
+                "fcf_ttm": 100_000_000.0,
+                "deuda": 0.0,
+                "deuda_neta": 0.0,
+            },
+        }
+
+        reverse_dcf = _modelo_reverse_dcf(financials, 0.10)
+
+        self.assertTrue(reverse_dcf["aplicable"])
+        self.assertGreater(reverse_dcf["g_implicita_pct"], 10.0)
+        self.assertIn("crecimiento explícito permitido", reverse_dcf["detalle"])
+
+    def test_reverse_dcf_uses_net_debt_when_available(self) -> None:
+        base = {
+            "precio_actual": 30.0,
+            "metricas": {"crecimiento_cagr": 0.08},
+            "datos_empresa": {
+                "acciones": 100_000_000.0,
+                "fcf_ttm": 100_000_000.0,
+                "deuda": 0.0,
+                "deuda_neta": 0.0,
+            },
+        }
+        higher_net_debt = deepcopy(base)
+        higher_net_debt["datos_empresa"]["deuda_neta"] = 500_000_000.0
+
+        reverse_base = _modelo_reverse_dcf(base, 0.10)
+        reverse_higher_net_debt = _modelo_reverse_dcf(higher_net_debt, 0.10)
+
+        self.assertTrue(reverse_base["aplicable"])
+        self.assertTrue(reverse_higher_net_debt["aplicable"])
+        self.assertGreater(
+            reverse_higher_net_debt["g_implicita_pct"],
+            reverse_base["g_implicita_pct"],
+        )

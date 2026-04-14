@@ -237,6 +237,7 @@ def _modelo_reverse_dcf(financials: dict, wacc: float) -> dict:
     precio = _sf(financials.get("precio_actual"))
     datos_empresa = financials.get("datos_empresa") or {}
     acciones = _sf(datos_empresa.get("acciones"))
+    deuda_neta = _sf(datos_empresa.get("deuda_neta"))
     deuda = _sf(datos_empresa.get("deuda")) or 0.0
     fcf_ttm = _sf(datos_empresa.get("fcf_ttm"))
     cagr = _sf((financials.get("metricas") or {}).get("crecimiento_cagr")) or 0.05
@@ -255,13 +256,13 @@ def _modelo_reverse_dcf(financials: dict, wacc: float) -> dict:
                 "aplicable": False,
                 "detalle": "FCF negativo — Reverse DCF no aplicable"}
 
-    enterprise_value = precio * acciones + deuda
+    # Reverse DCF debe partir del enterprise value implícito del equity actual.
+    # Usar deuda neta lo vuelve más realista en compañías con mucha caja.
+    enterprise_value = precio * acciones + (deuda_neta if deuda_neta is not None else deuda)
     g_terminal = 0.025
 
     def _ev_dado_g(g: float) -> float:
-        """Calcula enterprise value teórico para una tasa g."""
-        if wacc <= g:
-            return float("inf")
+        """Calcula enterprise value teórico para una tasa g explícita a 5 años."""
         fcf_proj = [fcf_ttm * (1 + g) ** t for t in range(1, 6)]
         pv_fcf = sum(f / (1 + wacc) ** t for t, f in enumerate(fcf_proj, 1))
         if wacc <= g_terminal:
@@ -273,12 +274,47 @@ def _modelo_reverse_dcf(financials: dict, wacc: float) -> dict:
     def _objetivo(g: float) -> float:
         return _ev_dado_g(g) - enterprise_value
 
-    try:
-        g_impl = _brentq(_objetivo, -0.50, wacc - 0.005, xtol=1e-6, maxiter=200)
-    except (ValueError, RuntimeError):
+    lower_bound = -0.50
+    upper_candidates = [0.15, 0.25, 0.40, 0.60, 1.00]
+    objetivo_low = _objetivo(lower_bound)
+    g_impl = None
+    high_used = None
+
+    for upper_bound in upper_candidates:
+        objetivo_high = _objetivo(upper_bound)
+        if objetivo_low == 0:
+            g_impl = lower_bound
+            high_used = upper_bound
+            break
+        if objetivo_low * objetivo_high <= 0:
+            try:
+                g_impl = _brentq(
+                    _objetivo,
+                    lower_bound,
+                    upper_bound,
+                    xtol=1e-6,
+                    maxiter=300,
+                )
+                high_used = upper_bound
+                break
+            except (ValueError, RuntimeError):
+                continue
+
+    if g_impl is None:
+        if _objetivo(upper_candidates[-1]) < 0:
+            detalle = (
+                "El precio actual implica un crecimiento del FCF superior al "
+                f"{upper_candidates[-1] * 100:.0f}% anual en el período explícito, "
+                "fuera del rango razonable configurado para el solver."
+            )
+        else:
+            detalle = (
+                "No se pudo converger la solución numérica dentro del rango de "
+                "crecimiento explícito configurado."
+            )
         return {"valor": None, "g_implicita": None, "veredicto": None,
                 "aplicable": False,
-                "detalle": "No se pudo converger la solución numérica"}
+                "detalle": detalle}
 
     # Veredicto: comparar g_implicita con CAGR histórico
     diff = g_impl - cagr
@@ -291,7 +327,8 @@ def _modelo_reverse_dcf(financials: dict, wacc: float) -> dict:
 
     detalle = (
         f"El precio actual implica crecimiento del FCF al {g_impl*100:.1f}% anual. "
-        f"CAGR histórico: {cagr*100:.1f}%. Valuación implícita: {veredicto}."
+        f"CAGR histórico: {cagr*100:.1f}%. Valuación implícita: {veredicto}. "
+        f"Se resolvió con deuda neta y crecimiento explícito permitido hasta {high_used*100:.0f}%."
     )
 
     return {

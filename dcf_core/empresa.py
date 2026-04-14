@@ -488,6 +488,19 @@ def analizar_empresa(
         deuda_series = balance.loc["Long Term Debt"].dropna()
         if not deuda_series.empty:
             debt = to_float(deuda_series.iloc[0], 0)
+    cash = to_float(info.get("totalCash"), 0)
+    if (not cash) and balance is not None and not balance.empty:
+        for label in (
+            "Cash And Cash Equivalents",
+            "Cash Cash Equivalents And Short Term Investments",
+            "Cash Equivalents",
+        ):
+            if label in balance.index:
+                cash_series = balance.loc[label].dropna()
+                if not cash_series.empty:
+                    cash = to_float(cash_series.iloc[0], 0)
+                    break
+    net_debt = debt - cash
 
     fcf: list[float] = []
     fcf_presentacion: list[tuple[Optional[int], float]] = []
@@ -690,6 +703,10 @@ def analizar_empresa(
         "market_cap_billones": to_billions(equity),
         "deuda": debt,
         "deuda_billones": to_billions(debt),
+        "caja": cash,
+        "caja_billones": to_billions(cash),
+        "deuda_neta": net_debt,
+        "deuda_neta_billones": to_billions(net_debt),
         "beta": beta,
         "tasa_impositiva": tax_rate,
         "tasa_impositiva_pct": tax_rate * 100 if tax_rate is not None else None,
