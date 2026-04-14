@@ -785,7 +785,12 @@
                     <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
                         <div>
                             <h2 class="h4 mb-1">{{ resultado.nombre }} {% if ticker %}<span class="text-muted">({{ ticker }})</span>{% endif %}</h2>
-                            <p class="text-muted mb-1">{{ resultado.sector }}</p>
+                            <div class="d-flex flex-wrap gap-2 mb-1">
+                                {% if resultado.sector %}<span class="badge bg-primary-subtle text-primary-emphasis small">{{ resultado.sector }}</span>{% endif %}
+                                {% if resultado.datos_empresa.industria %}<span class="badge bg-secondary-subtle text-secondary-emphasis small">{{ resultado.datos_empresa.industria }}</span>{% endif %}
+                                {% if resultado.datos_empresa.pais %}<span class="badge bg-light text-secondary small border">{{ resultado.datos_empresa.pais }}</span>{% endif %}
+                                {% if resultado.datos_empresa.empleados %}<span class="text-muted small d-flex align-items-center">{{ resultado.datos_empresa.empleados|floatformat:0 }} empleados</span>{% endif %}
+                            </div>
                             {% if resultado.fuente_datos %}
                             <p class="text-muted small mb-0">Fuente de datos: {{ resultado.fuente_datos_descripcion }}</p>
                             {% endif %}
@@ -830,6 +835,19 @@
                             {% endwith %}
                         </div>
                     </div>
+                    {% if resultado.datos_empresa.descripcion %}
+                    <div class="mt-4 pt-3" style="border-top:1px solid var(--surface-border);">
+                        <p class="text-muted small mb-2 fw-semibold text-uppercase" style="letter-spacing:.05em;">Sobre la empresa</p>
+                        <p class="small mb-0" style="color:var(--text-secondary); line-height:1.7;" id="company-desc-text">
+                            {{ resultado.datos_empresa.descripcion }}
+                        </p>
+                        {% if resultado.datos_empresa.sitio_web %}
+                        <a href="{{ resultado.datos_empresa.sitio_web }}" target="_blank" rel="noopener noreferrer" class="small text-primary mt-2 d-inline-block">
+                            {{ resultado.datos_empresa.sitio_web }} ↗
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                     {% if resultado.mensaje_fuente %}
                     <div class="alert alert-info mt-4 mb-0">{{ resultado.mensaje_fuente }}</div>
                     {% endif %}

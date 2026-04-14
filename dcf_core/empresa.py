@@ -666,6 +666,12 @@ def analizar_empresa(
     datos_empresa = {
         "nombre": nombre,
         "sector": sector,
+        "industria": info.get("industry"),
+        "descripcion": info.get("longBusinessSummary"),
+        "pais": info.get("country"),
+        "ciudad": info.get("city"),
+        "sitio_web": info.get("website"),
+        "empleados": info.get("fullTimeEmployees"),
         "precio_actual": precio,
         "acciones": acciones,
         "acciones_billones": to_billions(acciones),
