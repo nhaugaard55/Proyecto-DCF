@@ -324,6 +324,8 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     filtros_relevancia: list[dict] = []
     for filtro in (financials.get("filtros") or []):
         nombre = filtro.get("nombre", "")
+        if nombre == "Safety Margin":
+            continue
         relevancia = _METRIC_RELEVANCE.get(nombre, {}).get(top_stage, "a")
         filtros_relevancia.append({
             "nombre": nombre,
