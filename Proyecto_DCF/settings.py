@@ -13,8 +13,6 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from typing import Any, Dict, cast
 import os
-import sys
-
 try:
     from dotenv import load_dotenv
 except ModuleNotFoundError:
@@ -28,12 +26,8 @@ except ModuleNotFoundError:
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-ROOT_DIR = BASE_DIR.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
-
 if load_dotenv:
-    load_dotenv(ROOT_DIR / '.env')
+    load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
