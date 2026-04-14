@@ -23,6 +23,7 @@ from typing import Optional
 STAGE_META = {
     1: {
         "nombre": "Startup",
+        "descripcion_breve": "FCF negativo, ingresos bajos, riesgo muy alto.",
         "descripcion": (
             "Empresa en fase inicial. Los ingresos son bajos, el FCF es "
             "negativo y la rentabilidad es lejana. El riesgo es muy alto."
@@ -39,6 +40,7 @@ STAGE_META = {
     },
     2: {
         "nombre": "Hyper Growth",
+        "descripcion_breve": "Revenue crece >20% anual, todavía sin rentabilidad.",
         "descripcion": (
             "La empresa crece ingresos agresivamente (>20–40% anual) pero "
             "aún no es rentable. El foco está en ganar market share."
@@ -55,6 +57,7 @@ STAGE_META = {
     },
     3: {
         "nombre": "Break Even",
+        "descripcion_breve": "FCF recién positivo, márgenes cerca de cero.",
         "descripcion": (
             "La empresa está cerca del punto de equilibrio. El FCF recién "
             "se vuelve positivo y la rentabilidad empieza a asomar."
@@ -71,6 +74,7 @@ STAGE_META = {
     },
     4: {
         "nombre": "Operating Leverage",
+        "descripcion_breve": "Márgenes en expansión, FCF crece más que el revenue.",
         "descripcion": (
             "La empresa tiene rentabilidad y escala. Los márgenes se expanden "
             "a medida que crece. El FCF crece más rápido que los ingresos."
@@ -84,6 +88,7 @@ STAGE_META = {
     },
     5: {
         "nombre": "Capital Return",
+        "descripcion_breve": "FCF predecible, devuelve capital vía dividendos o buybacks.",
         "descripcion": (
             "Empresa madura, rentable y predecible. Genera FCF estable y "
             "lo devuelve a accionistas mediante dividendos o buybacks."
@@ -97,6 +102,7 @@ STAGE_META = {
     },
     6: {
         "nombre": "Decline",
+        "descripcion_breve": "Revenue o márgenes cayendo, pérdida de competitividad.",
         "descripcion": (
             "Los ingresos y márgenes se contraen. La empresa pierde relevancia "
             "competitiva. El FCF puede deteriorarse rápidamente."

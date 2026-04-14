@@ -953,20 +953,29 @@
               <!-- ── Barra de progreso (6 etapas) ── -->
               {% with s=company_stage.stage c=company_stage.color %}
               <div class="mb-4">
-                <div class="d-flex" style="gap:3px;">
-                  {% for stage_label in stage_labels %}
-                  <div class="flex-fill rounded-2 py-2 text-center fw-semibold
-                    {% if forloop.counter == s %}bg-{{ c }} text-white{% else %}bg-secondary bg-opacity-10 text-muted{% endif %}"
-                    style="font-size:.7rem;min-width:0;">
-                    {{ forloop.counter }}
+                <!-- Segmentos numerados -->
+                <div class="d-flex mb-2" style="gap:4px;">
+                  {% for st in all_stages %}
+                  <div class="flex-fill rounded-2 py-2 text-center fw-bold
+                    {% if st.stage == s %}bg-{{ c }} text-white{% else %}bg-secondary bg-opacity-10 text-muted{% endif %}"
+                    style="font-size:.75rem;min-width:0;">
+                    {{ st.stage }}
                   </div>
                   {% endfor %}
                 </div>
-                <div class="d-flex mt-1" style="gap:3px;">
-                  {% for stage_label in stage_labels %}
-                  <div class="flex-fill text-center"
-                    style="font-size:.65rem;min-width:0;{% if forloop.counter == s %}color:var(--bs-{{ c }}){% else %}color:var(--bs-secondary-color){% endif %}">
-                    {{ stage_label }}
+                <!-- Fichas con nombre y descripción breve -->
+                <div class="d-flex" style="gap:4px;">
+                  {% for st in all_stages %}
+                  <div class="flex-fill rounded-2 px-1 py-2 text-center
+                    {% if st.stage == s %}border border-{{ c }}{% endif %}"
+                    style="min-width:0;{% if st.stage == s %}background:var(--bs-{{ c }}-bg-subtle,rgba(0,0,0,.03)){% endif %}">
+                    <div class="fw-semibold {% if st.stage == s %}text-{{ c }}{% else %}text-muted{% endif %}"
+                         style="font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                      {{ st.nombre }}
+                    </div>
+                    <div class="text-muted" style="font-size:.6rem;line-height:1.3;margin-top:2px;">
+                      {{ st.descripcion_breve }}
+                    </div>
                   </div>
                   {% endfor %}
                 </div>
