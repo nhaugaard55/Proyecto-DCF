@@ -1242,6 +1242,15 @@
                   </table>
                 </div>
               </div>
+
+              {# ── Gráfico precio histórico vs consenso ── #}
+              {% if resultado.precio_historico %}
+              <div class="mt-4 pt-3" style="border-top:1px solid var(--surface-border);">
+                <p class="text-muted small text-uppercase fw-semibold mb-3" style="letter-spacing:.05em;">Precio histórico vs consenso multi-modelo</p>
+                <canvas id="precioHistoricoChart" height="60"></canvas>
+              </div>
+              {% endif %}
+
             </div>
           </div>
         </div>
@@ -1526,16 +1535,6 @@
                             {% endfor %}
                           </tbody>
                         </table>
-                      </div>
-                    </div>
-                    {% endif %}
-
-                    {# ── Precio histórico vs intrínseco ── #}
-                    {% if resultado.precio_historico %}
-                    <div class="col-12 mt-2">
-                      <h5 class="fw-bold mb-3">Precio histórico vs valor intrínseco</h5>
-                      <div style="background:var(--surface-card); border-radius:1rem; padding:1.5rem; border:1px solid var(--surface-border);">
-                        <canvas id="precioHistoricoChart" height="80"></canvas>
                       </div>
                     </div>
                     {% endif %}
@@ -2384,7 +2383,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (precioHistoricoEl && precioDataEl && typeof Chart !== "undefined") {
         try {
             const precioData = JSON.parse(precioDataEl.textContent);
-            const valorIntrinseco = {% if resultado.valor_intrinseco is not None %}{{ resultado.valor_intrinseco }}{% else %}null{% endif %};
+            const valorIntrinseco = {% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None %}{{ multi_model.consenso.precio }}{% elif resultado.valor_intrinseco is not None %}{{ resultado.valor_intrinseco }}{% else %}null{% endif %};
+            const labelIntrinseco = {% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None %}"Consenso multi-modelo"{% else %}"Valor intrínseco (DCF)"{% endif %};
             const isDark = document.body.classList.contains("theme-dark");
             const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
             const textColor = isDark ? "#e2e8f0" : "#0b1d35";
@@ -2404,7 +2404,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             fill: true,
                         },
                         ...(valorIntrinseco !== null ? [{
-                            label: "Valor intrínseco",
+                            label: labelIntrinseco,
                             data: precioData.fechas.map(() => valorIntrinseco),
                             borderColor: "#22c55e",
                             borderWidth: 2,
