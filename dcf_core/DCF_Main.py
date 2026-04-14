@@ -141,18 +141,19 @@ def _obtener_metricas_yfinance(ticker: str, empresa_yf: yf.Ticker, limite: int =
     return tasa_promedio, tasas, costo_promedio, costos
 
 
-def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
+def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dict:
     """
     Ejecuta el análisis DCF para un ticker dado y devuelve un diccionario con los resultados clave.
 
     Args:
         ticker (str): Símbolo bursátil de la empresa.
-        metodo (str): "1" para usar CAGR, "2" para promedio año a año. Default: "1".
+        metodo (str): Se conserva por compatibilidad, pero el análisis elige
+            automáticamente la tasa de crecimiento más cercana a cero.
 
     Returns:
         dict: Contiene 'precio_actual', 'valor_intrinseco', 'estado', 'diferencia_pct'.
     """
-    fuente_solicitada = (fuente or "auto").lower()
+    fuente_solicitada = "auto"
     fcf_historial: List[FCFEntry] = []
     valores_para_crecimiento: List[float] = []
     fuente_utilizada = "yfinance"
@@ -162,7 +163,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
 
     empresa_yf = yf.Ticker(ticker)
 
-    usar_fmp = fuente_solicitada in ("auto", "fmp")
+    usar_fmp = True
 
     if usar_fmp:
         try:
@@ -178,28 +179,15 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
         valores_para_crecimiento = _obtener_fcf_yfinance(ticker, empresa_yf, limite=5)
         fuente_utilizada = "yfinance"
 
-        if usar_fmp:
-            if fuente_solicitada == "fmp":
-                if fmp_error:
-                    mensajes_fuente.append(
-                        "No se pudieron obtener datos desde Financial Modeling Prep "
-                        f"({fmp_error}). Se utilizó Yfinance."
-                    )
-                else:
-                    mensajes_fuente.append(
-                        "Financial Modeling Prep no devolvió datos para este ticker. "
-                        "Se utilizó Yfinance."
-                    )
-            elif fuente_solicitada == "auto":
-                if fmp_error:
-                    mensajes_fuente.append(
-                        "Se utilizó Yfinance porque Financial Modeling Prep devolvió un error "
-                        f"({fmp_error})."
-                    )
-                else:
-                    mensajes_fuente.append(
-                        "Se utilizó Yfinance porque Financial Modeling Prep no tiene datos para este ticker."
-                    )
+        if fmp_error:
+            mensajes_fuente.append(
+                "Se utilizó Yfinance porque Financial Modeling Prep devolvió un error "
+                f"({fmp_error})."
+            )
+        else:
+            mensajes_fuente.append(
+                "Se utilizó Yfinance porque Financial Modeling Prep no tiene datos para este ticker."
+            )
 
     tax_rate_override: Optional[float] = None
     cost_of_debt_override: Optional[float] = None
@@ -267,7 +255,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
             "No se obtuvo un costo de deuda confiable; se usó el valor predeterminado del 5%."
         )
 
-    if fmp_metricas_error and fuente_solicitada == "fmp":
+    if fmp_metricas_error:
         mensajes_fuente.append(
             "No se pudieron recuperar los estados financieros de Financial Modeling Prep para calcular impuestos/deuda."
         )
@@ -298,7 +286,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
 
     resultado = analizar_empresa(
         ticker,
-        metodo,
+        "auto",
         crecimiento,
         avg_growth_rate,
         fcf_historial=fcf_historial if fuente_utilizada == "fmp" else None,
@@ -312,6 +300,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
         "fmp": "Financial Modeling Prep",
         "yfinance": "Yfinance",
     }
+    crecimiento_base_val = (resultado.get("metricas", {}) or {}).get("crecimiento", crecimiento)
 
     # --- Escenarios bull/base/bear ---
     try:
@@ -322,7 +311,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
         acciones_val = datos_empresa.get("acciones", 0.0) or 0.0
         wacc_val = (resultado.get("metricas", {}) or {}).get("wacc", 0.08) or 0.08
         escenarios = calcular_escenarios(
-            fcf_actual_val, crecimiento, wacc_val, debt_val, acciones_val, precio
+            fcf_actual_val, crecimiento_base_val, wacc_val, debt_val, acciones_val, precio
         )
         resultado["escenarios"] = escenarios
     except Exception:
@@ -331,7 +320,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
     # --- Tabla de sensibilidad ---
     try:
         tabla = calcular_tabla_sensibilidad(
-            fcf_actual_val, wacc_val, crecimiento, debt_val, acciones_val, precio
+            fcf_actual_val, wacc_val, crecimiento_base_val, debt_val, acciones_val, precio
         )
         resultado["tabla_sensibilidad"] = tabla
     except Exception:

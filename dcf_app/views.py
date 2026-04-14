@@ -29,15 +29,16 @@ from dcf_core.search import CompanySearchResult, search_companies
 _SYMBOL_PATTERN = re.compile(r"^\s*([A-Za-z0-9.\-:]+)")
 
 _DCF_CACHE_TTL = 600  # 10 minutos
+_AUTO_FUENTE = "auto"
 
 
-def _cached_ejecutar_dcf(ticker: str, metodo: str, fuente: str) -> dict:
-    """Ejecuta DCF con caché de 10 minutos por ticker/método/fuente."""
-    cache_key = f"dcf_result_{ticker}_{metodo}_{fuente}"
+def _cached_ejecutar_dcf(ticker: str) -> dict:
+    """Ejecuta DCF automático con caché de 10 minutos por ticker."""
+    cache_key = f"dcf_result_auto_{ticker}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
-    resultado = ejecutar_dcf(ticker, metodo, fuente)
+    resultado = ejecutar_dcf(ticker, "auto", _AUTO_FUENTE)
     cache.set(cache_key, resultado, _DCF_CACHE_TTL)
     return resultado
 
@@ -64,16 +65,6 @@ def _resolver_ticker(raw_ticker: str, raw_query: str) -> str:
         return coincidencias[0].symbol.upper()
 
     return potencial or query_limpio.upper()
-
-
-def _normalize_metodo(value: str | None) -> str:
-    return value if value in ("1", "2") else "1"
-
-
-def _normalize_fuente(value: str | None) -> str:
-    permitido = {"auto", "fmp", "yfinance"}
-    value = (value or "auto").lower()
-    return value if value in permitido else "auto"
 
 
 def _to_decimal(value, *, places: int | None = 4):
@@ -160,8 +151,6 @@ RECENT_HISTORY_FETCH_LIMIT = 25
 def _guardar_analisis(
     *,
     ticker: str,
-    metodo: str,
-    fuente_solicitada: str,
     company_name: str,
     company_exchange: str,
     resultado: dict[str, Any] | None,
@@ -172,6 +161,10 @@ def _guardar_analisis(
     nombre_empresa = (company_name or resultado.get("nombre") or ticker).strip()
     sector = (resultado.get("sector") or "").strip()
     fuente_utilizada = (resultado.get("fuente_datos") or "").strip()
+    metodo = (
+        (resultado.get("datos_empresa") or {}).get("metodo_crecimiento_codigo")
+        or AnalysisRecord.METODO_CAGR
+    )
 
     valor_intrinseco = _to_decimal(resultado.get("valor_intrinseco"), places=4)
     precio_actual = _to_decimal(resultado.get("precio_actual"), places=4)
@@ -197,7 +190,7 @@ def _guardar_analisis(
         company_exchange=company_exchange,
         sector=sector,
         metodo=metodo,
-        fuente_solicitada=fuente_solicitada,
+        fuente_solicitada=_AUTO_FUENTE,
         fuente_utilizada=fuente_utilizada,
         valor_intrinseco=valor_intrinseco,
         precio_actual=precio_actual,
@@ -243,8 +236,6 @@ def dcf_view(request):
     resultado = None
     error = None
     ticker = ""
-    metodo = _normalize_metodo(request.GET.get("metodo"))
-    fuente = _normalize_fuente(request.GET.get("fuente"))
     valor_busqueda = request.GET.get("company_query", "").strip()
     company_name = request.GET.get("company_name", "").strip()
     company_exchange = request.GET.get("company_exchange", "").strip()
@@ -255,15 +246,11 @@ def dcf_view(request):
         valor_busqueda = request.POST.get("company_query", "").strip()
         company_name = request.POST.get("company_name", "").strip()
         company_exchange = request.POST.get("company_exchange", "").strip()
-        metodo = _normalize_metodo(request.POST.get("metodo"))
-        fuente = _normalize_fuente(request.POST.get("fuente"))
         ticker_resuelto = _resolver_ticker(request.POST.get("ticker", ""), valor_busqueda)
 
         if ticker_resuelto:
             query_params = {
                 "ticker": ticker_resuelto,
-                "metodo": metodo,
-                "fuente": fuente,
                 "company_query": valor_busqueda,
                 "company_name": company_name,
                 "company_exchange": company_exchange,
@@ -277,15 +264,13 @@ def dcf_view(request):
 
     if ticker:
         try:
-            resultado = _cached_ejecutar_dcf(ticker, metodo, fuente)
+            resultado = _cached_ejecutar_dcf(ticker)
         except Exception as exc:
             error = f"Ocurrió un error al analizar el ticker: {exc}"
             resultado = None
         else:
             _guardar_analisis(
                 ticker=ticker,
-                metodo=metodo,
-                fuente_solicitada=fuente,
                 company_name=company_name,
                 company_exchange=company_exchange,
                 resultado=resultado,
@@ -346,8 +331,6 @@ def dcf_view(request):
         "resultado": resultado,
         "error": error,
         "ticker": ticker,
-        "metodo": metodo,
-        "fuente": fuente,
         "search_value": valor_busqueda or ticker,
         "company_name": company_name,
         "company_exchange": company_exchange,
@@ -387,14 +370,12 @@ def _render_pdf(template_name: str, context: dict) -> bytes | None:
 
 def dcf_pdf_view(request):
     ticker = request.GET.get("ticker", "").strip().upper()
-    metodo = request.GET.get("metodo", "1")
-    fuente = request.GET.get("fuente", "auto")
 
     if not ticker:
         return HttpResponse("Ticker inválido", status=400)
 
     try:
-        resultado = _cached_ejecutar_dcf(ticker, metodo, fuente)
+        resultado = _cached_ejecutar_dcf(ticker)
     except Exception as exc:
         return HttpResponse(f"No se pudo generar el informe: {exc}", status=500)
 
@@ -404,8 +385,6 @@ def dcf_pdf_view(request):
     context = {
         "resultado": resultado,
         "ticker": ticker,
-        "metodo": "CAGR" if metodo != "2" else "Promedio",
-        "fuente": fuente,
         "generado": timezone.now(),
     }
 
@@ -516,20 +495,18 @@ def comparar_view(request):
     """Muestra un análisis comparativo de dos tickers."""
     ticker_a = (request.GET.get("ticker_a") or "").strip().upper()
     ticker_b = (request.GET.get("ticker_b") or "").strip().upper()
-    metodo = _normalize_metodo(request.GET.get("metodo"))
-    fuente = _normalize_fuente(request.GET.get("fuente"))
 
     resultado_a = resultado_b = error_a = error_b = None
 
     if ticker_a:
         try:
-            resultado_a = _cached_ejecutar_dcf(ticker_a, metodo, fuente)
+            resultado_a = _cached_ejecutar_dcf(ticker_a)
         except Exception as exc:
             error_a = str(exc)
 
     if ticker_b:
         try:
-            resultado_b = _cached_ejecutar_dcf(ticker_b, metodo, fuente)
+            resultado_b = _cached_ejecutar_dcf(ticker_b)
         except Exception as exc:
             error_b = str(exc)
 
@@ -540,8 +517,6 @@ def comparar_view(request):
         "resultado_b": resultado_b,
         "error_a": error_a,
         "error_b": error_b,
-        "metodo": metodo,
-        "fuente": fuente,
     }
     return render(request, "dcf_app/comparar.html", context)
 
@@ -557,14 +532,12 @@ def _hex_fill(hex_color: str) -> PatternFill:
 def dcf_excel_view(request):
     """Genera y descarga un .xlsx con el análisis DCF."""
     ticker = request.GET.get("ticker", "").strip().upper()
-    metodo = request.GET.get("metodo", "1")
-    fuente = request.GET.get("fuente", "auto")
 
     if not ticker:
         return HttpResponse("Ticker inválido", status=400)
 
     try:
-        resultado = _cached_ejecutar_dcf(ticker, metodo, fuente)
+        resultado = _cached_ejecutar_dcf(ticker)
     except Exception as exc:
         return HttpResponse(f"Error al obtener datos: {exc}", status=500)
 

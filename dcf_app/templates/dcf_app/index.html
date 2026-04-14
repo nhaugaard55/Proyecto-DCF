@@ -604,7 +604,7 @@
             <div class="form-card shadow-lg{% if resultado %} d-none{% endif %}" id="analysis-form-card">
                 <span class="badge bg-primary-subtle text-primary-emphasis mb-2">Iniciar análisis</span>
                 <h2 class="h4 mb-2">Configura tu escenario</h2>
-                <p class="text-muted small mb-4">Buscá una compañía y elegí la metodología de crecimiento que mejor se ajuste a tu caso.</p>
+                <p class="text-muted small mb-4">Buscá una compañía y el sistema elige automáticamente el crecimiento más conservador, priorizando Financial Modeling Prep y usando YFinance si hace falta.</p>
                 <form method="post" class="row g-3">
                     {% csrf_token %}
                     <div class="col-12">
@@ -616,21 +616,6 @@
                             <input type="hidden" name="company_exchange" id="company-exchange-value" value="{{ company_exchange|default:'' }}">
                             <div class="dropdown-menu ticker-dropdown" id="ticker-suggestions" role="listbox"></div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="metodo" class="form-label fw-semibold">Método de crecimiento</label>
-                        <select name="metodo" id="metodo" class="form-select form-select-lg">
-                            <option value="1" {% if metodo == "1" %}selected{% endif %}>CAGR (compuesto)</option>
-                            <option value="2" {% if metodo == "2" %}selected{% endif %}>Promedio año a año</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="fuente" class="form-label fw-semibold">Fuente de datos</label>
-                        <select name="fuente" id="fuente" class="form-select form-select-lg">
-                            <option value="auto" {% if fuente == "auto" %}selected{% endif %}>Automático (prioriza FMP y usa Yfinance si falta)</option>
-                            <option value="fmp" {% if fuente == "fmp" %}selected{% endif %}>Financial Modeling Prep</option>
-                            <option value="yfinance" {% if fuente == "yfinance" %}selected{% endif %}>Yfinance</option>
-                        </select>
                     </div>
                     <div class="col-12 d-flex flex-wrap gap-3 align-items-center justify-content-between pt-2">
                         <button type="submit" class="btn btn-primary btn-lg px-4">Analizar</button>
@@ -737,9 +722,7 @@
                                 </div>
                             </div>
                             <div class="recent-actions">
-                                {% with fuente_param=record.fuente_solicitada|default:record.fuente_utilizada %}
-                                <a class="btn btn-sm btn-outline-primary" href="{% url 'home' %}?ticker={{ record.ticker }}&metodo={{ record.metodo }}&fuente={{ fuente_param|urlencode }}{% if record.company_name %}&company_name={{ record.company_name|urlencode }}{% endif %}{% if record.company_exchange %}&company_exchange={{ record.company_exchange|urlencode }}{% endif %}">Reanalizar</a>
-                                {% endwith %}
+                                <a class="btn btn-sm btn-outline-primary" href="{% url 'home' %}?ticker={{ record.ticker }}{% if record.company_name %}&company_name={{ record.company_name|urlencode }}{% endif %}{% if record.company_exchange %}&company_exchange={{ record.company_exchange|urlencode }}{% endif %}">Reanalizar</a>
                             </div>
                         </article>
                     </div>
@@ -1898,11 +1881,9 @@
 <div class="d-flex flex-wrap justify-content-center gap-3 mt-5 mb-4">
     <form method="get" action="{% url 'dcf_pdf' %}">
         <input type="hidden" name="ticker" value="{{ ticker }}">
-        <input type="hidden" name="metodo" value="{{ metodo }}">
-        <input type="hidden" name="fuente" value="{{ fuente }}">
         <button type="submit" class="btn btn-outline-primary btn-lg px-4">⬇ Descargar PDF</button>
     </form>
-    <a href="{% url 'dcf_excel' %}?ticker={{ ticker }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-outline-success btn-lg px-4">⬇ Descargar Excel</a>
+    <a href="{% url 'dcf_excel' %}?ticker={{ ticker }}" class="btn btn-outline-success btn-lg px-4">⬇ Descargar Excel</a>
     <button type="button" id="watchlist-btn"
         class="btn btn-lg px-4 {% if in_watchlist %}btn-warning{% else %}btn-outline-warning{% endif %}"
         data-ticker="{{ ticker }}"
@@ -1910,7 +1891,7 @@
         data-company-exchange="{{ company_exchange|default:'' }}">
         {% if in_watchlist %}★ En watchlist{% else %}☆ Agregar a watchlist{% endif %}
     </button>
-    <a href="{% url 'comparar' %}?ticker_a={{ ticker }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-outline-secondary btn-lg px-4">⇌ Comparar con otra empresa</a>
+    <a href="{% url 'comparar' %}?ticker_a={{ ticker }}" class="btn btn-outline-secondary btn-lg px-4">⇌ Comparar con otra empresa</a>
 </div>
 {% elif ticker %}
 <section class="results-section">

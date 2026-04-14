@@ -114,6 +114,19 @@ def calcular_crecimientos(fcf_series):
         cagr = promedio = 0.05
     return cagr, promedio
 
+
+def seleccionar_metodo_crecimiento(crecimiento_cagr, crecimiento_promedio):
+    """Elige automáticamente la tasa más conservadora, la más cercana a cero."""
+
+    opciones = [
+        ("1", "CAGR", float(crecimiento_cagr)),
+        ("2", "Promedio", float(crecimiento_promedio)),
+    ]
+    return min(
+        opciones,
+        key=lambda item: (abs(item[2]), 0 if item[0] == "1" else 1),
+    )
+
 # Calcula escenarios bull/base/bear
 
 

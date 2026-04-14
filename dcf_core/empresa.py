@@ -11,7 +11,8 @@ from .finanzas import (
     obtener_tasa_libre_riesgo,
     calcular_wacc,
     proyectar_fcf,
-    calcular_valor_intrinseco
+    calcular_valor_intrinseco,
+    seleccionar_metodo_crecimiento,
 )
 
 from .marketaux import MarketauxError, obtener_noticias_marketaux
@@ -449,7 +450,7 @@ def calcular_analisis_tecnico(empresa_yf: yf.Ticker, precio_actual: float) -> di
 
 def analizar_empresa(
     ticker,
-    metodo_crecimiento="1",
+    metodo_crecimiento="auto",
     crecimiento=0.05,
     avg_growth_rate=0.05,
     fcf_historial: Optional[Sequence[FCFEntry]] = None,
@@ -537,12 +538,11 @@ def analizar_empresa(
     tasa_rf = obtener_tasa_libre_riesgo()
     market_return = 0.08
 
-    if metodo_crecimiento == "2":
-        tasa_crecimiento = avg_growth_rate
-        metodo_utilizado = "Promedio"
-    else:
-        tasa_crecimiento = crecimiento
-        metodo_utilizado = "CAGR"
+    metodo_codigo, metodo_nombre, tasa_auto = seleccionar_metodo_crecimiento(
+        crecimiento, avg_growth_rate
+    )
+    tasa_crecimiento = tasa_auto
+    metodo_utilizado = metodo_nombre
 
     capm = tasa_rf + beta * (market_return - tasa_rf)
     wacc = calcular_wacc(beta, debt, equity, cost_of_debt, tax_rate, tasa_rf)
@@ -713,6 +713,8 @@ def analizar_empresa(
         "cost_of_debt": cost_of_debt,
         "cost_of_debt_pct": cost_of_debt * 100 if cost_of_debt is not None else None,
         "metodo_crecimiento": metodo_utilizado,
+        "metodo_crecimiento_codigo": metodo_codigo,
+        "metodo_crecimiento_detalle": "Selección automática: se usa la tasa más cercana a cero.",
         "tasa_impositiva_fuente": detalles_metricas.get("tax_rate", {}).get("descripcion"),
         "tasa_impositiva_anios": detalles_metricas.get("tax_rate", {}).get("años"),
         "cost_of_debt_fuente": detalles_metricas.get("cost_of_debt", {}).get("descripcion"),

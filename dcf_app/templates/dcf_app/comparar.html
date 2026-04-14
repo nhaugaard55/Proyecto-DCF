@@ -28,23 +28,16 @@
 
 {% block content %}
 <h2 class="fw-bold mb-1">⇌ Comparar empresas</h2>
-<p class="text-muted mb-4">Compará el análisis DCF de dos empresas lado a lado.</p>
+<p class="text-muted mb-4">Compará el análisis DCF de dos empresas lado a lado con selección automática de crecimiento y fuente de datos.</p>
 
 <form method="get" class="row g-3 mb-5 align-items-end">
-  <div class="col-md-4">
+  <div class="col-md-5">
     <label class="form-label fw-semibold small">Empresa A</label>
     <input type="text" name="ticker_a" class="form-control" placeholder="Ej: AAPL" value="{{ ticker_a }}" required>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-5">
     <label class="form-label fw-semibold small">Empresa B</label>
     <input type="text" name="ticker_b" class="form-control" placeholder="Ej: MSFT" value="{{ ticker_b }}" required>
-  </div>
-  <div class="col-md-2">
-    <label class="form-label fw-semibold small">Método</label>
-    <select name="metodo" class="form-select">
-      <option value="1" {% if metodo == "1" %}selected{% endif %}>CAGR</option>
-      <option value="2" {% if metodo == "2" %}selected{% endif %}>Promedio</option>
-    </select>
   </div>
   <div class="col-md-2">
     <button type="submit" class="btn btn-primary w-100">Comparar</button>
@@ -168,10 +161,10 @@
     </table>
   </div>
   <div class="d-flex gap-3 mt-3">
-    <a href="{% url 'dcf_excel' %}?ticker={{ ticker_a }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-sm btn-outline-success">⬇ Excel {{ ticker_a }}</a>
-    <a href="{% url 'dcf_excel' %}?ticker={{ ticker_b }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-sm btn-outline-success">⬇ Excel {{ ticker_b }}</a>
-    <a href="{% url 'dcf_pdf' %}?ticker={{ ticker_a }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-sm btn-outline-primary">⬇ PDF {{ ticker_a }}</a>
-    <a href="{% url 'dcf_pdf' %}?ticker={{ ticker_b }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-sm btn-outline-primary">⬇ PDF {{ ticker_b }}</a>
+    <a href="{% url 'dcf_excel' %}?ticker={{ ticker_a }}" class="btn btn-sm btn-outline-success">⬇ Excel {{ ticker_a }}</a>
+    <a href="{% url 'dcf_excel' %}?ticker={{ ticker_b }}" class="btn btn-sm btn-outline-success">⬇ Excel {{ ticker_b }}</a>
+    <a href="{% url 'dcf_pdf' %}?ticker={{ ticker_a }}" class="btn btn-sm btn-outline-primary">⬇ PDF {{ ticker_a }}</a>
+    <a href="{% url 'dcf_pdf' %}?ticker={{ ticker_b }}" class="btn btn-sm btn-outline-primary">⬇ PDF {{ ticker_b }}</a>
   </div>
 </div>
 {% endif %}
