@@ -1204,7 +1204,13 @@
                   <table class="table table-sm align-middle" style="background:var(--table-bg); color:var(--table-text); font-size:0.84rem;">
                     <thead style="background:var(--table-header-bg);">
                       <tr>
-                        <th>Modelo</th><th class="text-end">Valor estimado</th><th class="text-end">vs Precio actual</th><th class="text-end">Peso</th><th class="text-center">Relevancia</th><th>Detalle</th>
+                        <th>Modelo</th>
+                        <th class="text-end">Valor estimado</th>
+                        <th class="text-end">Precio actual</th>
+                        <th class="text-end">Diferencia</th>
+                        <th class="text-end">Peso</th>
+                        <th class="text-center">Relevancia</th>
+                        <th>Detalle</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1212,11 +1218,20 @@
                       <tr {% if m.peso == 0 %}style="opacity:0.45;"{% endif %}>
                         <td class="fw-semibold {% if m.peso == 0 %}text-decoration-line-through text-muted{% endif %}">{{ m.nombre }}</td>
                         <td class="text-end">
-                          {% if key == "reverse_dcf" %}{% if m.g_implicita_pct is not None %}<span class="text-muted fst-italic small">g = {{ m.g_implicita_pct|floatformat:1 }}%</span>{% else %}N/A{% endif %}
-                          {% elif m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+                          {% if key == "reverse_dcf" %}
+                            {% if m.g_implicita_pct is not None %}<span class="text-muted fst-italic small">g = {{ m.g_implicita_pct|floatformat:1 }}%</span>{% else %}<span class="text-muted">N/A</span>{% endif %}
+                          {% elif m.valor is not None %}${{ m.valor|floatformat:2 }}
+                          {% else %}<span class="text-muted">N/A</span>{% endif %}
                         </td>
-                        <td class="text-end">
-                          {% if key != "reverse_dcf" and m.valor is not None %}<span class="small {% if m.valor >= consenso.precio_actual %}text-success{% else %}text-danger{% endif %}">${{ m.valor|floatformat:2 }}</span>{% else %}—{% endif %}
+                        <td class="text-end text-muted">
+                          {% if key != "reverse_dcf" and m.valor is not None %}${{ consenso.precio_actual|floatformat:2 }}{% else %}—{% endif %}
+                        </td>
+                        <td class="text-end fw-semibold">
+                          {% if m.upside_pct is not None %}
+                            <span class="{% if m.upside_pct >= 0 %}text-success{% else %}text-danger{% endif %}">
+                              {% if m.upside_pct >= 0 %}+{% endif %}{{ m.upside_pct|floatformat:1 }}%
+                            </span>
+                          {% else %}—{% endif %}
                         </td>
                         <td class="text-end">{% if m.peso > 0 %}<span class="fw-semibold">{{ m.peso_pct|floatformat:1 }}%</span>{% else %}—{% endif %}</td>
                         <td class="text-center">{% if m.relevancia == "Útil" %}✅ Útil{% elif m.relevancia == "Algo útil" %}⚠️ Algo útil{% else %}❌ No útil{% endif %}</td>

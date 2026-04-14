@@ -477,9 +477,17 @@ def run_all_models(
         else:
             relevancia = "Útil" if peso_raw >= 0.20 else "Algo útil"
 
+        valor_modelo = r.get("valor")
+        if valor_modelo is not None and precio_actual and key != "reverse_dcf":
+            upside_pct = round((valor_modelo - precio_actual) / precio_actual * 100, 1)
+        else:
+            upside_pct = None
+
         entry: dict = {
             "nombre": _MODEL_NOMBRES[key],
-            "valor": r.get("valor"),
+            "valor": valor_modelo,
+            "upside_pct": upside_pct,
+            "precio_actual": precio_actual,
             "peso_raw": round(peso_raw, 4),
             "peso": round(peso_final, 4),
             "peso_pct": round(peso_final * 100, 1),
