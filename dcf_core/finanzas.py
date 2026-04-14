@@ -114,6 +114,93 @@ def calcular_crecimientos(fcf_series):
         cagr = promedio = 0.05
     return cagr, promedio
 
+# Calcula escenarios bull/base/bear
+
+
+def calcular_escenarios(fcf_actual, crecimiento_base, wacc, debt, acciones, precio):
+    """Genera tres escenarios (pesimista, base, optimista) con distintas tasas de crecimiento."""
+    variaciones = {
+        "bear": max(crecimiento_base * 0.4, crecimiento_base - 0.05),
+        "base": crecimiento_base,
+        "bull": min(crecimiento_base * 1.6, crecimiento_base + 0.08),
+    }
+    resultado = {}
+    for nombre, tasa in variaciones.items():
+        fcf_proj = proyectar_fcf(fcf_actual, tasa)
+        valor_total = calcular_valor_intrinseco(fcf_proj, wacc)
+        if valor_total is None or not acciones:
+            resultado[nombre] = {
+                "tasa_crecimiento_pct": round(tasa * 100, 1),
+                "valor_intrinseco": None,
+                "diferencia_pct": None,
+                "estado": None,
+            }
+            continue
+        equity_val = valor_total - debt
+        valor_accion = equity_val / acciones
+        diferencia_pct = ((valor_accion - precio) / precio * 100) if precio else None
+        if valor_accion > precio * 1.1:
+            estado = "SUBVALUADA"
+        elif valor_accion < precio * 0.9:
+            estado = "SOBREVALUADA"
+        else:
+            estado = "RAZONABLE"
+        resultado[nombre] = {
+            "tasa_crecimiento_pct": round(tasa * 100, 1),
+            "valor_intrinseco": round(valor_accion, 2),
+            "diferencia_pct": round(diferencia_pct, 1) if diferencia_pct is not None else None,
+            "estado": estado,
+        }
+    return resultado
+
+
+# Genera tabla de sensibilidad WACC × crecimiento
+
+
+def calcular_tabla_sensibilidad(fcf_actual, wacc_base, crecimiento_base, debt, acciones, precio_actual):
+    """
+    Tabla 5×5: filas = variaciones de WACC, columnas = variaciones de crecimiento.
+    Cada celda contiene el valor intrínseco por acción.
+    """
+    wacc_deltas = [-0.02, -0.01, 0.0, 0.01, 0.02]
+    crec_deltas = [-0.04, -0.02, 0.0, 0.02, 0.04]
+
+    waccs = [round(wacc_base + d, 4) for d in wacc_deltas]
+    crecimientos = [round(crecimiento_base + d, 4) for d in crec_deltas]
+
+    matrix = []
+    for w in waccs:
+        row = []
+        for g in crecimientos:
+            if w <= 0 or w <= g:
+                row.append(None)
+                continue
+            fcf_proj = proyectar_fcf(fcf_actual, g)
+            valor_total = calcular_valor_intrinseco(fcf_proj, w)
+            if valor_total is None or not acciones:
+                row.append(None)
+                continue
+            equity_val = valor_total - debt
+            valor_accion = round(equity_val / acciones, 2)
+            row.append(valor_accion)
+        matrix.append(row)
+
+    waccs_pct = [round(w * 100, 2) for w in waccs]
+    crecimientos_pct = [round(g * 100, 2) for g in crecimientos]
+    # Enrich rows with WACC label for easy template rendering
+    rows = [
+        {"wacc": w_pct, "cells": row_vals}
+        for w_pct, row_vals in zip(waccs_pct, matrix)
+    ]
+    return {
+        "waccs": waccs_pct,
+        "crecimientos": crecimientos_pct,
+        "matrix": matrix,
+        "rows": rows,
+        "precio_actual": precio_actual,
+    }
+
+
 # Calcula el valor intrínseco de la empresa usando FCF proyectado y valor residual
 
 

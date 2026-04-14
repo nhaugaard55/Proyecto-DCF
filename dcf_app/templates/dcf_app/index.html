@@ -6,6 +6,8 @@
     Historial de análisis
 </button>
 {% endif %}
+<a href="{% url 'watchlist' %}" class="btn btn-outline-light btn-sm">★ Watchlist</a>
+<a href="{% url 'comparar' %}" class="btn btn-outline-light btn-sm">⇌ Comparar</a>
 {% endblock %}
 
 {% block extra_head %}
@@ -1441,13 +1443,119 @@
         {% endif %}
     </div>
 </section>
-<div class="text-center mt-5 mb-4">
+
+{# ---- Escenarios bull / base / bear ---- #}
+{% if resultado.escenarios %}
+<section class="results-section mt-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <h5 class="fw-bold mb-3">Escenarios de valuación</h5>
+      <div class="row g-3">
+        {% for esc_key, esc_label, esc_color in "bear,Pesimista (Bear),danger|base,Base,primary|bull,Optimista (Bull),success"|split:"|" %}
+        {% endfor %}
+        {% with bear=resultado.escenarios.bear base=resultado.escenarios.base bull=resultado.escenarios.bull %}
+        {% for esc, label, color_class in bear,"Pesimista (Bear)","danger"|zip:base,"Base","primary"|zip:bull,"Optimista (Bull)","success" %}
+        {% endfor %}
+        {# render manually #}
+        {% for item in resultado.escenarios.items %}
+        <div class="col-md-4">
+          <div class="p-4 rounded-3 border h-100" style="background:var(--surface-card); border-color:var(--surface-border)!important;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-semibold text-capitalize">
+                {% if item.0 == "bear" %}🐻 Pesimista{% elif item.0 == "base" %}📊 Base{% else %}🐂 Optimista{% endif %}
+              </span>
+              {% if item.1.estado %}
+              <span class="badge {% if item.1.estado == 'SUBVALUADA' %}bg-success{% elif item.1.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %} small">
+                {{ item.1.estado }}
+              </span>
+              {% endif %}
+            </div>
+            <div class="small text-muted mb-1">Crecimiento: <strong>{{ item.1.tasa_crecimiento_pct|floatformat:1 }}%</strong></div>
+            <div class="fs-4 fw-bold mt-1">
+              {% if item.1.valor_intrinseco is not None %}${{ item.1.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}
+            </div>
+            {% if item.1.diferencia_pct is not None %}
+            <div class="small mt-1 {% if item.1.diferencia_pct >= 0 %}text-success{% else %}text-danger{% endif %}">
+              {{ item.1.diferencia_pct|floatformat:1 }}% vs precio actual
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# ---- Tabla de sensibilidad ---- #}
+{% if resultado.tabla_sensibilidad %}
+<section class="results-section mt-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <h5 class="fw-bold mb-1">Tabla de sensibilidad</h5>
+      <p class="text-muted small mb-3">Valor intrínseco por acción según distintas combinaciones de WACC y tasa de crecimiento. <span class="text-success fw-semibold">Verde</span> = subvaluada, <span class="text-danger fw-semibold">Rojo</span> = sobrevaluada, <span style="color:#92400e" class="fw-semibold">Amarillo</span> = razonable.</p>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm text-center align-middle" id="sensitivity-table" style="background:var(--table-bg); color:var(--table-text); border-color:var(--table-border); font-size:0.82rem;" data-precio="{{ resultado.tabla_sensibilidad.precio_actual|default:0 }}">
+          <thead>
+            <tr style="background:var(--table-header-bg);">
+              <th style="min-width:80px;">WACC \ Crec.</th>
+              {% for g in resultado.tabla_sensibilidad.crecimientos %}
+              <th>{{ g }}%</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in resultado.tabla_sensibilidad.rows %}
+            <tr>
+              <th style="background:var(--table-header-bg);">{{ row.wacc }}%</th>
+              {% for val in row.cells %}
+              <td data-val="{% if val is not None %}{{ val }}{% endif %}">
+                {% if val is not None %}${{ val|floatformat:2 }}{% else %}—{% endif %}
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# ---- Gráfico precio histórico vs valor intrínseco ---- #}
+{% if resultado.precio_historico %}
+<section class="results-section mt-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <h5 class="fw-bold mb-3">Precio histórico vs valor intrínseco</h5>
+      <div style="background:var(--surface-card); border-radius:1rem; padding:1.5rem; border:1px solid var(--surface-border);">
+        <canvas id="precioHistoricoChart" height="80"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# ---- Botones de acción ---- #}
+<div class="d-flex flex-wrap justify-content-center gap-3 mt-5 mb-4">
     <form method="get" action="{% url 'dcf_pdf' %}">
         <input type="hidden" name="ticker" value="{{ ticker }}">
         <input type="hidden" name="metodo" value="{{ metodo }}">
         <input type="hidden" name="fuente" value="{{ fuente }}">
-        <button type="submit" class="btn btn-outline-primary btn-lg px-5">Descargar PDF</button>
+        <button type="submit" class="btn btn-outline-primary btn-lg px-4">⬇ Descargar PDF</button>
     </form>
+    <a href="{% url 'dcf_excel' %}?ticker={{ ticker }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-outline-success btn-lg px-4">⬇ Descargar Excel</a>
+    <button type="button" id="watchlist-btn"
+        class="btn btn-lg px-4 {% if in_watchlist %}btn-warning{% else %}btn-outline-warning{% endif %}"
+        data-ticker="{{ ticker }}"
+        data-company-name="{{ resultado.nombre|default:'' }}"
+        data-company-exchange="{{ company_exchange|default:'' }}">
+        {% if in_watchlist %}★ En watchlist{% else %}☆ Agregar a watchlist{% endif %}
+    </button>
+    <a href="{% url 'comparar' %}?ticker_a={{ ticker }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-outline-secondary btn-lg px-4">⇌ Comparar con otra empresa</a>
 </div>
 {% elif ticker %}
 <section class="results-section">
@@ -1463,6 +1571,9 @@
 {{ news_config|json_script:"dcf-news-config" }}
 {% endif %}
 {{ chart_data|json_script:"dcf-chart-data" }}
+{% if precio_historico %}
+{{ precio_historico|json_script:"dcf-precio-historico" }}
+{% endif %}
 
 <script>
 function initRecentHistory() {
@@ -1944,6 +2055,115 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         renderNewsPage(currentPage);
+    }
+
+    // ---- Gráfico precio histórico vs valor intrínseco ----
+    const precioHistoricoEl = document.getElementById("precioHistoricoChart");
+    const precioDataEl = document.getElementById("dcf-precio-historico");
+    if (precioHistoricoEl && precioDataEl && typeof Chart !== "undefined") {
+        try {
+            const precioData = JSON.parse(precioDataEl.textContent);
+            const valorIntrinseco = {% if resultado.valor_intrinseco is not None %}{{ resultado.valor_intrinseco }}{% else %}null{% endif %};
+            const isDark = document.body.classList.contains("theme-dark");
+            const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
+            const textColor = isDark ? "#e2e8f0" : "#0b1d35";
+            new Chart(precioHistoricoEl, {
+                type: "line",
+                data: {
+                    labels: precioData.fechas,
+                    datasets: [
+                        {
+                            label: "Precio",
+                            data: precioData.precios,
+                            borderColor: "#2563eb",
+                            backgroundColor: "rgba(37,99,235,0.08)",
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.3,
+                            fill: true,
+                        },
+                        ...(valorIntrinseco !== null ? [{
+                            label: "Valor intrínseco",
+                            data: precioData.fechas.map(() => valorIntrinseco),
+                            borderColor: "#22c55e",
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            pointRadius: 0,
+                            fill: false,
+                        }] : []),
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: "index", intersect: false },
+                    scales: {
+                        x: {
+                            ticks: { color: textColor, maxTicksLimit: 8 },
+                            grid: { color: gridColor },
+                        },
+                        y: {
+                            ticks: { color: textColor, callback: (v) => `$${v.toFixed(2)}` },
+                            grid: { color: gridColor },
+                        },
+                    },
+                    plugins: {
+                        legend: { labels: { color: textColor } },
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}` } },
+                    },
+                },
+            });
+        } catch (e) { /* silencioso */ }
+    }
+
+    // ---- Botón watchlist ----
+    const watchlistBtn = document.getElementById("watchlist-btn");
+    if (watchlistBtn) {
+        watchlistBtn.addEventListener("click", async () => {
+            const ticker = watchlistBtn.dataset.ticker;
+            const companyName = watchlistBtn.dataset.companyName || "";
+            const companyExchange = watchlistBtn.dataset.companyExchange || "";
+            const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || "";
+            watchlistBtn.disabled = true;
+            try {
+                const body = new URLSearchParams({ ticker, company_name: companyName, company_exchange: companyExchange });
+                const resp = await fetch("{% url 'watchlist_toggle' %}", {
+                    method: "POST",
+                    headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/x-www-form-urlencoded" },
+                    body: body.toString(),
+                });
+                const data = await resp.json();
+                if (data.action === "added") {
+                    watchlistBtn.textContent = "★ En watchlist";
+                    watchlistBtn.classList.remove("btn-outline-warning");
+                    watchlistBtn.classList.add("btn-warning");
+                } else {
+                    watchlistBtn.textContent = "☆ Agregar a watchlist";
+                    watchlistBtn.classList.remove("btn-warning");
+                    watchlistBtn.classList.add("btn-outline-warning");
+                }
+            } catch (e) { /* silencioso */ }
+            watchlistBtn.disabled = false;
+        });
+    }
+
+    // ---- Colorear tabla de sensibilidad ----
+    const sensitivityTable = document.getElementById("sensitivity-table");
+    if (sensitivityTable) {
+        const precio = parseFloat(sensitivityTable.dataset.precio) || 0;
+        sensitivityTable.querySelectorAll("td[data-val]").forEach(cell => {
+            const val = parseFloat(cell.dataset.val);
+            if (isNaN(val) || !precio) return;
+            if (val > precio * 1.1) {
+                cell.style.background = "rgba(34,197,94,0.18)";
+                cell.style.color = "#166534";
+            } else if (val < precio * 0.9) {
+                cell.style.background = "rgba(220,38,38,0.18)";
+                cell.style.color = "#991b1b";
+            } else {
+                cell.style.background = "rgba(251,191,36,0.18)";
+                cell.style.color = "#92400e";
+            }
+        });
     }
 
     const baseChartData = {

@@ -5,16 +5,19 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, cast
 from urllib.parse import urlencode
 
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+
 from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from xhtml2pdf import pisa
 
-from .models import AnalysisRecord
+from .models import AnalysisRecord, WatchlistItem
 
 from dcf_core.DCF_Main import ejecutar_dcf
 from dcf_core.business_cycle import get_business_cycle_phase
@@ -324,7 +327,12 @@ def dcf_view(request):
     if company_exchange and ticker:
         tradingview_symbol = f"{company_exchange.upper()}:{ticker}"
 
+    in_watchlist = WatchlistItem.objects.filter(ticker=ticker).exists() if ticker else False
+    precio_historico = (resultado or {}).get("precio_historico") if resultado else None
+
     context = {
+        "in_watchlist": in_watchlist,
+        "precio_historico": precio_historico,
         "resultado": resultado,
         "error": error,
         "ticker": ticker,
@@ -445,3 +453,234 @@ def search_companies_view(request):
         }
 
     return JsonResponse({"results": [_serializar(item) for item in coincidencias]})
+
+
+# ---------------------------------------------------------------------------
+# Watchlist
+# ---------------------------------------------------------------------------
+
+def watchlist_view(request):
+    """Página principal de la watchlist."""
+    items = WatchlistItem.objects.all()
+    return render(request, "dcf_app/watchlist.html", {"watchlist": items})
+
+
+@require_POST
+def watchlist_toggle(request):
+    """Agrega o quita un ticker de la watchlist (JSON)."""
+    ticker = (request.POST.get("ticker") or "").strip().upper()
+    company_name = (request.POST.get("company_name") or "").strip()
+    company_exchange = (request.POST.get("company_exchange") or "").strip()
+
+    if not ticker:
+        return JsonResponse({"error": "Ticker requerido"}, status=400)
+
+    item = WatchlistItem.objects.filter(ticker=ticker).first()
+    if item:
+        item.delete()
+        return JsonResponse({"action": "removed", "ticker": ticker})
+    else:
+        WatchlistItem.objects.create(
+            ticker=ticker,
+            company_name=company_name,
+            company_exchange=company_exchange,
+        )
+        return JsonResponse({"action": "added", "ticker": ticker})
+
+
+@require_GET
+def watchlist_status(request):
+    """Devuelve si un ticker está en la watchlist."""
+    ticker = (request.GET.get("ticker") or "").strip().upper()
+    if not ticker:
+        return JsonResponse({"in_watchlist": False})
+    in_watchlist = WatchlistItem.objects.filter(ticker=ticker).exists()
+    return JsonResponse({"in_watchlist": in_watchlist, "ticker": ticker})
+
+
+# ---------------------------------------------------------------------------
+# Comparar empresas
+# ---------------------------------------------------------------------------
+
+def comparar_view(request):
+    """Muestra un análisis comparativo de dos tickers."""
+    ticker_a = (request.GET.get("ticker_a") or "").strip().upper()
+    ticker_b = (request.GET.get("ticker_b") or "").strip().upper()
+    metodo = _normalize_metodo(request.GET.get("metodo"))
+    fuente = _normalize_fuente(request.GET.get("fuente"))
+
+    resultado_a = resultado_b = error_a = error_b = None
+
+    if ticker_a:
+        try:
+            resultado_a = _cached_ejecutar_dcf(ticker_a, metodo, fuente)
+        except Exception as exc:
+            error_a = str(exc)
+
+    if ticker_b:
+        try:
+            resultado_b = _cached_ejecutar_dcf(ticker_b, metodo, fuente)
+        except Exception as exc:
+            error_b = str(exc)
+
+    context = {
+        "ticker_a": ticker_a,
+        "ticker_b": ticker_b,
+        "resultado_a": resultado_a,
+        "resultado_b": resultado_b,
+        "error_a": error_a,
+        "error_b": error_b,
+        "metodo": metodo,
+        "fuente": fuente,
+    }
+    return render(request, "dcf_app/comparar.html", context)
+
+
+# ---------------------------------------------------------------------------
+# Export Excel
+# ---------------------------------------------------------------------------
+
+def _hex_fill(hex_color: str) -> PatternFill:
+    return PatternFill(start_color=hex_color, end_color=hex_color, fill_type="solid")
+
+
+def dcf_excel_view(request):
+    """Genera y descarga un .xlsx con el análisis DCF."""
+    ticker = request.GET.get("ticker", "").strip().upper()
+    metodo = request.GET.get("metodo", "1")
+    fuente = request.GET.get("fuente", "auto")
+
+    if not ticker:
+        return HttpResponse("Ticker inválido", status=400)
+
+    try:
+        resultado = _cached_ejecutar_dcf(ticker, metodo, fuente)
+    except Exception as exc:
+        return HttpResponse(f"Error al obtener datos: {exc}", status=500)
+
+    wb = openpyxl.Workbook()
+
+    # ---- Hoja 1: Resumen ----
+    ws = wb.active
+    ws.title = "Resumen"
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = _hex_fill("2563EB")
+    title_font = Font(bold=True, size=13)
+
+    ws.column_dimensions["A"].width = 28
+    ws.column_dimensions["B"].width = 20
+
+    ws["A1"] = f"Análisis DCF — {resultado.get('nombre', ticker)}"
+    ws["A1"].font = title_font
+    ws.merge_cells("A1:B1")
+
+    rows = [
+        ("Campo", "Valor"),
+        ("Ticker", ticker),
+        ("Empresa", resultado.get("nombre")),
+        ("Sector", resultado.get("sector")),
+        ("Precio actual", resultado.get("precio_actual")),
+        ("Valor intrínseco", resultado.get("valor_intrinseco")),
+        ("Diferencia %", resultado.get("diferencia_pct")),
+        ("Estado", resultado.get("estado")),
+        ("Fuente de datos", resultado.get("fuente_datos_descripcion")),
+        ("Método", resultado.get("datos_empresa", {}).get("metodo_crecimiento")),
+        ("WACC %", resultado.get("metricas", {}).get("wacc_pct")),
+        ("Crecimiento %", resultado.get("metricas", {}).get("crecimiento_pct")),
+        ("Beta", resultado.get("datos_empresa", {}).get("beta")),
+    ]
+
+    for i, (label, value) in enumerate(rows, start=2):
+        ws[f"A{i}"] = label
+        ws[f"B{i}"] = value
+        if i == 2:
+            ws[f"A{i}"].font = header_font
+            ws[f"A{i}"].fill = header_fill
+            ws[f"B{i}"].font = header_font
+            ws[f"B{i}"].fill = header_fill
+
+    # ---- Hoja 2: FCF Histórico y Proyectado ----
+    ws2 = wb.create_sheet("FCF")
+    ws2.column_dimensions["A"].width = 12
+    ws2.column_dimensions["B"].width = 20
+    ws2.column_dimensions["D"].width = 12
+    ws2.column_dimensions["E"].width = 20
+
+    ws2["A1"] = "FCF Histórico (B$)"
+    ws2["A1"].font = Font(bold=True)
+    ws2["D1"] = "FCF Proyectado (B$)"
+    ws2["D1"].font = Font(bold=True)
+    ws2["A2"], ws2["B2"] = "Año", "Valor"
+    ws2["D2"], ws2["E2"] = "Año", "Valor"
+    for cell in [ws2["A2"], ws2["B2"], ws2["D2"], ws2["E2"]]:
+        cell.font = header_font
+        cell.fill = header_fill
+
+    for i, entry in enumerate(resultado.get("fcf_historico") or [], start=3):
+        ws2[f"A{i}"] = entry.get("anio")
+        ws2[f"B{i}"] = entry.get("valor")
+
+    for i, entry in enumerate(resultado.get("fcf_proyectado") or [], start=3):
+        ws2[f"D{i}"] = entry.get("anio")
+        ws2[f"E{i}"] = entry.get("valor")
+
+    # ---- Hoja 3: Escenarios ----
+    escenarios = resultado.get("escenarios")
+    if escenarios:
+        ws3 = wb.create_sheet("Escenarios")
+        ws3.column_dimensions["A"].width = 14
+        ws3.column_dimensions["B"].width = 16
+        ws3.column_dimensions["C"].width = 16
+        ws3.column_dimensions["D"].width = 16
+        headers = ["Campo", "Bear (Pesimista)", "Base", "Bull (Optimista)"]
+        for col, h in enumerate(headers, start=1):
+            cell = ws3.cell(row=1, column=col, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+
+        campos = [
+            ("Crecimiento %", "tasa_crecimiento_pct"),
+            ("Valor intrínseco", "valor_intrinseco"),
+            ("Diferencia %", "diferencia_pct"),
+            ("Estado", "estado"),
+        ]
+        for row_i, (label, key) in enumerate(campos, start=2):
+            ws3.cell(row=row_i, column=1, value=label).font = Font(bold=True)
+            for col_i, esc in enumerate(["bear", "base", "bull"], start=2):
+                ws3.cell(row=row_i, column=col_i, value=(escenarios.get(esc) or {}).get(key))
+
+    # ---- Hoja 4: Tabla de sensibilidad ----
+    tabla = resultado.get("tabla_sensibilidad")
+    if tabla:
+        ws4 = wb.create_sheet("Sensibilidad")
+        ws4["A1"] = "Valor intrínseco por acción (WACC × Crecimiento)"
+        ws4["A1"].font = Font(bold=True, size=11)
+        ws4.merge_cells(f"A1:{chr(65 + len(tabla['crecimientos']))}1")
+
+        ws4["A2"] = "WACC \\ Crec."
+        ws4["A2"].font = header_font
+        ws4["A2"].fill = header_fill
+        for col_i, g in enumerate(tabla["crecimientos"], start=2):
+            cell = ws4.cell(row=2, column=col_i, value=f"{g}%")
+            cell.font = header_font
+            cell.fill = header_fill
+
+        precio = tabla.get("precio_actual") or 0
+        for row_i, (w, row_vals) in enumerate(zip(tabla["waccs"], tabla["matrix"]), start=3):
+            ws4.cell(row=row_i, column=1, value=f"{w}%").font = Font(bold=True)
+            for col_i, val in enumerate(row_vals, start=2):
+                cell = ws4.cell(row=row_i, column=col_i, value=val)
+                if val is not None and precio:
+                    if val > precio * 1.1:
+                        cell.fill = _hex_fill("DCFCE7")
+                    elif val < precio * 0.9:
+                        cell.fill = _hex_fill("FEE2E2")
+                    else:
+                        cell.fill = _hex_fill("FEF9C3")
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="DCF_{ticker}.xlsx"'
+    wb.save(response)
+    return response

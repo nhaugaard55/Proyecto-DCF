@@ -4,7 +4,7 @@ import pandas as pd
 import yfinance as yf
 
 from .empresa import analizar_empresa
-from .finanzas import calcular_crecimientos
+from .finanzas import calcular_crecimientos, calcular_escenarios, calcular_tabla_sensibilidad
 from .fmp import (
     FCFEntry,
     FMPClientError,
@@ -312,6 +312,44 @@ def ejecutar_dcf(ticker: str, metodo: str = "1", fuente: str = "auto") -> dict:
         "fmp": "Financial Modeling Prep",
         "yfinance": "Yfinance",
     }
+
+    # --- Escenarios bull/base/bear ---
+    try:
+        precio = resultado.get("precio_actual") or 0.0
+        fcf_actual_val = valores_para_crecimiento[0] if valores_para_crecimiento else 0.0
+        datos_empresa = resultado.get("datos_empresa", {})
+        debt_val = datos_empresa.get("deuda", 0.0) or 0.0
+        acciones_val = datos_empresa.get("acciones", 0.0) or 0.0
+        wacc_val = (resultado.get("metricas", {}) or {}).get("wacc", 0.08) or 0.08
+        escenarios = calcular_escenarios(
+            fcf_actual_val, crecimiento, wacc_val, debt_val, acciones_val, precio
+        )
+        resultado["escenarios"] = escenarios
+    except Exception:
+        resultado["escenarios"] = None
+
+    # --- Tabla de sensibilidad ---
+    try:
+        tabla = calcular_tabla_sensibilidad(
+            fcf_actual_val, wacc_val, crecimiento, debt_val, acciones_val, precio
+        )
+        resultado["tabla_sensibilidad"] = tabla
+    except Exception:
+        resultado["tabla_sensibilidad"] = None
+
+    # --- Historial de precios (1 año) para gráfico ---
+    try:
+        hist = empresa_yf.history(period="1y")
+        if hist is not None and not hist.empty and "Close" in hist.columns:
+            hist_clean = hist["Close"].dropna()
+            resultado["precio_historico"] = {
+                "fechas": [d.strftime("%Y-%m-%d") for d in hist_clean.index],
+                "precios": [round(float(v), 2) for v in hist_clean.values],
+            }
+        else:
+            resultado["precio_historico"] = None
+    except Exception:
+        resultado["precio_historico"] = None
 
     resultado["fuente_datos"] = fuente_utilizada
     resultado["fuente_datos_descripcion"] = descripcion_fuentes.get(

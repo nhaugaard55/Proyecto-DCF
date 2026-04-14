@@ -41,3 +41,18 @@ class AnalysisRecord(models.Model):
             "auto": "Automático",
         }
         return etiquetas.get(self.fuente_utilizada or "", self.fuente_utilizada or "N/D")
+
+
+class WatchlistItem(models.Model):
+    """Ticker guardado por el usuario para seguimiento."""
+
+    ticker = models.CharField(max_length=16, unique=True)
+    company_name = models.CharField(max_length=255, blank=True)
+    company_exchange = models.CharField(max_length=64, blank=True)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("ticker",)
+
+    def __str__(self) -> str:
+        return self.ticker

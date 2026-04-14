@@ -1,0 +1,43 @@
+<div class="compare-row">
+  <span class="compare-label">Precio actual</span>
+  <span>${{ r.precio_actual|floatformat:2 }}</span>
+</div>
+<div class="compare-row">
+  <span class="compare-label">Valor intrínseco</span>
+  <span class="fw-bold">{% if r.valor_intrinseco is not None %}${{ r.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</span>
+</div>
+<div class="compare-row">
+  <span class="compare-label">Diferencia</span>
+  <span class="{% if r.diferencia_pct is not None and r.diferencia_pct >= 0 %}text-success{% elif r.diferencia_pct is not None %}text-danger{% endif %} fw-semibold">
+    {% if r.diferencia_pct is not None %}{{ r.diferencia_pct|floatformat:1 }}%{% else %}N/D{% endif %}
+  </span>
+</div>
+<div class="compare-row">
+  <span class="compare-label">Sector</span>
+  <span>{{ r.sector|default:"N/D" }}</span>
+</div>
+<div class="compare-row">
+  <span class="compare-label">WACC</span>
+  <span>{% if r.metricas.wacc_pct is not None %}{{ r.metricas.wacc_pct|floatformat:2 }}%{% else %}N/D{% endif %}</span>
+</div>
+<div class="compare-row">
+  <span class="compare-label">Crecimiento FCF</span>
+  <span>{% if r.metricas.crecimiento_pct is not None %}{{ r.metricas.crecimiento_pct|floatformat:2 }}%{% else %}N/D{% endif %}</span>
+</div>
+<div class="compare-row">
+  <span class="compare-label">Beta</span>
+  <span>{% if r.datos_empresa.beta is not None %}{{ r.datos_empresa.beta|floatformat:2 }}{% else %}N/D{% endif %}</span>
+</div>
+{% if r.escenarios %}
+<div class="mt-3 pt-2" style="border-top:1px solid var(--surface-border);">
+  <div class="small text-muted mb-2 fw-semibold">Escenarios</div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% for esc in r.escenarios.items %}
+    <div class="text-center p-2 rounded-2" style="background:var(--surface-glass);min-width:70px;">
+      <div class="small text-muted">{% if esc.0 == "bear" %}🐻{% elif esc.0 == "base" %}📊{% else %}🐂{% endif %}</div>
+      <div class="fw-bold small">{% if esc.1.valor_intrinseco is not None %}${{ esc.1.valor_intrinseco|floatformat:0 }}{% else %}N/D{% endif %}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}

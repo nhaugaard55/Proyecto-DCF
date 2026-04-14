@@ -1,0 +1,180 @@
+{% extends "dcf_app/base.html" %}
+
+{% block nav_actions %}
+<a href="{% url 'home' %}" class="btn btn-outline-light btn-sm">← Volver al análisis</a>
+<a href="{% url 'watchlist' %}" class="btn btn-outline-light btn-sm">★ Watchlist</a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.compare-card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+}
+.compare-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--surface-border);
+    font-size: 0.9rem;
+}
+.compare-row:last-child { border-bottom: none; }
+.compare-label { color: var(--text-muted); }
+.compare-winner { font-weight: 700; color: #22c55e; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 class="fw-bold mb-1">⇌ Comparar empresas</h2>
+<p class="text-muted mb-4">Compará el análisis DCF de dos empresas lado a lado.</p>
+
+<form method="get" class="row g-3 mb-5 align-items-end">
+  <div class="col-md-4">
+    <label class="form-label fw-semibold small">Empresa A</label>
+    <input type="text" name="ticker_a" class="form-control" placeholder="Ej: AAPL" value="{{ ticker_a }}" required>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label fw-semibold small">Empresa B</label>
+    <input type="text" name="ticker_b" class="form-control" placeholder="Ej: MSFT" value="{{ ticker_b }}" required>
+  </div>
+  <div class="col-md-2">
+    <label class="form-label fw-semibold small">Método</label>
+    <select name="metodo" class="form-select">
+      <option value="1" {% if metodo == "1" %}selected{% endif %}>CAGR</option>
+      <option value="2" {% if metodo == "2" %}selected{% endif %}>Promedio</option>
+    </select>
+  </div>
+  <div class="col-md-2">
+    <button type="submit" class="btn btn-primary w-100">Comparar</button>
+  </div>
+</form>
+
+{% if ticker_a or ticker_b %}
+<div class="row g-4">
+
+  {# --- Columna A --- #}
+  <div class="col-md-6">
+    {% if error_a %}
+    <div class="alert alert-danger">Error: {{ error_a }}</div>
+    {% elif resultado_a %}
+    <div class="compare-card">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <div class="fw-bold fs-5">{{ ticker_a }}</div>
+          <div class="text-muted small">{{ resultado_a.nombre }}</div>
+        </div>
+        {% if resultado_a.estado %}
+        <span class="badge {% if resultado_a.estado == 'SUBVALUADA' %}bg-success{% elif resultado_a.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %}">
+          {{ resultado_a.estado }}
+        </span>
+        {% endif %}
+      </div>
+
+      {% include "dcf_app/components/compare_metrics.html" with r=resultado_a %}
+    </div>
+    {% elif ticker_a %}
+    <div class="alert alert-warning">No se pudo obtener datos para {{ ticker_a }}.</div>
+    {% endif %}
+  </div>
+
+  {# --- Columna B --- #}
+  <div class="col-md-6">
+    {% if error_b %}
+    <div class="alert alert-danger">Error: {{ error_b }}</div>
+    {% elif resultado_b %}
+    <div class="compare-card">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <div class="fw-bold fs-5">{{ ticker_b }}</div>
+          <div class="text-muted small">{{ resultado_b.nombre }}</div>
+        </div>
+        {% if resultado_b.estado %}
+        <span class="badge {% if resultado_b.estado == 'SUBVALUADA' %}bg-success{% elif resultado_b.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %}">
+          {{ resultado_b.estado }}
+        </span>
+        {% endif %}
+      </div>
+
+      {% include "dcf_app/components/compare_metrics.html" with r=resultado_b %}
+    </div>
+    {% elif ticker_b %}
+    <div class="alert alert-warning">No se pudo obtener datos para {{ ticker_b }}.</div>
+    {% endif %}
+  </div>
+
+</div>
+
+{# --- Tabla comparativa lado a lado --- #}
+{% if resultado_a and resultado_b %}
+<div class="mt-5">
+  <h5 class="fw-bold mb-3">Comparación directa</h5>
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle text-center" style="background:var(--table-bg);color:var(--table-text);border-color:var(--table-border);">
+      <thead style="background:var(--table-header-bg);">
+        <tr>
+          <th class="text-start">Métrica</th>
+          <th>{{ ticker_a }}</th>
+          <th>{{ ticker_b }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="text-start text-muted">Precio actual</td>
+          <td>${{ resultado_a.precio_actual|floatformat:2 }}</td>
+          <td>${{ resultado_b.precio_actual|floatformat:2 }}</td>
+        </tr>
+        <tr>
+          <td class="text-start text-muted">Valor intrínseco</td>
+          <td>{% if resultado_a.valor_intrinseco is not None %}<strong>${{ resultado_a.valor_intrinseco|floatformat:2 }}</strong>{% else %}N/D{% endif %}</td>
+          <td>{% if resultado_b.valor_intrinseco is not None %}<strong>${{ resultado_b.valor_intrinseco|floatformat:2 }}</strong>{% else %}N/D{% endif %}</td>
+        </tr>
+        <tr>
+          <td class="text-start text-muted">Diferencia %</td>
+          <td class="{% if resultado_a.diferencia_pct is not None and resultado_a.diferencia_pct >= 0 %}text-success{% elif resultado_a.diferencia_pct is not None %}text-danger{% endif %}">
+            {% if resultado_a.diferencia_pct is not None %}{{ resultado_a.diferencia_pct|floatformat:1 }}%{% else %}N/D{% endif %}
+          </td>
+          <td class="{% if resultado_b.diferencia_pct is not None and resultado_b.diferencia_pct >= 0 %}text-success{% elif resultado_b.diferencia_pct is not None %}text-danger{% endif %}">
+            {% if resultado_b.diferencia_pct is not None %}{{ resultado_b.diferencia_pct|floatformat:1 }}%{% else %}N/D{% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td class="text-start text-muted">WACC %</td>
+          <td>{% if resultado_a.metricas.wacc_pct is not None %}{{ resultado_a.metricas.wacc_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td>
+          <td>{% if resultado_b.metricas.wacc_pct is not None %}{{ resultado_b.metricas.wacc_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td>
+        </tr>
+        <tr>
+          <td class="text-start text-muted">Crecimiento FCF %</td>
+          <td>{% if resultado_a.metricas.crecimiento_pct is not None %}{{ resultado_a.metricas.crecimiento_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td>
+          <td>{% if resultado_b.metricas.crecimiento_pct is not None %}{{ resultado_b.metricas.crecimiento_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td>
+        </tr>
+        <tr>
+          <td class="text-start text-muted">Sector</td>
+          <td>{{ resultado_a.sector|default:"N/D" }}</td>
+          <td>{{ resultado_b.sector|default:"N/D" }}</td>
+        </tr>
+        <tr>
+          <td class="text-start text-muted">Beta</td>
+          <td>{% if resultado_a.datos_empresa.beta is not None %}{{ resultado_a.datos_empresa.beta|floatformat:2 }}{% else %}N/D{% endif %}</td>
+          <td>{% if resultado_b.datos_empresa.beta is not None %}{{ resultado_b.datos_empresa.beta|floatformat:2 }}{% else %}N/D{% endif %}</td>
+        </tr>
+        <tr>
+          <td class="text-start text-muted">Market Cap (B$)</td>
+          <td>{% if resultado_a.datos_empresa.market_cap_billones is not None %}${{ resultado_a.datos_empresa.market_cap_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+          <td>{% if resultado_b.datos_empresa.market_cap_billones is not None %}${{ resultado_b.datos_empresa.market_cap_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="d-flex gap-3 mt-3">
+    <a href="{% url 'dcf_excel' %}?ticker={{ ticker_a }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-sm btn-outline-success">⬇ Excel {{ ticker_a }}</a>
+    <a href="{% url 'dcf_excel' %}?ticker={{ ticker_b }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-sm btn-outline-success">⬇ Excel {{ ticker_b }}</a>
+    <a href="{% url 'dcf_pdf' %}?ticker={{ ticker_a }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-sm btn-outline-primary">⬇ PDF {{ ticker_a }}</a>
+    <a href="{% url 'dcf_pdf' %}?ticker={{ ticker_b }}&metodo={{ metodo }}&fuente={{ fuente }}" class="btn btn-sm btn-outline-primary">⬇ PDF {{ ticker_b }}</a>
+  </div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
