@@ -23,7 +23,7 @@ class _ModelUnavailableError(AISummaryError):
 
 
 _DEFAULT_MODEL = "HuggingFaceH4/zephyr-7b-beta"
-_FALLBACK_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
+_FALLBACK_MODEL = "facebook/bart-large-cnn"
 _TRANSLATION_MODEL = "Helsinki-NLP/opus-mt-en-es"
 _HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
 
@@ -254,7 +254,7 @@ def _solicitar_resumen(
     if response.status_code in (403, 404):
         raise _ModelUnavailableError(
             modelo,
-            "La API de Hugging Face reportó que el modelo no está disponible para tu token (403/404).",
+            f"El modelo '{modelo}' no está disponible para tu token ({response.status_code}).",
         )
 
     if response.status_code == 429:
@@ -265,12 +265,11 @@ def _solicitar_resumen(
     if response.status_code == 400:
         cuerpo = response.text.strip()[:200]
         cuerpo_sanitizado = _sanitize(cuerpo)
-        if "index out of range" in cuerpo.lower():
-            raise _ModelUnavailableError(
-                modelo,
-                "El modelo principal rechazó el prompt (index out of range). Intentando con el respaldo.",
-            )
-        raise AISummaryError(f"La API de Hugging Face devolvió 400: {cuerpo_sanitizado}")
+        # Tratar todos los 400 como indisponibilidad del modelo para probar el fallback.
+        raise _ModelUnavailableError(
+            modelo,
+            f"El modelo '{modelo}' rechazó el prompt (400): {cuerpo_sanitizado}",
+        )
 
     if response.status_code >= 500:
         raise AISummaryError("La API de Hugging Face está temporalmente indisponible (error 5xx).")
