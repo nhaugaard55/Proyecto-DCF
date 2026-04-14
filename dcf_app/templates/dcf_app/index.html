@@ -567,19 +567,19 @@
             <span class="hero-eyebrow">Valuación con fundamento</span>
             {% if resultado %}
             <h1 class="hero-title">Análisis de {{ resultado.nombre }}{% if ticker %} ({{ ticker }}){% endif %}</h1>
-            <p class="hero-subtitle">Repasá el valor intrínseco estimado, comparalo con el precio actual y validá los supuestos utilizados.</p>
+            <p class="hero-subtitle">Consenso de múltiples modelos de valuación ponderados por etapa del ciclo empresarial.</p>
             <div class="hero-summary d-flex flex-wrap gap-3">
                 <div class="feature-pill">
                     <span class="feature-label">Precio actual</span>
                     <span class="feature-value">{% with precio=resultado.precio_actual %}{% if precio is not None %}${{ precio|floatformat:2 }}{% else %}N/D{% endif %}{% endwith %}</span>
                 </div>
                 <div class="feature-pill">
-                    <span class="feature-label">Valor intrínseco</span>
-                    <span class="feature-value">{% with valor=resultado.valor_intrinseco %}{% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}{% endwith %}</span>
+                    <span class="feature-label">Valor consenso</span>
+                    <span class="feature-value">{% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None %}${{ multi_model.consenso.precio|floatformat:2 }}{% elif resultado.valor_intrinseco is not None %}${{ resultado.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</span>
                 </div>
                 <div class="feature-pill">
                     <span class="feature-label">Margen estimado</span>
-                    <span class="feature-value">{% with diff=resultado.diferencia_pct %}{% if diff is not None %}{{ diff|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                    <span class="feature-value">{% if multi_model and multi_model.consenso and multi_model.consenso.upside_pct is not None %}{{ multi_model.consenso.upside_pct|floatformat:2 }}%{% elif resultado.diferencia_pct is not None %}{{ resultado.diferencia_pct|floatformat:2 }}%{% else %}N/D{% endif %}</span>
                 </div>
             </div>
             {% else %}
@@ -815,24 +815,24 @@
                             {% endwith %}
                         </div>
                         <div class="col">
-                            <p class="text-muted text-uppercase small fw-semibold mb-1">Valor intrínseco</p>
-                            {% with valor=resultado.valor_intrinseco %}
-                                {% if valor is not None %}
-                                <span class="fs-4 fw-semibold">${{ valor|floatformat:2 }}</span>
-                                {% else %}
-                                <span class="fs-4 fw-semibold">No disponible</span>
-                                {% endif %}
-                            {% endwith %}
+                            <p class="text-muted text-uppercase small fw-semibold mb-1">Valor consenso</p>
+                            {% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None %}
+                            <span class="fs-4 fw-semibold">${{ multi_model.consenso.precio|floatformat:2 }}</span>
+                            {% elif resultado.valor_intrinseco is not None %}
+                            <span class="fs-4 fw-semibold">${{ resultado.valor_intrinseco|floatformat:2 }}</span>
+                            {% else %}
+                            <span class="fs-4 fw-semibold">No disponible</span>
+                            {% endif %}
                         </div>
                         <div class="col">
                             <p class="text-muted text-uppercase small fw-semibold mb-1">Margen estimado</p>
-                            {% with diff=resultado.diferencia_pct %}
-                                {% if diff is not None %}
-                                <span class="fs-4 fw-semibold">{{ diff|floatformat:2 }}%</span>
-                                {% else %}
-                                <span class="fs-4 fw-semibold">N/D</span>
-                                {% endif %}
-                            {% endwith %}
+                            {% if multi_model and multi_model.consenso and multi_model.consenso.upside_pct is not None %}
+                            <span class="fs-4 fw-semibold">{{ multi_model.consenso.upside_pct|floatformat:2 }}%</span>
+                            {% elif resultado.diferencia_pct is not None %}
+                            <span class="fs-4 fw-semibold">{{ resultado.diferencia_pct|floatformat:2 }}%</span>
+                            {% else %}
+                            <span class="fs-4 fw-semibold">N/D</span>
+                            {% endif %}
                         </div>
                     </div>
                     {% if resultado.datos_empresa.descripcion %}
@@ -1266,7 +1266,7 @@
               <h2 class="accordion-header">
                 <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#acc-dcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="fw-semibold me-2">Flujo de Caja Descontado (DCF)</span>
-                  {% if resultado.valor_intrinseco is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ resultado.valor_intrinseco|floatformat:2 }}</span>{% endif %}
+                  {% if resultado.valor_intrinseco is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">DCF: ${{ resultado.valor_intrinseco|floatformat:2 }}</span>{% endif %}
                   {% if resultado.estado == "SUBVALUADA" %}<span class="badge bg-success ms-2 small">Subvaluada</span>
                   {% elif resultado.estado == "SOBREVALUADA" %}<span class="badge bg-danger ms-2 small">Sobrevaluada</span>
                   {% elif resultado.estado == "RAZONABLE" %}<span class="badge bg-warning text-dark ms-2 small">Razonable</span>{% endif %}
