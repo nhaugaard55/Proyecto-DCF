@@ -915,6 +915,171 @@
         </div>
         <!-- ===== FIN SECUENCIA ===== -->
 
+        <!-- ===== ETAPA EMPRESARIAL ===== -->
+        {% if company_stage %}
+        <div class="col-12">
+          <div class="card soft-card border-0">
+            <div class="card-body">
+
+              <!-- ── Encabezado: badge + nombre ── -->
+              <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+                <div>
+                  <p class="text-muted small text-uppercase fw-semibold mb-1" style="letter-spacing:.05em">
+                    Etapa del ciclo de vida
+                  </p>
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge bg-{{ company_stage.color }} fs-6 px-3 py-2">
+                      Etapa {{ company_stage.stage }} — {{ company_stage.stage_name }}
+                    </span>
+                    <span class="text-muted small">Confianza: {{ company_stage.confidence }}</span>
+                  </div>
+                </div>
+                <div class="ms-auto text-end d-none d-md-block">
+                  <span class="badge bg-{{ company_stage.color }} bg-opacity-10 text-{{ company_stage.color }} border border-{{ company_stage.color }} px-3 py-2">
+                    DCF {{ company_stage.dcf_utility }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- ── Barra de progreso (6 etapas) ── -->
+              {% with s=company_stage.stage c=company_stage.color %}
+              <div class="mb-4">
+                <div class="d-flex" style="gap:3px;">
+                  {% for stage_label in stage_labels %}
+                  <div class="flex-fill rounded-2 py-2 text-center fw-semibold
+                    {% if forloop.counter == s %}bg-{{ c }} text-white{% else %}bg-secondary bg-opacity-10 text-muted{% endif %}"
+                    style="font-size:.7rem;min-width:0;">
+                    {{ forloop.counter }}
+                  </div>
+                  {% endfor %}
+                </div>
+                <div class="d-flex mt-1" style="gap:3px;">
+                  {% for stage_label in stage_labels %}
+                  <div class="flex-fill text-center"
+                    style="font-size:.65rem;min-width:0;{% if forloop.counter == s %}color:var(--bs-{{ c }}){% else %}color:var(--bs-secondary-color){% endif %}">
+                    {{ stage_label }}
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endwith %}
+
+              <!-- ── Descripción + Señales ── -->
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <p class="small text-muted mb-2">{{ company_stage.stage_description }}</p>
+                  <table class="table table-sm table-borderless mb-0">
+                    <tbody>
+                      <tr>
+                        <td class="small text-muted py-1">Tendencia FCF</td>
+                        <td class="small fw-medium py-1">{{ company_stage.signals.fcf_trend }}</td>
+                      </tr>
+                      <tr>
+                        <td class="small text-muted py-1">Crecimiento revenue</td>
+                        <td class="small fw-medium py-1">{{ company_stage.signals.revenue_growth }}</td>
+                      </tr>
+                      <tr>
+                        <td class="small text-muted py-1">Margen neto</td>
+                        <td class="small fw-medium py-1">{{ company_stage.signals.net_margin }}</td>
+                      </tr>
+                      <tr>
+                        <td class="small text-muted py-1">CAGR FCF</td>
+                        <td class="small fw-medium py-1">{{ company_stage.signals.fcf_cagr }}</td>
+                      </tr>
+                      <tr>
+                        <td class="small text-muted py-1">Dividendos</td>
+                        <td class="small fw-medium py-1">{% if company_stage.signals.has_dividends %}Sí{% else %}No{% endif %}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- ── Métricas sugeridas ── -->
+                <div class="col-md-6">
+                  {% if company_stage.metricas_utiles %}
+                  <p class="small fw-semibold text-muted text-uppercase mb-1" style="letter-spacing:.05em">✅ Útiles en esta etapa</p>
+                  <div class="d-flex flex-wrap gap-1 mb-2">
+                    {% for m in company_stage.metricas_utiles %}
+                    <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success" style="border-opacity:.3!important;font-size:.72rem;">{{ m }}</span>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                  {% if company_stage.metricas_algo_utiles %}
+                  <p class="small fw-semibold text-muted text-uppercase mb-1 mt-2" style="letter-spacing:.05em">⚠️ Algo útiles</p>
+                  <div class="d-flex flex-wrap gap-1 mb-2">
+                    {% for m in company_stage.metricas_algo_utiles %}
+                    <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning" style="border-opacity:.3!important;font-size:.72rem;">{{ m }}</span>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                  {% if company_stage.metricas_no_utiles %}
+                  <p class="small fw-semibold text-muted text-uppercase mb-1 mt-2" style="letter-spacing:.05em">❌ No útiles</p>
+                  <div class="d-flex flex-wrap gap-1">
+                    {% for m in company_stage.metricas_no_utiles %}
+                    <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary border border-secondary" style="border-opacity:.2!important;font-size:.72rem;">{{ m }}</span>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- ── Warning DCF (condicional) ── -->
+              {% if company_stage.dcf_warning %}
+              <div class="alert {% if company_stage.dcf_utility == 'No es útil' %}alert-danger{% else %}alert-warning{% endif %} small mb-3 py-2">
+                <strong>DCF {{ company_stage.dcf_utility }}:</strong> {{ company_stage.dcf_warning }}
+              </div>
+              {% endif %}
+
+              <!-- ── Tabla de métricas de la app con relevancia ── -->
+              {% if company_stage.filtros_relevancia %}
+              <p class="small fw-semibold text-muted text-uppercase mb-2" style="letter-spacing:.05em">
+                Relevancia de los ratios para la etapa {{ company_stage.stage_name }}
+              </p>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th class="small text-muted fw-semibold">Métrica</th>
+                      <th class="small text-muted fw-semibold text-end">Valor</th>
+                      <th class="small text-muted fw-semibold text-end">Criterio</th>
+                      <th class="small text-muted fw-semibold text-center">Cumple</th>
+                      <th class="small text-muted fw-semibold text-center">Relevancia</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for f in company_stage.filtros_relevancia %}
+                    <tr>
+                      <td class="small">
+                        <strong>{{ f.nombre }}</strong>
+                        {% if f.descripcion %}<br><span class="text-muted" style="font-size:.72rem;">{{ f.descripcion }}</span>{% endif %}
+                      </td>
+                      <td class="small text-end fw-medium">{{ f.valor }}</td>
+                      <td class="small text-end text-muted">{{ f.criterio }}</td>
+                      <td class="text-center">
+                        {% if f.cumple %}<span class="text-success">✓</span>{% else %}<span class="text-danger">✗</span>{% endif %}
+                      </td>
+                      <td class="text-center">
+                        {% if f.relevancia == "u" %}
+                          <span class="badge bg-success bg-opacity-10 text-success" style="font-size:.7rem;">✅ Útil</span>
+                        {% elif f.relevancia == "a" %}
+                          <span class="badge bg-warning bg-opacity-10 text-warning" style="font-size:.7rem;">⚠️ Algo útil</span>
+                        {% else %}
+                          <span class="badge bg-secondary bg-opacity-10 text-secondary" style="font-size:.7rem;">❌ No útil</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% endif %}
+
+            </div><!-- /card-body -->
+          </div><!-- /card -->
+        </div>
+        {% endif %}
+        <!-- ===== FIN ETAPA EMPRESARIAL ===== -->
+
         <!-- ── SEPARADOR PASO 1 ── -->
         <div class="col-12">
             <div class="d-flex align-items-center gap-3 mt-2">

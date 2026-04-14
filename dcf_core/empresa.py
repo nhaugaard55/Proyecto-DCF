@@ -713,6 +713,8 @@ def analizar_empresa(
         "fifty_two_week_low": info.get("fiftyTwoWeekLow"),
     }
 
+    net_margin = to_optional_float(info.get("profitMargins"))
+
     analisis_tecnico = calcular_analisis_tecnico(empresa_yf, precio)
     noticias, noticias_fuentes, noticias_error = _fetch_news(ticker, empresa_yf, nombre)
     resumen_noticias, resumen_noticias_error = _generate_ai_summary(noticias, ticker, nombre)
@@ -756,4 +758,8 @@ def analizar_empresa(
         "resumen_noticias": resumen_noticias,
         "resumen_noticias_error": resumen_noticias_error,
         "analisis_tecnico": analisis_tecnico,
+        # Señales para detección de etapa empresarial
+        "net_margin": net_margin,
+        "revenue_growth_raw": to_optional_float(revenue_growth),
+        "has_dividends": (dividend_yield is not None and dividend_yield > 0.005),
     }

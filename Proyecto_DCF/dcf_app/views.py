@@ -18,6 +18,7 @@ from .models import AnalysisRecord
 
 from dcf_core.DCF_Main import ejecutar_dcf
 from dcf_core.business_cycle import get_business_cycle_phase
+from dcf_core.company_stage import detect_company_stage
 from dcf_core.search import CompanySearchResult, search_companies
 
 
@@ -286,6 +287,13 @@ def dcf_view(request):
                 resultado=resultado,
             )
 
+    company_stage = None
+    if resultado and isinstance(resultado, dict):
+        try:
+            company_stage = detect_company_stage(ticker, resultado)
+        except Exception:
+            company_stage = None
+
     chart_data = _build_chart_data(resultado)
 
     if isinstance(resultado, dict):
@@ -339,6 +347,8 @@ def dcf_view(request):
         },
         "recent_records": recent_records,
         "recent_records_limit": RECENT_HISTORY_VISIBLE_LIMIT,
+        "company_stage": company_stage,
+        "stage_labels": ["Startup", "Hyper Growth", "Break Even", "Op. Leverage", "Cap. Return", "Decline"],
     }
 
     return render(request, "dcf_app/index.html", context)
