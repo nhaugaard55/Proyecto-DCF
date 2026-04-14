@@ -643,7 +643,7 @@ def analizar_empresa(
     safety_margin = None
     if valor_por_accion is not None and precio:
         try:
-            safety_margin = (valor_por_accion - precio) / valor_por_accion
+            safety_margin = (valor_por_accion - precio) / precio
         except ZeroDivisionError:
             safety_margin = None
 
