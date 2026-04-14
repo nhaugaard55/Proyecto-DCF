@@ -22,6 +22,7 @@ from .models import AnalysisRecord, WatchlistItem
 from dcf_core.DCF_Main import ejecutar_dcf
 from dcf_core.business_cycle import get_business_cycle_phase
 from dcf_core.company_stage import detect_company_stage, STAGE_META
+from dcf_core.multi_model_valuation import run_all_models
 from dcf_core.search import CompanySearchResult, search_companies
 
 
@@ -291,11 +292,19 @@ def dcf_view(request):
             )
 
     company_stage = None
+    multi_model = None
     if resultado and isinstance(resultado, dict):
         try:
             company_stage = detect_company_stage(ticker, resultado)
         except Exception:
             company_stage = None
+
+        try:
+            stage_num = (company_stage or {}).get("stage", 4)
+            wacc_val = (resultado.get("metricas") or {}).get("wacc") or 0.08
+            multi_model = run_all_models(ticker, resultado, stage_num, wacc_val)
+        except Exception:
+            multi_model = None
 
     chart_data = _build_chart_data(resultado)
 
@@ -333,6 +342,7 @@ def dcf_view(request):
     context = {
         "in_watchlist": in_watchlist,
         "precio_historico": precio_historico,
+        "multi_model": multi_model,
         "resultado": resultado,
         "error": error,
         "ticker": ticker,

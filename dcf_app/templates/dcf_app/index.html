@@ -1462,6 +1462,189 @@
     </div>
 </section>
 
+{# ---- Valuación Multi-Modelo ---- #}
+{% if multi_model and multi_model.consenso %}
+{% with mm=multi_model consenso=multi_model.consenso ctx=multi_model.stage_context %}
+<section class="results-section mt-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-11">
+
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <h5 class="fw-bold mb-0">Valuación Multi-Modelo</h5>
+        <span class="badge bg-primary-subtle text-primary-emphasis small">{{ ctx.stage_name }}</span>
+      </div>
+      <p class="text-muted small mb-4">
+        Precio consenso ponderado según la etapa del ciclo de vida empresarial.
+        {% if ctx.nota_especial %}
+        <span class="fw-semibold text-warning">⚠ {{ ctx.nota_especial }}</span>
+        {% endif %}
+      </p>
+
+      <div class="row g-4">
+
+        {# ── A) Card veredicto ── #}
+        <div class="col-md-4">
+          <div class="p-4 rounded-3 h-100 d-flex flex-column justify-content-between"
+               style="background:var(--surface-card); border:1px solid var(--surface-border);">
+            <div>
+              <p class="text-muted small text-uppercase fw-semibold mb-1" style="letter-spacing:.05em;">Precio consenso</p>
+              {% if consenso.precio is not None %}
+              <div class="display-6 fw-bold mb-1">${{ consenso.precio|floatformat:2 }}</div>
+              <div class="small text-muted mb-3">Precio actual: ${{ consenso.precio_actual|floatformat:2 }}</div>
+              {% if consenso.upside_pct is not None %}
+              <div class="fs-5 fw-semibold mb-3 {% if consenso.upside_pct >= 0 %}text-success{% else %}text-danger{% endif %}">
+                {% if consenso.upside_pct >= 0 %}▲{% else %}▼{% endif %} {{ consenso.upside_pct|floatformat:1 }}%
+              </div>
+              {% endif %}
+              {% if consenso.veredicto %}
+              <span class="badge px-3 py-2 fs-6
+                {% if consenso.veredicto == 'Subvaluada' %}bg-success
+                {% elif consenso.veredicto == 'Sobrevaluada' %}bg-danger
+                {% else %}bg-secondary{% endif %}">
+                {{ consenso.veredicto }}
+              </span>
+              {% endif %}
+              {% else %}
+              <div class="text-muted fs-5">Sin datos suficientes</div>
+              {% endif %}
+            </div>
+            <div class="mt-3 pt-3" style="border-top:1px solid var(--surface-border);">
+              <div class="small text-muted">{{ consenso.modelos_usados }} modelo{{ consenso.modelos_usados|pluralize:"s" }} usados</div>
+              <div class="small text-muted">Confianza: <strong>{{ consenso.confianza }}</strong></div>
+            </div>
+          </div>
+        </div>
+
+        {# ── B) Barra de rango ── #}
+        <div class="col-md-8">
+          <div class="p-4 rounded-3 h-100" style="background:var(--surface-card); border:1px solid var(--surface-border);">
+            <p class="text-muted small text-uppercase fw-semibold mb-3" style="letter-spacing:.05em;">Rango de valuación</p>
+            {% if consenso.rango_min is not None and consenso.rango_max is not None %}
+            <div id="valuation-range-bar"
+                 data-min="{{ consenso.rango_min }}"
+                 data-max="{{ consenso.rango_max }}"
+                 data-consenso="{{ consenso.precio|default:0 }}"
+                 data-actual="{{ consenso.precio_actual }}">
+              <div class="d-flex justify-content-between small text-muted mb-1">
+                <span>${{ consenso.rango_min|floatformat:2 }}</span>
+                <span>Rango de modelos</span>
+                <span>${{ consenso.rango_max|floatformat:2 }}</span>
+              </div>
+              <div class="position-relative rounded-pill" style="height:12px; background:linear-gradient(to right, rgba(220,38,38,0.3), rgba(251,191,36,0.4), rgba(34,197,94,0.3)); overflow:visible;">
+                {# Marcador precio actual #}
+                <div id="marker-actual" class="position-absolute" style="top:-6px; transform:translateX(-50%); width:4px; height:24px; background:#ef4444; border-radius:2px;" title="Precio actual"></div>
+                {# Marcador consenso #}
+                <div id="marker-consenso" class="position-absolute" style="top:-8px; transform:translateX(-50%); width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-bottom:14px solid #2563eb;" title="Precio consenso"></div>
+              </div>
+              <div class="d-flex justify-content-between small mt-2">
+                <span class="text-danger fw-semibold">● Precio actual</span>
+                <span class="text-primary fw-semibold">▲ Precio consenso</span>
+              </div>
+            </div>
+            {% else %}
+            <p class="text-muted small">No hay suficientes modelos aplicables para mostrar el rango.</p>
+            {% endif %}
+
+            {# Accordion Reverse DCF #}
+            {% with rdcf=mm.modelos.reverse_dcf %}
+            {% if rdcf.aplicable and rdcf.g_implicita is not None %}
+            <div class="accordion mt-3" id="rdcf-accordion">
+              <div class="accordion-item" style="background:transparent; border:1px solid var(--surface-border);">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed small py-2" type="button"
+                          data-bs-toggle="collapse" data-bs-target="#rdcf-body"
+                          style="background:transparent; color:var(--text-primary); box-shadow:none;">
+                    ¿Qué implica el precio actual? — Reverse DCF
+                  </button>
+                </h2>
+                <div id="rdcf-body" class="accordion-collapse collapse">
+                  <div class="accordion-body small" style="color:var(--text-secondary);">
+                    <p class="mb-1">
+                      El precio actual de <strong>${{ consenso.precio_actual|floatformat:2 }}</strong>
+                      implica que el mercado espera que la empresa crezca su FCF al
+                      <strong>{{ rdcf.g_implicita_pct|floatformat:1 }}% anual</strong>
+                      durante los próximos 5 años.
+                    </p>
+                    <p class="mb-0">
+                      Comparado con el CAGR histórico de <strong>{{ rdcf.cagr_historico_pct|floatformat:1 }}%</strong>,
+                      esta expectativa parece
+                      <strong class="{% if rdcf.veredicto == 'Conservador' %}text-success{% elif rdcf.veredicto == 'Optimista' %}text-danger{% else %}text-warning{% endif %}">
+                        {{ rdcf.veredicto }}
+                      </strong>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+            {% endwith %}
+          </div>
+        </div>
+
+      </div>{# end row #}
+
+      {# ── C) Tabla de modelos ── #}
+      <div class="mt-4">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle" style="background:var(--table-bg); color:var(--table-text); font-size:0.84rem;">
+            <thead style="background:var(--table-header-bg);">
+              <tr>
+                <th>Modelo</th>
+                <th class="text-end">Valor estimado</th>
+                <th class="text-end">vs Precio actual</th>
+                <th class="text-end">Peso</th>
+                <th class="text-center">Relevancia</th>
+                <th>Detalle</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for key, m in mm.modelos.items %}
+              <tr {% if m.peso == 0 %}style="opacity:0.45;"{% endif %}>
+                <td class="fw-semibold {% if m.peso == 0 %}text-decoration-line-through text-muted{% endif %}">
+                  {{ m.nombre }}
+                </td>
+                <td class="text-end">
+                  {% if key == "reverse_dcf" %}
+                    {% if m.g_implicita_pct is not None %}
+                      <span class="text-muted fst-italic small">g = {{ m.g_implicita_pct|floatformat:1 }}%</span>
+                    {% else %}N/A{% endif %}
+                  {% elif m.valor is not None %}
+                    ${{ m.valor|floatformat:2 }}
+                  {% else %}
+                    <span class="text-muted">N/A</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  {% if key != "reverse_dcf" and m.valor is not None %}
+                    <span class="small {% if m.valor >= consenso.precio_actual %}text-success{% else %}text-danger{% endif %}">
+                      ${{ m.valor|floatformat:2 }}
+                    </span>
+                  {% else %}—{% endif %}
+                </td>
+                <td class="text-end">
+                  {% if m.peso > 0 %}
+                  <span class="fw-semibold">{{ m.peso_pct|floatformat:1 }}%</span>
+                  {% else %}—{% endif %}
+                </td>
+                <td class="text-center">
+                  {% if m.relevancia == "Útil" %}✅ Útil
+                  {% elif m.relevancia == "Algo útil" %}⚠️ Algo útil
+                  {% else %}❌ No útil{% endif %}
+                </td>
+                <td class="text-muted small">{{ m.detalle }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+{% endwith %}
+{% endif %}
+
 {# ---- Escenarios bull / base / bear ---- #}
 {% if resultado.escenarios %}
 <section class="results-section mt-5">
@@ -2172,6 +2355,23 @@ document.addEventListener("DOMContentLoaded", function () {
             } catch (e) { /* silencioso */ }
             watchlistBtn.disabled = false;
         });
+    }
+
+    // ---- Barra de rango de valuación ----
+    const rangeBar = document.getElementById("valuation-range-bar");
+    if (rangeBar) {
+        const minV = parseFloat(rangeBar.dataset.min);
+        const maxV = parseFloat(rangeBar.dataset.max);
+        const consensoV = parseFloat(rangeBar.dataset.consenso);
+        const actualV = parseFloat(rangeBar.dataset.actual);
+        const span = maxV - minV;
+        if (span > 0) {
+            const pct = (v) => Math.min(100, Math.max(0, (v - minV) / span * 100));
+            const markerActual = document.getElementById("marker-actual");
+            const markerConsenso = document.getElementById("marker-consenso");
+            if (markerActual) markerActual.style.left = pct(actualV) + "%";
+            if (markerConsenso) markerConsenso.style.left = pct(consensoV) + "%";
+        }
     }
 
     // ---- Colorear tabla de sensibilidad ----
