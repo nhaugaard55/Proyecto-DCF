@@ -2463,7 +2463,14 @@ document.addEventListener("DOMContentLoaded", function () {
                         },
                     },
                     plugins: {
-                        legend: { labels: { color: textColor } },
+                        legend: {
+                            labels: {
+                                color: textColor,
+                                usePointStyle: true,
+                                pointStyle: "line",
+                                pointStyleWidth: 24,
+                            }
+                        },
                         tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}` } },
                     },
                 },
