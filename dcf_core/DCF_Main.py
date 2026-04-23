@@ -326,9 +326,9 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
     except Exception:
         resultado["tabla_sensibilidad"] = None
 
-    # --- Historial de precios (1 año) para gráfico ---
+    # --- Historial de precios (5 años) para gráfico ---
     try:
-        hist = empresa_yf.history(period="1y")
+        hist = empresa_yf.history(period="5y")
         if hist is not None and not hist.empty and "Close" in hist.columns:
             hist_clean = hist["Close"].dropna()
             resultado["precio_historico"] = {
