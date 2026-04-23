@@ -142,14 +142,15 @@ def _score_cpi(cpi_yoy: Optional[float]) -> float:
 
 
 def _score_lei(lei: Optional[float]) -> float:
-    """USSLIND (LEI): positivo → expansión."""
+    """USSLIND (Philadelphia Fed Leading Index): variación %, rango típico -5 a +5.
+    Positivo = crecimiento por encima de la tendencia → expansión."""
     if lei is None:
         return 0.0
-    if lei > 101:
+    if lei > 1.0:
         return 2.0
-    if lei > 99:
+    if lei > 0.0:
         return 1.0
-    if lei > 97:
+    if lei > -1.0:
         return -1.0
     return -2.0
 
