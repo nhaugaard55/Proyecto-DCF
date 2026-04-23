@@ -947,22 +947,10 @@
     });
   })();
 
-  // ── Ticker strip ───────────────────────────────────────────────
-  const TICKERS = [
-    { sym: 'AAPL',  price: '178.42', chg: '+1.23%', up: true  },
-    { sym: 'MSFT',  price: '415.80', chg: '+0.87%', up: true  },
-    { sym: 'NVDA',  price: '892.31', chg: '+2.54%', up: true  },
-    { sym: 'GOOGL', price: '165.12', chg: '-0.34%', up: false },
-    { sym: 'AMZN',  price: '192.67', chg: '+1.10%', up: true  },
-    { sym: 'META',  price: '512.44', chg: '+0.65%', up: true  },
-    { sym: 'TSLA',  price: '197.88', chg: '-1.42%', up: false },
-    { sym: 'BRK.B', price: '421.10', chg: '+0.22%', up: true  },
-    { sym: 'JPM',   price: '198.55', chg: '+0.48%', up: true  },
-    { sym: 'V',     price: '276.30', chg: '+0.31%', up: true  },
-  ];
-  (function buildStrip() {
+  // ── Ticker strip (datos reales vía API) ───────────────────────
+  function renderStrip(tickers) {
     const track = document.getElementById('ticker-track');
-    const doubled = [...TICKERS, ...TICKERS];
+    const doubled = [...tickers, ...tickers];
     track.innerHTML = doubled.map(t =>
       `<div class="ticker-item">
         <span class="ticker-sym">${t.sym}</span>
@@ -970,7 +958,12 @@
         <span class="ticker-chg ${t.up ? 'up' : 'dn'}">${t.chg}</span>
       </div>`
     ).join('');
-  })();
+  }
+
+  fetch('/api/ticker-strip/')
+    .then(r => r.json())
+    .then(d => { if (d.tickers && d.tickers.length) renderStrip(d.tickers); })
+    .catch(() => {/* strip permanece vacío sin ruido */});
 
   // ── Navigate to app ────────────────────────────────────────────
   function goToApp(inputId) {

@@ -236,6 +236,53 @@ def landing(request):
     return render(request, 'landing.html')
 
 
+_TICKER_STRIP_SYMBOLS = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "BRK-B", "JPM", "V"]
+_TICKER_STRIP_CACHE_TTL = 300  # 5 minutos
+
+
+@require_GET
+def ticker_strip_view(request):
+    """Devuelve precios y variación diaria de los tickers del strip (JSON, caché 5 min)."""
+    import yfinance as yf
+
+    cache_key = "ticker_strip_data"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({"tickers": cached})
+
+    try:
+        data = yf.download(
+            _TICKER_STRIP_SYMBOLS,
+            period="2d",
+            interval="1d",
+            progress=False,
+            auto_adjust=True,
+        )
+        results = []
+        close = data["Close"] if "Close" in data.columns else data.xs("Close", axis=1, level=0)
+        for sym in _TICKER_STRIP_SYMBOLS:
+            display = sym.replace("-", ".")
+            try:
+                series = close[sym].dropna()
+                if len(series) < 2:
+                    continue
+                prev, last = float(series.iloc[-2]), float(series.iloc[-1])
+                chg = (last - prev) / prev * 100
+                results.append({
+                    "sym": display,
+                    "price": f"{last:.2f}",
+                    "chg": f"{chg:+.2f}%",
+                    "up": chg >= 0,
+                })
+            except Exception:
+                continue
+
+        cache.set(cache_key, results, _TICKER_STRIP_CACHE_TTL)
+        return JsonResponse({"tickers": results})
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+
 def dcf_view(request):
     resultado = None
     error = None

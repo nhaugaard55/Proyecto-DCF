@@ -581,6 +581,14 @@
                     <span class="feature-label">Margen estimado</span>
                     <span class="feature-value">{% if multi_model and multi_model.consenso and multi_model.consenso.upside_pct is not None %}{{ multi_model.consenso.upside_pct|floatformat:2 }}%{% elif resultado.diferencia_pct is not None %}{{ resultado.diferencia_pct|floatformat:2 }}%{% else %}N/D{% endif %}</span>
                 </div>
+                <div class="feature-pill">
+                    <span class="feature-label">Dividendo anual</span>
+                    {% if resultado.dividendos.paga %}
+                        <span class="feature-value">${{ resultado.dividendos.annual_dividend|floatformat:2 }} <span style="font-size:0.78rem; opacity:0.75;">({{ resultado.dividendos.yield_pct|floatformat:2 }}%)</span></span>
+                    {% else %}
+                        <span class="feature-value" style="color:var(--text-muted);">No paga</span>
+                    {% endif %}
+                </div>
             </div>
             {% else %}
             <h1 class="hero-title">Descubrí el valor intrínseco de tus inversiones</h1>
@@ -1247,7 +1255,7 @@
             {# ── 1. DCF (abierto por defecto) ── #}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
-                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#acc-dcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-dcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="fw-semibold me-2">Flujo de Caja Descontado (DCF)</span>
                   {% if resultado.valor_intrinseco is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">DCF: ${{ resultado.valor_intrinseco|floatformat:2 }}</span>{% endif %}
                   {% if resultado.estado == "SUBVALUADA" %}<span class="badge bg-success ms-2 small">Subvaluada</span>
@@ -1255,7 +1263,7 @@
                   {% elif resultado.estado == "RAZONABLE" %}<span class="badge bg-warning text-dark ms-2 small">Razonable</span>{% endif %}
                 </button>
               </h2>
-              <div id="acc-dcf" class="accordion-collapse collapse show">
+              <div id="acc-dcf" class="accordion-collapse collapse">
                 <div class="accordion-body p-0">
                   <div class="row g-3 p-3">
 

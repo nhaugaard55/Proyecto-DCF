@@ -740,9 +740,13 @@ def analizar_empresa(
         "detalles_fuente": detalles_metricas,
     }
 
+    annual_dividend = to_optional_float(info.get("dividendRate"))
+
     dividendos = {
         "yield": dividend_yield,
         "yield_pct": dividend_yield * 100 if dividend_yield is not None else None,
+        "annual_dividend": annual_dividend,
+        "paga": annual_dividend is not None and annual_dividend > 0,
         "net_worth_per_share": net_worth_per_share,
         "safety_margin": safety_margin,
         "safety_margin_pct": safety_margin * 100 if safety_margin is not None else None,
