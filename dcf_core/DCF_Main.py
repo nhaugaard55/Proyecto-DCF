@@ -1,9 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional
 
 import pandas as pd
 import yfinance as yf
 
-from .empresa import analizar_empresa
+from .empresa import analizar_empresa, _fetch_news, _generate_ai_summary
 from .finanzas import calcular_crecimientos, calcular_escenarios, calcular_tabla_sensibilidad
 from .fmp import (
     FCFEntry,
@@ -12,6 +13,107 @@ from .fmp import (
     obtener_fcf_historico,
     obtener_metricas_financieras,
 )
+
+_PREFETCH_TIMEOUT = 20  # segundos máximos por tarea
+
+
+def _prefetch_concurrent(
+    ticker: str, empresa_yf: yf.Ticker
+) -> tuple[List[FCFEntry], Optional[str], Optional[FMPDerivedMetrics], Optional[str]]:
+    """
+    Lanza en paralelo todas las llamadas externas necesarias para el análisis:
+      - yfinance: info, cashflow, financials, balance_sheet, history(5y)
+      - FMP: FCF histórico + métricas financieras
+
+    Las propiedades de yfinance quedan cacheadas en el objeto, por lo que
+    los accesos posteriores son instantáneos.
+
+    Devuelve (fcf_historial, fmp_fcf_error, metricas_fmp, fmp_metricas_error).
+    """
+    fcf_historial: List[FCFEntry] = []
+    fmp_fcf_error: Optional[str] = None
+    metricas_fmp: Optional[FMPDerivedMetrics] = None
+    fmp_metricas_error: Optional[str] = None
+
+    def _yf_info():
+        try:
+            _ = empresa_yf.info
+        except Exception:
+            pass
+
+    def _yf_cashflow():
+        try:
+            _ = empresa_yf.cashflow
+        except Exception:
+            pass
+
+    def _yf_financials():
+        try:
+            _ = empresa_yf.financials
+        except Exception:
+            pass
+
+    def _yf_balance():
+        try:
+            _ = empresa_yf.balance_sheet
+        except Exception:
+            pass
+
+    def _yf_history_5y():
+        try:
+            _ = empresa_yf.history(period="5y")
+        except Exception:
+            pass
+
+    def _yf_history_1y():
+        try:
+            _ = empresa_yf.history(period="1y")
+        except Exception:
+            pass
+
+    def _yf_history_1d():
+        try:
+            _ = empresa_yf.history(period="1d")
+        except Exception:
+            pass
+
+    def _yf_news():
+        try:
+            _ = empresa_yf.news
+        except Exception:
+            pass
+
+    def _fmp_fcf():
+        nonlocal fcf_historial, fmp_fcf_error
+        try:
+            fcf_historial = obtener_fcf_historico(ticker, minimo=4, limite=5)
+        except FMPClientError as exc:
+            fmp_fcf_error = str(exc)
+        except Exception as exc:
+            fmp_fcf_error = str(exc)
+
+    def _fmp_metricas():
+        nonlocal metricas_fmp, fmp_metricas_error
+        try:
+            metricas_fmp = obtener_metricas_financieras(ticker, limite=5)
+        except FMPClientError as exc:
+            fmp_metricas_error = str(exc)
+        except Exception as exc:
+            fmp_metricas_error = str(exc)
+
+    tasks = [_yf_info, _yf_cashflow, _yf_financials, _yf_balance,
+             _yf_history_5y, _yf_history_1y, _yf_history_1d, _yf_news,
+             _fmp_fcf, _fmp_metricas]
+
+    with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
+        futures = {executor.submit(fn): fn.__name__ for fn in tasks}
+        for future in as_completed(futures, timeout=_PREFETCH_TIMEOUT):
+            try:
+                future.result()
+            except Exception:
+                pass
+
+    return fcf_historial, fmp_fcf_error, metricas_fmp, fmp_metricas_error
 
 
 def _obtener_fcf_yfinance(ticker: str, empresa_yf: yf.Ticker, limite: int = 5) -> List[float]:
@@ -163,17 +265,15 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
 
     empresa_yf = yf.Ticker(ticker)
 
-    usar_fmp = True
+    # ── Pre-fetch en paralelo: yfinance × 5 + FMP × 2 ──────────
+    fcf_historial, fmp_error, metricas_fmp, fmp_metricas_error = _prefetch_concurrent(
+        ticker, empresa_yf
+    )
 
-    if usar_fmp:
-        try:
-            fcf_historial = obtener_fcf_historico(ticker, minimo=4, limite=5)
-        except FMPClientError as exc:
-            fmp_error = str(exc)
-        else:
-            if fcf_historial:
-                valores_para_crecimiento = [dato.value for dato in fcf_historial]
-                fuente_utilizada = "fmp"
+    # ── Determinar fuente de FCF ─────────────────────────────────
+    if fcf_historial:
+        valores_para_crecimiento = [dato.value for dato in fcf_historial]
+        fuente_utilizada = "fmp"
 
     if fuente_utilizada != "fmp":
         valores_para_crecimiento = _obtener_fcf_yfinance(ticker, empresa_yf, limite=5)
@@ -191,15 +291,6 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
 
     tax_rate_override: Optional[float] = None
     cost_of_debt_override: Optional[float] = None
-
-    metricas_fmp: Optional[FMPDerivedMetrics] = None
-    fmp_metricas_error: str | None = None
-
-    if usar_fmp:
-        try:
-            metricas_fmp = obtener_metricas_financieras(ticker, limite=5)
-        except FMPClientError as exc:
-            fmp_metricas_error = str(exc)
 
     if metricas_fmp:
         if metricas_fmp.tax_rate is not None:
@@ -284,17 +375,38 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
 
     crecimiento, avg_growth_rate = calcular_crecimientos(valores_para_crecimiento)
 
-    resultado = analizar_empresa(
-        ticker,
-        "auto",
-        crecimiento,
-        avg_growth_rate,
-        fcf_historial=fcf_historial if fuente_utilizada == "fmp" else None,
-        tax_rate_override=tax_rate_override,
-        cost_of_debt_override=cost_of_debt_override,
-        metricas_fuente=metricas_fuente,
-        empresa_yf=empresa_yf,
-    )
+    # ── Paralelizar DCF + noticias/IA ───────────────────────────
+    # analizar_empresa corre sin noticias (skip_news=True) mientras
+    # el pipeline news→IA corre en un thread separado. Se unen al final.
+    nombre_empresa = (getattr(empresa_yf, "info", {}) or {}).get("shortName", ticker)
+
+    def _pipeline_noticias():
+        noticias, fuentes, error = _fetch_news(ticker, empresa_yf, nombre_empresa)
+        resumen, resumen_error = _generate_ai_summary(noticias, ticker, nombre_empresa)
+        return noticias, fuentes, error, resumen, resumen_error
+
+    with ThreadPoolExecutor(max_workers=2) as _ex:
+        _f_noticias = _ex.submit(_pipeline_noticias)
+        _f_dcf = _ex.submit(
+            analizar_empresa,
+            ticker, "auto", crecimiento, avg_growth_rate,
+            fcf_historial if fuente_utilizada == "fmp" else None,
+            tax_rate_override, cost_of_debt_override, metricas_fuente, empresa_yf,
+            True,  # skip_news
+        )
+        resultado = _f_dcf.result()
+        noticias_data = _f_noticias.result()
+
+    # Inyectar noticias en el resultado
+    _noticias, _fuentes, _n_error, _resumen, _r_error = noticias_data
+    mapa_fuentes = {"marketaux": "Marketaux", "finnhub": "Finnhub", "yfinance": "YFinance"}
+    fuentes_detectadas = [mapa_fuentes.get(f, f.title()) for f in sorted(_fuentes)]
+    resultado["noticias"] = _noticias
+    resultado["noticias_fuente"] = ",".join(sorted(_fuentes)) if _fuentes else None
+    resultado["noticias_error"] = _n_error
+    resultado["noticias_fuente_descripcion"] = ", ".join(fuentes_detectadas) if fuentes_detectadas else None
+    resultado["resumen_noticias"] = _resumen
+    resultado["resumen_noticias_error"] = _r_error
 
     descripcion_fuentes = {
         "fmp": "Financial Modeling Prep",

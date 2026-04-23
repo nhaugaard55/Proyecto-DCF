@@ -1,4 +1,5 @@
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -458,6 +459,7 @@ def analizar_empresa(
     cost_of_debt_override: Optional[float] = None,
     metricas_fuente: Optional[Dict[str, dict]] = None,
     empresa_yf: Optional[yf.Ticker] = None,
+    skip_news: bool = False,
 ):
     if empresa_yf is None:
         empresa_yf = yf.Ticker(ticker)
@@ -756,8 +758,16 @@ def analizar_empresa(
     net_margin = to_optional_float(info.get("profitMargins"))
 
     analisis_tecnico = calcular_analisis_tecnico(empresa_yf, precio)
-    noticias, noticias_fuentes, noticias_error = _fetch_news(ticker, empresa_yf, nombre)
-    resumen_noticias, resumen_noticias_error = _generate_ai_summary(noticias, ticker, nombre)
+
+    if skip_news:
+        noticias: List[dict] = []
+        noticias_fuentes: set = set()
+        noticias_error = None
+        resumen_noticias = None
+        resumen_noticias_error = None
+    else:
+        noticias, noticias_fuentes, noticias_error = _fetch_news(ticker, empresa_yf, nombre)
+        resumen_noticias, resumen_noticias_error = _generate_ai_summary(noticias, ticker, nombre)
 
     mapa_fuentes = {
         "marketaux": "Marketaux",
