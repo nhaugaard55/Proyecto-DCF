@@ -102,15 +102,16 @@ def _score_yield_curve(spread: Optional[float]) -> float:
     return -2.0
 
 
-def _score_pmi(pmi: Optional[float]) -> float:
-    """NAPM (ISM Manufacturing): > 50 expansión."""
-    if pmi is None:
+def _score_cfnai(cfnai: Optional[float]) -> float:
+    """CFNAI (Chicago Fed National Activity Index): promedio 0, desv. típica 1.
+    Positivo = actividad por encima de la tendencia histórica."""
+    if cfnai is None:
         return 0.0
-    if pmi >= 55:
+    if cfnai >= 0.5:
         return 2.0
-    if pmi >= 50:
+    if cfnai >= 0.0:
         return 1.0
-    if pmi >= 45:
+    if cfnai >= -0.5:
         return -1.0
     return -2.0
 
@@ -158,7 +159,7 @@ def _score_lei(lei: Optional[float]) -> float:
 def _get_macro_signals(api_key: str) -> tuple[float, list[dict]]:
     """Obtiene y puntúa indicadores macro. Devuelve (score, lista_señales)."""
     t10y2y = _fred_latest("T10Y2Y", api_key)
-    napm   = _fred_latest("NAPM", api_key)
+    cfnai  = _fred_latest("CFNAI", api_key)
     unrate = _fred_latest("UNRATE", api_key)
     lei    = _fred_latest("USSLIND", api_key)
 
@@ -188,10 +189,10 @@ def _get_macro_signals(api_key: str) -> tuple[float, list[dict]]:
 
     scores = {
         "Curva de rendimiento (T10Y2Y)": (_score_yield_curve(t10y2y), t10y2y, "%"),
-        "ISM Manufacturing (PMI)":        (_score_pmi(napm), napm, ""),
-        "Desempleo (UNRATE)":             (_score_unemployment(unrate), unrate, "%"),
-        "Inflación CPI (YoY)":            (_score_cpi(cpi_yoy), cpi_yoy, "%"),
-        "Índice líder (LEI)":             (_score_lei(lei), lei, ""),
+        "Actividad económica (CFNAI)":   (_score_cfnai(cfnai), cfnai, ""),
+        "Desempleo (UNRATE)":            (_score_unemployment(unrate), unrate, "%"),
+        "Inflación CPI (YoY)":           (_score_cpi(cpi_yoy), cpi_yoy, "%"),
+        "Índice líder (LEI)":            (_score_lei(lei), lei, ""),
     }
 
     total = sum(s for s, _, _ in scores.values())
