@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intrinsic — Valuación inteligente de acciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080c10;
+      --surface: #0e1419;
+      --surface2: #141c24;
+      --border: rgba(255,255,255,0.07);
+      --border-accent: rgba(52,211,153,0.3);
+      --text: #e8edf2;
+      --text-muted: #5a6a7a;
+      --text-dim: #8a9aaa;
+      --accent: #34d399;
+      --accent-dim: rgba(52,211,153,0.12);
+      --warn: #f59e0b;
+      --danger: #f87171;
+      --nav-h: 64px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Instrument Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE + GRID OVERLAY ────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 200px 200px;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(1.5rem, 5vw, 4rem);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s, backdrop-filter 0.3s;
+    }
+    nav.scrolled {
+      background: rgba(8,12,16,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .nav-logo {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.4rem;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .nav-logo span { color: var(--accent); }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      list-style: none;
+    }
+    .nav-links a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--accent);
+      color: #080c10 !important;
+      padding: 0.5rem 1.25rem;
+      border-radius: 6px;
+      font-weight: 600 !important;
+      font-size: 0.875rem;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .nav-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* Hamburger */
+    .nav-hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 4px;
+    }
+    .nav-hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text);
+      border-radius: 2px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+    .nav-mobile {
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+      position: fixed;
+      top: var(--nav-h);
+      left: 0; right: 0;
+      background: rgba(8,12,16,0.97);
+      backdrop-filter: blur(20px);
+      padding: 1.5rem clamp(1.5rem, 5vw, 4rem);
+      border-bottom: 1px solid var(--border);
+      z-index: 99;
+    }
+    .nav-mobile.open { display: flex; }
+    .nav-mobile a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    /* ── SECTIONS WRAPPER ────────────────────────────────────── */
+    section, .section { position: relative; z-index: 1; }
+
+    /* ── HERO ────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: calc(var(--nav-h) + 4rem) clamp(1.5rem, 5vw, 4rem) 0;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-glow {
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(700px, 100vw);
+      height: 500px;
+      background: radial-gradient(ellipse, rgba(52,211,153,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 780px; margin: 0 auto; }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--accent-dim);
+      border: 1px solid var(--border-accent);
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.35rem 0.9rem;
+      border-radius: 100px;
+      margin-bottom: 2rem;
+      letter-spacing: 0.02em;
+      animation: fadeDown 0.4s ease both;
+    }
+    .badge-dot {
+      width: 7px; height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.75); }
+    }
+
+    .hero h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2.8rem, 7vw, 5.5rem);
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.5rem;
+      animation: fadeDown 0.4s 0.1s ease both;
+    }
+    .hero h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+    .hero-subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--text-dim);
+      max-width: 540px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+      animation: fadeDown 0.4s 0.2s ease both;
+    }
+
+    .hero-input-wrap {
+      display: flex;
+      gap: 0.5rem;
+      max-width: 440px;
+      margin: 0 auto 1rem;
+      animation: fadeDown 0.4s 0.3s ease both;
+    }
+    .hero-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 1rem;
+      font-weight: 500;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      text-transform: uppercase;
+    }
+    .hero-input::placeholder { color: var(--text-muted); text-transform: none; font-family: 'Instrument Sans', sans-serif; font-weight: 400; }
+    .hero-input:focus {
+      border-color: var(--border-accent);
+      box-shadow: 0 0 0 3px rgba(52,211,153,0.12), 0 0 20px rgba(52,211,153,0.08);
+    }
+    .hero-btn {
+      background: var(--accent);
+      color: #080c10;
+      border: none;
+      font-family: 'Instrument Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .hero-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .hero-note {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      animation: fadeDown 0.4s 0.4s ease both;
+      margin-bottom: 4rem;
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── TICKER STRIP ────────────────────────────────────────── */
+    .ticker-strip {
+      width: 100%;
+      overflow: hidden;
+      border-top: 1px solid var(--border);
+      padding: 0.75rem 0;
+      background: var(--surface);
+      position: relative;
+      z-index: 1;
+    }
+    .ticker-track {
+      display: flex;
+      gap: 3rem;
+      animation: tickerScroll 28s linear infinite;
+      width: max-content;
+    }
+    .ticker-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .ticker-sym {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-dim);
+    }
+    .ticker-price {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .ticker-chg { font-family: 'DM Mono', monospace; font-size: 0.75rem; }
+    .ticker-chg.up { color: var(--accent); }
+    .ticker-chg.dn { color: var(--danger); }
+    @keyframes tickerScroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* ── MOCK ANALYSIS ───────────────────────────────────────── */
+    .mock-section {
+      padding: 6rem clamp(1.5rem, 5vw, 4rem);
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+    }
+    .section-sub {
+      color: var(--text-dim);
+      font-size: 1rem;
+      margin-bottom: 3rem;
+      max-width: 500px;
+    }
+    .mock-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .mock-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .mock-ticker-name {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .mock-ticker-sym {
+      font-family: 'DM Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .mock-company { font-size: 0.85rem; color: var(--text-dim); }
+    .badge-green {
+      background: rgba(52,211,153,0.12);
+      border: 1px solid rgba(52,211,153,0.3);
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.3rem 0.75rem;
+      border-radius: 100px;
+    }
+    .mock-metrics {
+      display: flex;
+      gap: 2rem;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .mock-metric-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.25rem; }
+    .mock-metric-val { font-family: 'DM Mono', monospace; font-size: 1.3rem; font-weight: 500; }
+    .mock-metric-val.accent { color: var(--accent); }
+    .mock-metric-sub { font-size: 0.75rem; color: var(--accent); margin-top: 0.1rem; }
+
+    .mock-stage {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .mock-stage-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.6rem; }
+    .stage-bar {
+      display: flex;
+      gap: 4px;
+      height: 6px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    .stage-seg {
+      flex: 1;
+      border-radius: 2px;
+      background: var(--surface2);
+    }
+    .stage-seg.active {
+      background: linear-gradient(90deg, #3b82f6, var(--accent));
+      box-shadow: 0 0 8px rgba(52,211,153,0.4);
+    }
+    .stage-names {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-family: 'DM Mono', monospace;
+    }
+    .stage-names span.active { color: var(--accent); font-weight: 600; }
+
+    .mock-models { padding: 1.25rem 1.5rem; }
+    .mock-models-title { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.75rem; }
+    .mock-model-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .mock-model-row:last-child { border-bottom: none; }
+    .mock-model-name { color: var(--text-dim); }
+    .mock-model-val { font-family: 'DM Mono', monospace; font-weight: 500; }
+    .mock-model-badge { font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px; }
+    .mock-model-badge.ok { background: rgba(52,211,153,0.1); color: var(--accent); }
+    .mock-model-badge.warn { background: rgba(245,158,11,0.1); color: var(--warn); }
+
+    .mock-stats {
+      padding: 1rem 1.5rem;
+      background: var(--surface2);
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .mock-stat { font-size: 0.78rem; color: var(--text-muted); }
+    .mock-stat strong { color: var(--text-dim); }
+
+    /* ── FEATURES ────────────────────────────────────────────── */
+    .features-section {
+      padding: 6rem clamp(1.5rem, 5vw, 4rem);
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(52,211,153,0.2);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .feature-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+    .feature-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 0.4rem;
+      color: var(--text);
+    }
+    .feature-desc { font-size: 0.83rem; color: var(--text-dim); line-height: 1.5; }
+
+    /* ── MODELS ──────────────────────────────────────────────── */
+    .models-section {
+      padding: 6rem clamp(1.5rem, 5vw, 4rem);
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .models-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .model-item {
+      background: var(--surface);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      transition: background 0.2s;
+    }
+    .model-item:hover { background: var(--surface2); }
+    .model-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--accent);
+      font-weight: 500;
+      min-width: 20px;
+      padding-top: 2px;
+    }
+    .model-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; }
+    .model-desc { font-size: 0.8rem; color: var(--text-dim); }
+
+    /* ── PRICING ─────────────────────────────────────────────── */
+    .pricing-section {
+      padding: 6rem clamp(1.5rem, 5vw, 4rem);
+      max-width: 820px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+      margin-top: 3rem;
+      text-align: left;
+    }
+    .pricing-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .pricing-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.35); }
+    .pricing-card.featured {
+      border-color: var(--border-accent);
+      box-shadow: 0 0 0 1px var(--border-accent), 0 8px 32px rgba(52,211,153,0.08);
+    }
+    .pricing-plan { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .pricing-plan.pro { color: var(--accent); }
+    .pricing-price {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.8rem;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 0.25rem;
+    }
+    .pricing-per { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+    .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.75rem; }
+    .pricing-features li {
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .pricing-features li::before { content: '✓'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+    .pricing-features li.locked { color: var(--text-muted); }
+    .pricing-features li.locked::before { content: '–'; color: var(--text-muted); }
+    .pricing-btn {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.2s;
+      font-family: 'Instrument Sans', sans-serif;
+    }
+    .pricing-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .pricing-btn.outline {
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: transparent;
+    }
+    .pricing-btn.primary {
+      background: var(--accent);
+      color: #080c10;
+      border: none;
+    }
+
+    /* ── CTA FINAL ───────────────────────────────────────────── */
+    .cta-section {
+      padding: 7rem clamp(1.5rem, 5vw, 4rem);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-glow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(600px, 100vw);
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(52,211,153,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-section h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+    .cta-section p {
+      color: var(--text-dim);
+      margin-bottom: 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+    .cta-input-wrap {
+      display: flex;
+      gap: 0.5rem;
+      max-width: 400px;
+      margin: 0 auto 1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── FOOTER ──────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem clamp(1.5rem, 5vw, 4rem);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+    .footer-logo {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.1rem;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .footer-logo span { color: var(--accent); }
+    footer p { font-size: 0.78rem; color: var(--text-muted); }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .nav-hamburger { display: flex; }
+      .features-grid { grid-template-columns: 1fr; }
+      .models-grid { grid-template-columns: 1fr; }
+      .pricing-grid { grid-template-columns: 1fr; }
+      .mock-metrics { gap: 1rem; }
+      footer { flex-direction: column; align-items: flex-start; }
+    }
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ── DIVIDERS ────────────────────────────────────────────── */
+    .section-divider {
+      height: 1px;
+      background: var(--border);
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══════════════════════════════════════════════════ -->
+<nav id="main-nav">
+  <a href="/" class="nav-logo">Intrinsic<span>.</span></a>
+  <ul class="nav-links">
+    <li><a href="#features">Funcionalidades</a></li>
+    <li><a href="#modelos">Modelos</a></li>
+    <li><a href="#precios">Precios</a></li>
+    <li><a href="/app/" class="nav-cta">Empezar gratis</a></li>
+  </ul>
+  <button class="nav-hamburger" id="hamburger" aria-label="Menú">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="nav-mobile" id="nav-mobile">
+  <a href="#features" onclick="closeMobile()">Funcionalidades</a>
+  <a href="#modelos" onclick="closeMobile()">Modelos</a>
+  <a href="#precios" onclick="closeMobile()">Precios</a>
+  <a href="/app/" class="nav-cta" style="align-self:flex-start;">Empezar gratis</a>
+</div>
+
+<!-- ═══ HERO ═══════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      Beta pública — Sin tarjeta de crédito
+    </div>
+    <h1>El valor <em>real</em> de<br>cualquier acción</h1>
+    <p class="hero-subtitle">
+      8 modelos de valuación. Ciclo económico en tiempo real.<br>
+      Etapa del ciclo de vida de la empresa. Todo en un análisis.
+    </p>
+    <div class="hero-input-wrap">
+      <input
+        type="text"
+        class="hero-input"
+        id="hero-ticker"
+        placeholder="Ej: AAPL, MSFT, NVDA..."
+        maxlength="12"
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <button class="hero-btn" onclick="goToApp('hero-ticker')">Analizar →</button>
+    </div>
+    <p class="hero-note">Sin registro para el primer análisis. 100% gratis.</p>
+  </div>
+  <div class="ticker-strip">
+    <div class="ticker-track" id="ticker-track"></div>
+  </div>
+</section>
+
+<!-- ═══ MOCK ANÁLISIS ══════════════════════════════════════════ -->
+<section class="mock-section" id="analisis">
+  <div class="section-label">Análisis completo</div>
+  <h2 class="section-title">Todo lo que necesitás, en una pantalla</h2>
+  <p class="section-sub">Desde el ciclo macro hasta el modelo de flujo de caja. Sin ruido.</p>
+
+  <div class="mock-card">
+    <!-- Header -->
+    <div class="mock-header">
+      <div class="mock-ticker-name">
+        <span class="mock-ticker-sym">AAPL</span>
+        <span class="mock-company">Apple Inc.</span>
+      </div>
+      <span class="badge-green">🟢 Subvaluada</span>
+    </div>
+
+    <!-- Métricas -->
+    <div class="mock-metrics">
+      <div>
+        <div class="mock-metric-label">Precio actual</div>
+        <div class="mock-metric-val">$178<span style="font-size:0.9rem;color:var(--text-dim)">.00</span></div>
+      </div>
+      <div>
+        <div class="mock-metric-label">Precio consenso</div>
+        <div class="mock-metric-val accent">$203<span style="font-size:0.9rem">.40</span></div>
+        <div class="mock-metric-sub">+14.3%</div>
+      </div>
+    </div>
+
+    <!-- Stage bar -->
+    <div class="mock-stage">
+      <div class="mock-stage-label">Etapa del ciclo de vida</div>
+      <div class="stage-bar">
+        <div class="stage-seg active"></div>
+        <div class="stage-seg active"></div>
+        <div class="stage-seg active"></div>
+        <div class="stage-seg active"></div>
+        <div class="stage-seg active"></div>
+        <div class="stage-seg"></div>
+      </div>
+      <div class="stage-names">
+        <span>Startup</span>
+        <span>Crecimiento</span>
+        <span>Expansión</span>
+        <span>Madurez</span>
+        <span class="active">Capital Return</span>
+        <span>Declive</span>
+      </div>
+    </div>
+
+    <!-- Modelos -->
+    <div class="mock-models">
+      <div class="mock-models-title">Modelos de valuación</div>
+      <div class="mock-model-row">
+        <span class="mock-model-name">DCF</span>
+        <span class="mock-model-val">$198.20</span>
+        <span class="mock-model-badge ok">✅ Útil</span>
+      </div>
+      <div class="mock-model-row">
+        <span class="mock-model-name">Reverse DCF</span>
+        <span class="mock-model-val" style="font-size:0.82rem;color:var(--text-dim)">g implícita 14.2%</span>
+        <span class="mock-model-badge ok">✅ Útil</span>
+      </div>
+      <div class="mock-model-row">
+        <span class="mock-model-name">P/E Trailing</span>
+        <span class="mock-model-val">$185.60</span>
+        <span class="mock-model-badge ok">✅ Útil</span>
+      </div>
+      <div class="mock-model-row">
+        <span class="mock-model-name">P/FCF Trailing</span>
+        <span class="mock-model-val">$201.10</span>
+        <span class="mock-model-badge ok">✅ Útil</span>
+      </div>
+      <div class="mock-model-row">
+        <span class="mock-model-name">Price to Sales</span>
+        <span class="mock-model-val">$220.80</span>
+        <span class="mock-model-badge warn">⚠️ Algo útil</span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="mock-stats">
+      <span class="mock-stat"><strong>8 modelos</strong></span>
+      <span class="mock-stat"><strong>3 capas</strong> de contexto</span>
+      <span class="mock-stat"><strong>~30s</strong> de análisis</span>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══ FEATURES ══════════════════════════════════════════════ -->
+<section class="features-section" id="features">
+  <div class="section-label">Funcionalidades</div>
+  <h2 class="section-title">Más contexto, mejores decisiones</h2>
+  <p class="section-sub">Cada capa agrega señal. Ninguna es decoración.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">🌐</span>
+      <div class="feature-title">Ciclo económico</div>
+      <div class="feature-desc">Detecta la fase macro actual usando datos de FRED y ETFs de referencia. Saber si estás en expansión o contracción cambia el múltiplo justo.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📊</span>
+      <div class="feature-title">Etapa de la empresa</div>
+      <div class="feature-desc">Framework de Brian Feroldi en 6 etapas: Startup → Crecimiento → Expansión → Madurez → Capital Return → Declive. El modelo correcto para cada momento.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">⚖️</span>
+      <div class="feature-title">Valuación multi-modelo</div>
+      <div class="feature-desc">8 modelos con pesos adaptativos según la etapa. DCF, P/E, P/S, P/FCF, Forward Earnings y más. Un precio consenso ponderado y objetivo.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔁</span>
+      <div class="feature-title">Reverse DCF</div>
+      <div class="feature-desc">¿Qué tasa de crecimiento está descontando el mercado? Te dice si la expectativa implícita en el precio actual es conservadora, razonable u optimista.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📰</span>
+      <div class="feature-title">Noticias + IA</div>
+      <div class="feature-desc">Noticias recientes con resumen de sentimiento generado por IA en español. El contexto narrativo que los modelos numéricos no ven.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📄</span>
+      <div class="feature-title">Export PDF &amp; Excel</div>
+      <div class="feature-desc">Informe completo descargable en PDF y Excel. Todos los supuestos, proyecciones y tablas de sensibilidad en un solo archivo.</div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══ MODELOS ════════════════════════════════════════════════ -->
+<section class="models-section" id="modelos">
+  <div class="section-label">Modelos</div>
+  <h2 class="section-title">8 ángulos del mismo activo</h2>
+  <p class="section-sub">Cada modelo tiene sus fortalezas. El consenso pondera todas.</p>
+
+  <div class="models-grid">
+    <div class="model-item">
+      <span class="model-num">01</span>
+      <div>
+        <div class="model-name">DCF — Flujo de Caja Descontado</div>
+        <div class="model-desc">Proyecta FCFs futuros y los descuenta al WACC. El modelo base para empresas con flujo positivo.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">02</span>
+      <div>
+        <div class="model-name">Reverse DCF</div>
+        <div class="model-desc">Calcula la tasa de crecimiento implícita en el precio de mercado actual.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">03</span>
+      <div>
+        <div class="model-name">P/E Trailing</div>
+        <div class="model-desc">Aplica el múltiplo P/E histórico del sector al EPS de los últimos 12 meses.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">04</span>
+      <div>
+        <div class="model-name">Price to Sales</div>
+        <div class="model-desc">Usa el Revenue por acción y el P/S de referencia sectorial. Útil en etapas sin ganancias.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">05</span>
+      <div>
+        <div class="model-name">P/Gross Profit</div>
+        <div class="model-desc">Multiplica el gross profit por acción por el múltiplo P/GP del sector.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">06</span>
+      <div>
+        <div class="model-name">P/FCF Trailing</div>
+        <div class="model-desc">Aplica el múltiplo P/FCF sectorial al free cash flow por acción de los últimos 12 meses.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">07</span>
+      <div>
+        <div class="model-name">P/Forward Earnings</div>
+        <div class="model-desc">Usa el EPS estimado del próximo año y el P/E forward de referencia del sector.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">08</span>
+      <div>
+        <div class="model-name">P/Forward FCF</div>
+        <div class="model-desc">Proyecta el FCF del próximo ejercicio y aplica el múltiplo P/FCF sectorial.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══ PRICING ════════════════════════════════════════════════ -->
+<section class="pricing-section" id="precios">
+  <div class="section-label">Precios</div>
+  <h2 class="section-title">Simple y transparente</h2>
+  <p style="color:var(--text-dim); margin-bottom:0;">Sin sorpresas. Sin tarjeta de crédito para empezar.</p>
+
+  <div class="pricing-grid">
+    <!-- FREE -->
+    <div class="pricing-card">
+      <div class="pricing-plan">Free</div>
+      <div class="pricing-price">$0</div>
+      <div class="pricing-per">/ mes, para siempre</div>
+      <ul class="pricing-features">
+        <li>3 análisis por día</li>
+        <li>DCF básico</li>
+        <li>Noticias recientes</li>
+        <li class="locked">Valuación multi-modelo</li>
+        <li class="locked">Ciclo económico</li>
+        <li class="locked">Export PDF &amp; Excel</li>
+      </ul>
+      <a href="/app/" class="pricing-btn outline">Empezar gratis</a>
+    </div>
+
+    <!-- PRO -->
+    <div class="pricing-card featured">
+      <div class="pricing-plan pro">Pro</div>
+      <div class="pricing-price">$19</div>
+      <div class="pricing-per">/ mes, facturación mensual</div>
+      <ul class="pricing-features">
+        <li>Análisis ilimitados</li>
+        <li>8 modelos de valuación</li>
+        <li>Ciclo económico en vivo</li>
+        <li>Etapa del ciclo de vida</li>
+        <li>Precio consenso ponderado</li>
+        <li>Export PDF completo &amp; Excel</li>
+        <li>Historial ilimitado</li>
+      </ul>
+      <a href="/app/" class="pricing-btn primary">Empezar Pro →</a>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══ CTA FINAL ══════════════════════════════════════════════ -->
+<section class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>¿Cuánto vale tu<br>próxima inversión?</h2>
+  <p>Ingresá el ticker y obtené el análisis completo en segundos.</p>
+  <div class="cta-input-wrap">
+    <input
+      type="text"
+      class="hero-input"
+      id="cta-ticker"
+      placeholder="Ej: TSLA, AMZN, META..."
+      maxlength="12"
+      autocomplete="off"
+      spellcheck="false"
+    >
+    <button class="hero-btn" onclick="goToApp('cta-ticker')">Analizar →</button>
+  </div>
+  <p style="font-size:0.78rem; color:var(--text-muted); position:relative; z-index:1;">Sin registro para el primer análisis.</p>
+</section>
+
+<!-- ═══ FOOTER ═════════════════════════════════════════════════ -->
+<footer>
+  <a href="/" class="footer-logo">Intrinsic<span>.</span></a>
+  <p>© 2026 Intrinsic. Herramienta educativa. No es asesoramiento financiero.</p>
+</footer>
+
+<!-- ═══ JS ═════════════════════════════════════════════════════ -->
+<script>
+  // ── Ticker strip data ──────────────────────────────────────
+  const TICKERS = [
+    { sym: 'AAPL',  price: '178.42', chg: '+1.23%',  up: true  },
+    { sym: 'MSFT',  price: '415.80', chg: '+0.87%',  up: true  },
+    { sym: 'NVDA',  price: '892.31', chg: '+2.54%',  up: true  },
+    { sym: 'GOOGL', price: '165.12', chg: '-0.34%',  up: false },
+    { sym: 'AMZN',  price: '192.67', chg: '+1.10%',  up: true  },
+    { sym: 'META',  price: '512.44', chg: '+0.65%',  up: true  },
+    { sym: 'TSLA',  price: '197.88', chg: '-1.42%',  up: false },
+    { sym: 'BRK.B', price: '421.10', chg: '+0.22%',  up: true  },
+    { sym: 'JPM',   price: '198.55', chg: '+0.48%',  up: true  },
+    { sym: 'V',     price: '276.30', chg: '+0.31%',  up: true  },
+  ];
+
+  function buildStrip() {
+    const track = document.getElementById('ticker-track');
+    const doubled = [...TICKERS, ...TICKERS];
+    track.innerHTML = doubled.map(t => `
+      <div class="ticker-item">
+        <span class="ticker-sym">${t.sym}</span>
+        <span class="ticker-price">$${t.price}</span>
+        <span class="ticker-chg ${t.up ? 'up' : 'dn'}">${t.chg}</span>
+      </div>
+    `).join('');
+  }
+  buildStrip();
+
+  // ── Nav scroll effect ──────────────────────────────────────
+  const nav = document.getElementById('main-nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 20);
+  }, { passive: true });
+
+  // ── Hamburger ─────────────────────────────────────────────
+  const hamburger = document.getElementById('hamburger');
+  const navMobile = document.getElementById('nav-mobile');
+  hamburger.addEventListener('click', () => navMobile.classList.toggle('open'));
+  function closeMobile() { navMobile.classList.remove('open'); }
+
+  // ── Go to app ─────────────────────────────────────────────
+  function goToApp(inputId) {
+    const val = document.getElementById(inputId).value.trim().toUpperCase();
+    if (!val) { document.getElementById(inputId).focus(); return; }
+    window.location.href = '/app/?ticker=' + encodeURIComponent(val);
+  }
+
+  // ── Enter key on inputs ────────────────────────────────────
+  ['hero-ticker', 'cta-ticker'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') goToApp(id);
+    });
+  });
+</script>
+</body>
+</html>

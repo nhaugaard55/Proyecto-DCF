@@ -232,6 +232,10 @@ def _parse_page(value: str | None, default: int = 1) -> int:
         return default
 
 
+def landing(request):
+    return render(request, 'landing.html')
+
+
 def dcf_view(request):
     resultado = None
     error = None
