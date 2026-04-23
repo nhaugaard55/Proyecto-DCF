@@ -217,7 +217,7 @@
     return 'text-secondary';
   }
 
-  fetch('/api/business-cycle/')
+  fetch('{% url "business_cycle" %}')
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (d.error) throw new Error(d.error);
