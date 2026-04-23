@@ -556,6 +556,85 @@
             margin-top: 2rem;
         }
     }
+
+    /* ── Loading overlay ─────────────────────────────── */
+    #analysis-loading {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1060;
+        background: rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+    }
+    #analysis-loading.active { display: flex; }
+
+    .loading-card {
+        background: var(--surface-card);
+        border: 1px solid var(--surface-border);
+        border-radius: 1.25rem;
+        padding: 2.5rem 3rem;
+        text-align: center;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+        max-width: 340px;
+        width: 90%;
+    }
+
+    .loading-dots {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .loading-dots span {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: dotBounce 1.2s infinite ease-in-out;
+    }
+    .loading-dots span:nth-child(1) { animation-delay: 0s; }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes dotBounce {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40%            { transform: scale(1.1); opacity: 1; }
+    }
+
+    .loading-steps {
+        list-style: none;
+        padding: 0;
+        margin: 1.25rem 0 0;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .loading-steps li {
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        transition: color 0.3s;
+    }
+    .loading-steps li.active {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+    .loading-steps li .step-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: var(--surface-border);
+        flex-shrink: 0;
+        transition: background 0.3s;
+    }
+    .loading-steps li.active .step-dot { background: var(--accent); }
+    .loading-steps li.done .step-dot   { background: #16a34a; }
+    .loading-steps li.done { color: var(--text-muted); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 {% endblock %}
@@ -2213,6 +2292,9 @@ document.addEventListener("DOMContentLoaded", function () {
             hiddenTicker.value = fallbackSymbol;
             hiddenName.value = hiddenName.value || input.value.trim();
         }
+        if (hiddenTicker.value) {
+            showAnalysisLoading(hiddenTicker.value);
+        }
     });
 
     if (!input.value && hiddenTicker.value) {
@@ -2663,5 +2745,64 @@ document.addEventListener("DOMContentLoaded", function () {
         );
     }
 });
+</script>
+
+<!-- ═══ OVERLAY DE CARGA ═══════════════════════════════════════ -->
+<div id="analysis-loading" role="status" aria-live="polite">
+  <div class="loading-card">
+    <div class="loading-dots">
+      <span></span><span></span><span></span>
+    </div>
+    <div class="fw-semibold mb-1" style="font-size:1rem; color:var(--text-primary);">
+      Analizando <span id="loading-ticker" style="color:var(--accent);"></span>
+    </div>
+    <div class="text-muted small mb-0">Esto puede tardar unos segundos…</div>
+    <ul class="loading-steps" id="loading-steps">
+      <li data-step="0"><span class="step-dot"></span>Recopilando datos financieros</li>
+      <li data-step="1"><span class="step-dot"></span>Calculando WACC y proyecciones</li>
+      <li data-step="2"><span class="step-dot"></span>Ejecutando modelos de valuación</li>
+      <li data-step="3"><span class="step-dot"></span>Preparando resultados</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(function () {
+    var overlay   = document.getElementById("analysis-loading");
+    var tickerEl  = document.getElementById("loading-ticker");
+    var steps     = document.querySelectorAll("#loading-steps li");
+    var stepIndex = 0;
+    var stepTimer = null;
+
+    // Tiempos aproximados de cada paso (ms)
+    var STEP_DELAYS = [1200, 2500, 4000, 6500];
+
+    function activateStep(i) {
+        steps.forEach(function (li, idx) {
+            li.classList.remove("active", "done");
+            if (idx < i)  li.classList.add("done");
+            if (idx === i) li.classList.add("active");
+        });
+    }
+
+    function scheduleSteps() {
+        STEP_DELAYS.forEach(function (delay, i) {
+            setTimeout(function () { activateStep(i); }, delay);
+        });
+    }
+
+    window.showAnalysisLoading = function (ticker) {
+        if (!overlay) return;
+        if (tickerEl) tickerEl.textContent = ticker.toUpperCase();
+        steps.forEach(function (li) { li.classList.remove("active", "done"); });
+        overlay.classList.add("active");
+        scheduleSteps();
+    };
+
+    // Si la página carga con error (POST rebotó), ocultar el overlay
+    {% if error %}
+    overlay && overlay.classList.remove("active");
+    {% endif %}
+})();
 </script>
 {% endblock %}
