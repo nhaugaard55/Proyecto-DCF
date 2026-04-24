@@ -80,7 +80,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 0.5, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 1.0,
+        "tam": 1.0, "liquidation_value": 0.0,
         "tam_note": True, "asset_note": False,
     },
     2: {  # Hyper Growth
@@ -88,7 +88,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 1.0,
+        "tam": 1.0, "liquidation_value": 0.0,
         "tam_note": True, "asset_note": False,
     },
     3: {  # Break Even
@@ -96,7 +96,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.5, "fwd_fcf": 0.5,
-        "tam": 0.5,
+        "tam": 0.5, "liquidation_value": 0.0,
         "tam_note": False, "asset_note": False,
     },
     4: {  # Operating Leverage
@@ -104,7 +104,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.5, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.5,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
-        "tam": 0.5,
+        "tam": 0.5, "liquidation_value": 0.0,
         "tam_note": False, "asset_note": False,
     },
     5: {  # Capital Return
@@ -112,7 +112,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 1.0, "ps": 0.5,
         "pgp": 0.5, "pfcf_trailing": 1.0,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
-        "tam": 0.0,
+        "tam": 0.0, "liquidation_value": 0.0,
         "tam_note": False, "asset_note": False,
     },
     6: {  # Decline — los modelos de crecimiento pierden relevancia
@@ -120,24 +120,25 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 0.0,
         "pgp": 0.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 0.0,
+        "tam": 0.0, "liquidation_value": 0.70,
         "tam_note": False, "asset_note": True,
     },
 }
 
 _MODEL_KEYS = ["dcf", "reverse_dcf", "pe_trailing", "ps", "pgp",
-               "tam", "pfcf_trailing", "fwd_earnings", "fwd_fcf"]
+               "tam", "pfcf_trailing", "fwd_earnings", "fwd_fcf", "liquidation_value"]
 
 _MODEL_NOMBRES = {
-    "dcf":           "DCF",
-    "reverse_dcf":   "Reverse DCF",
-    "pe_trailing":   "P/E Trailing",
-    "ps":            "Price to Sales",
-    "pgp":           "Price to Gross Profit",
-    "tam":           "TAM asistido",
-    "pfcf_trailing": "P/FCF Trailing",
-    "fwd_earnings":  "P/E Forward",
-    "fwd_fcf":       "P/FCF Forward",
+    "dcf":               "DCF",
+    "reverse_dcf":       "Reverse DCF",
+    "pe_trailing":       "P/E Trailing",
+    "ps":                "Price to Sales",
+    "pgp":               "Price to Gross Profit",
+    "tam":               "TAM asistido",
+    "pfcf_trailing":     "P/FCF Trailing",
+    "fwd_earnings":      "P/E Forward",
+    "fwd_fcf":           "P/FCF Forward",
+    "liquidation_value": "Valor de Liquidación",
 }
 
 
@@ -534,6 +535,153 @@ def _modelo_fwd_fcf(financials: dict, ratios: dict) -> dict:
     }
 
 
+def _modelo_liquidation_value(financials: dict) -> dict:
+    """Modelo 10 — Valor de Liquidación (Benjamin Graham Net-Net)."""
+    datos = financials.get("datos_empresa") or {}
+    current_assets = _sf(datos.get("total_current_assets"))
+    total_liab = _sf(datos.get("total_liabilities"))
+    acciones = _sf(datos.get("acciones"))
+
+    if current_assets is None or total_liab is None or not acciones:
+        return {
+            "valor": None,
+            "ncav": None,
+            "ncav_billones": None,
+            "current_assets_billones": None,
+            "total_liab_billones": None,
+            "veredicto": None,
+            "veredicto_descripcion": None,
+            "veredicto_zona_altman": None,
+            "aplicable": False,
+            "detalle": "Activos corrientes o pasivos totales no disponibles",
+        }
+
+    ncav = current_assets - total_liab
+    valor_por_accion = ncav / acciones
+    ncav_b = _to_billions(ncav)
+    ca_b = _to_billions(current_assets)
+    tl_b = _to_billions(total_liab)
+
+    precio_actual = _sf(financials.get("precio_actual")) or 0.0
+    if ncav <= 0:
+        # Veredicto provisional — se refina en run_all_models cruzando con el Z-Score
+        veredicto = "Insolvente"
+        veredicto_descripcion = "Los pasivos totales superan los activos corrientes"
+    elif precio_actual and valor_por_accion >= precio_actual:
+        veredicto = "Deep Value (Net-Net)"
+        veredicto_descripcion = "El precio cotiza por debajo del NCAV — zona de máximo valor (Graham)"
+    else:
+        veredicto = "Por encima del valor de liquidación"
+        veredicto_descripcion = "El precio de mercado supera el valor de liquidación estimado"
+
+    return {
+        "valor": round(valor_por_accion, 2),
+        "ncav": ncav,
+        "ncav_billones": ncav_b,
+        "current_assets_billones": ca_b,
+        "total_liab_billones": tl_b,
+        "veredicto": veredicto,
+        "veredicto_descripcion": veredicto_descripcion,
+        "veredicto_zona_altman": None,
+        "aplicable": ncav > 0,
+        "detalle": (
+            f"NCAV = Activos corrientes ${ca_b:.2f}B "
+            f"− Pasivos totales ${tl_b:.2f}B = "
+            f"${ncav_b:.2f}B ÷ {acciones:,.0f} acciones"
+        ),
+    }
+
+
+def _modelo_altman_z_score(financials: dict) -> dict:
+    """Altman Z-Score — métrica de solvencia (informativo, no entra al consenso)."""
+    datos = financials.get("datos_empresa") or {}
+    total_assets = _sf(datos.get("total_assets"))
+    working_capital = _sf(datos.get("working_capital"))
+    retained_earnings = _sf(datos.get("retained_earnings"))
+    ebit = _sf(datos.get("ebit"))
+    market_cap = _sf(datos.get("market_cap"))
+    total_liab = _sf(datos.get("total_liabilities"))
+    revenue = _sf(datos.get("revenue_ttm"))
+
+    campos_faltantes = []
+    for nombre, val in [
+        ("Total Assets", total_assets),
+        ("Working Capital", working_capital),
+        ("Retained Earnings", retained_earnings),
+        ("EBIT", ebit),
+        ("Market Cap", market_cap),
+        ("Total Liabilities", total_liab),
+        ("Revenue TTM", revenue),
+    ]:
+        if val is None:
+            campos_faltantes.append(nombre)
+
+    if campos_faltantes:
+        return {
+            "disponible": False,
+            "z_score": None,
+            "zona": None,
+            "zona_code": None,
+            "interpretacion": None,
+            "componentes": {},
+            "detalle": f"Datos insuficientes: {', '.join(campos_faltantes)}",
+        }
+
+    if total_assets == 0 or total_liab == 0:
+        return {
+            "disponible": False,
+            "z_score": None,
+            "zona": None,
+            "zona_code": None,
+            "interpretacion": None,
+            "componentes": {},
+            "detalle": "Total Assets o Total Liabilities es cero",
+        }
+
+    x1 = working_capital / total_assets
+    x2 = retained_earnings / total_assets
+    x3 = ebit / total_assets
+    x4 = market_cap / total_liab
+    x5 = revenue / total_assets
+
+    z = 1.2 * x1 + 1.4 * x2 + 3.3 * x3 + 0.6 * x4 + 1.0 * x5
+
+    if z > 2.99:
+        zona = "Segura"
+        zona_code = "safe"
+        interpretacion = "Baja probabilidad de quiebra en los próximos 2 años"
+    elif z >= 1.81:
+        zona = "Zona Gris"
+        zona_code = "grey"
+        interpretacion = "Zona de incertidumbre — monitorear de cerca"
+    else:
+        zona = "Distress"
+        zona_code = "distress"
+        interpretacion = "Alta probabilidad de insolvencia — riesgo severo"
+
+    z_position_pct = round(min(max(z / 5 * 100, 0), 100), 1)
+
+    return {
+        "disponible": True,
+        "z_score": round(z, 2),
+        "z_position_pct": z_position_pct,
+        "zona": zona,
+        "zona_code": zona_code,
+        "interpretacion": interpretacion,
+        "componentes": {
+            "x1": round(x1, 4), "x1_pct": round(x1 * 100, 2),
+            "x2": round(x2, 4), "x2_pct": round(x2 * 100, 2),
+            "x3": round(x3, 4), "x3_pct": round(x3 * 100, 2),
+            "x4": round(x4, 4), "x4_pct": round(x4 * 100, 2),
+            "x5": round(x5, 4), "x5_pct": round(x5 * 100, 2),
+        },
+        "detalle": (
+            f"Z = 1.2×{x1:.3f} + 1.4×{x2:.3f} + "
+            f"3.3×{x3:.3f} + 0.6×{x4:.3f} + 1.0×{x5:.3f} = {z:.2f}"
+        ),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Redistribución de pesos
 # ---------------------------------------------------------------------------
@@ -598,16 +746,52 @@ def run_all_models(
 
     # ── Ejecutar modelos ──────────────────────────────────────────────────────
     resultados_raw: dict[str, dict] = {
-        "dcf":           _modelo_dcf(financials),
-        "reverse_dcf":   _modelo_reverse_dcf(financials, wacc),
-        "pe_trailing":   _modelo_pe_trailing(financials, ratios),
-        "ps":            _modelo_ps(financials, ratios),
-        "pgp":           _modelo_pgp(financials, ratios),
-        "tam":           _modelo_tam(financials, ratios, stage, wacc),
-        "pfcf_trailing": _modelo_pfcf_trailing(financials, ratios),
-        "fwd_earnings":  _modelo_fwd_earnings(financials, ratios),
-        "fwd_fcf":       _modelo_fwd_fcf(financials, ratios),
+        "dcf":               _modelo_dcf(financials),
+        "reverse_dcf":       _modelo_reverse_dcf(financials, wacc),
+        "pe_trailing":       _modelo_pe_trailing(financials, ratios),
+        "ps":                _modelo_ps(financials, ratios),
+        "pgp":               _modelo_pgp(financials, ratios),
+        "tam":               _modelo_tam(financials, ratios, stage, wacc),
+        "pfcf_trailing":     _modelo_pfcf_trailing(financials, ratios),
+        "fwd_earnings":      _modelo_fwd_earnings(financials, ratios),
+        "fwd_fcf":           _modelo_fwd_fcf(financials, ratios),
+        "liquidation_value": _modelo_liquidation_value(financials),
     }
+
+    # Altman Z-Score: informativo, no entra al consenso
+    altman = _modelo_altman_z_score(financials)
+
+    # Cruzar Liquidation Value con Z-Score cuando NCAV < 0
+    # Un NCAV negativo puede ser estrés real (Intel) o capital optimization (Apple, HD)
+    lv_raw = resultados_raw["liquidation_value"]
+    if lv_raw.get("ncav") is not None and lv_raw["ncav"] < 0:
+        if altman.get("disponible"):
+            z = altman["z_score"]
+            if z > 2.99:
+                lv_raw["veredicto"] = "Estructura de capital optimizada"
+                lv_raw["veredicto_descripcion"] = (
+                    f"El NCAV negativo refleja una política deliberada de recompra de acciones "
+                    f"financiada con deuda — estrategia típica de empresas en Capital Return. "
+                    f"El Z-Score ({z}) confirma solidez financiera sin riesgo real de insolvencia."
+                )
+                lv_raw["veredicto_zona_altman"] = "safe"
+            elif z >= 1.81:
+                lv_raw["veredicto"] = "Apalancamiento elevado — monitorear"
+                lv_raw["veredicto_descripcion"] = (
+                    f"El NCAV negativo con Z-Score en zona gris ({z}) sugiere un nivel de deuda "
+                    f"elevado que puede ser manejable pero requiere seguimiento de la evolución financiera."
+                )
+                lv_raw["veredicto_zona_altman"] = "grey"
+            else:
+                lv_raw["veredicto"] = "Riesgo de insolvencia real"
+                lv_raw["veredicto_descripcion"] = (
+                    f"El NCAV negativo combinado con Z-Score en zona de distress ({z}) indica "
+                    f"riesgo financiero real. Los pasivos totales superan los activos corrientes "
+                    f"y la solvencia general de la empresa está comprometida."
+                )
+                lv_raw["veredicto_zona_altman"] = "distress"
+        else:
+            lv_raw["veredicto_zona_altman"] = "unknown"
 
     # ── Pesos ajustados ───────────────────────────────────────────────────────
     pesos_ajustados = _redistribuir_pesos(raw_weights, resultados_raw)
@@ -659,6 +843,13 @@ def run_all_models(
             entry["pe_sector_ref"] = r.get("pe_sector_ref")
         elif key == "ps":
             entry["ps_sector_ref"] = r.get("ps_sector_ref")
+        elif key == "liquidation_value":
+            entry["ncav_billones"] = r.get("ncav_billones")
+            entry["current_assets_billones"] = r.get("current_assets_billones")
+            entry["total_liab_billones"] = r.get("total_liab_billones")
+            entry["veredicto"] = r.get("veredicto")
+            entry["veredicto_descripcion"] = r.get("veredicto_descripcion")
+            entry["veredicto_zona_altman"] = r.get("veredicto_zona_altman")
 
         modelos[key] = entry
 
@@ -709,8 +900,16 @@ def run_all_models(
             "modelos_excluidos": modelos_excluidos,
             "confianza": _confianza(len(modelos_usados)),
             "disponible": True,
+            "razon_no_calculable": None,
         }
     else:
+        razon_no_calculable = None
+        if stage == 6:
+            razon_no_calculable = (
+                "En etapa de Decline, los modelos de flujo de caja y múltiplos no son representativos. "
+                "El Valor de Liquidación negativo indica que los pasivos totales superan los activos "
+                "corrientes — en un escenario de liquidación, los accionistas no recuperarían capital."
+            )
         consenso = {
             "precio": None,
             "precio_actual": precio_actual,
@@ -723,6 +922,7 @@ def run_all_models(
             "modelos_excluidos": list(_MODEL_KEYS),
             "confianza": "Sin datos",
             "disponible": False,
+            "razon_no_calculable": razon_no_calculable,
         }
 
     # ── Contexto de etapa ─────────────────────────────────────────────────────
@@ -759,4 +959,5 @@ def run_all_models(
         "modelos": modelos,
         "consenso": consenso,
         "stage_context": stage_context,
+        "altman": altman,
     }

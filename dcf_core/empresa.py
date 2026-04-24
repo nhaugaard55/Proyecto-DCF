@@ -509,6 +509,55 @@ def analizar_empresa(
                     break
     net_debt = debt - cash
 
+    # --- Additional balance sheet fields for Liquidation Value and Altman Z-Score ---
+    total_current_assets_val = None
+    total_current_liabilities_val = None
+    total_assets_val = None
+    total_liab_val = None
+    retained_earnings_val = None
+    working_capital_val = None
+
+    if balance is not None and not balance.empty:
+        _bs_map = {
+            "Current Assets":                          "ca",
+            "Current Liabilities":                    "cl",
+            "Total Assets":                            "ta",
+            "Total Liabilities Net Minority Interest": "tl",
+            "Retained Earnings":                       "re",
+            "Working Capital":                         "wc",
+        }
+        for _label, _key in _bs_map.items():
+            if _label in balance.index:
+                _s = balance.loc[_label].dropna()
+                if not _s.empty:
+                    _v = to_optional_float(_s.iloc[0])
+                    if _key == "ca":   total_current_assets_val = _v
+                    elif _key == "cl": total_current_liabilities_val = _v
+                    elif _key == "ta": total_assets_val = _v
+                    elif _key == "tl": total_liab_val = _v
+                    elif _key == "re": retained_earnings_val = _v
+                    elif _key == "wc": working_capital_val = _v
+
+    # Compute working capital if not directly available
+    if working_capital_val is None and total_current_assets_val is not None and total_current_liabilities_val is not None:
+        working_capital_val = total_current_assets_val - total_current_liabilities_val
+
+    # EBIT from income statement
+    ebit_val = None
+    try:
+        _stmt = getattr(empresa_yf, "income_stmt", None)
+        if _stmt is None or (_stmt is not None and _stmt.empty):
+            _stmt = getattr(empresa_yf, "financials", None)
+        if _stmt is not None and not _stmt.empty:
+            for _ebit_label in ("EBIT", "Operating Income"):
+                if _ebit_label in _stmt.index:
+                    _ebit_s = _stmt.loc[_ebit_label].dropna()
+                    if not _ebit_s.empty:
+                        ebit_val = to_optional_float(_ebit_s.iloc[0])
+                        break
+    except Exception:
+        ebit_val = None
+
     fcf: list[float] = []
     fcf_presentacion: list[tuple[Optional[int], float]] = []
     if fcf_historial:
@@ -713,6 +762,14 @@ def analizar_empresa(
         "caja_billones": to_billions(cash),
         "deuda_neta": net_debt,
         "deuda_neta_billones": to_billions(net_debt),
+        # Balance sheet extras for Liquidation Value and Altman Z-Score
+        "total_current_assets": total_current_assets_val,
+        "total_current_liabilities": total_current_liabilities_val,
+        "total_assets": total_assets_val if total_assets_val is not None else to_optional_float(info.get("totalAssets")),
+        "total_liabilities": total_liab_val if total_liab_val is not None else to_optional_float(info.get("totalLiab")),
+        "retained_earnings": retained_earnings_val,
+        "ebit": ebit_val,
+        "working_capital": working_capital_val,
         "beta": beta,
         "tasa_impositiva": tax_rate,
         "tasa_impositiva_pct": tax_rate * 100 if tax_rate is not None else None,

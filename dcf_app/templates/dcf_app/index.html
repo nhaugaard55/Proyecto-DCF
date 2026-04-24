@@ -942,11 +942,11 @@
                 </div>
                 <div class="feature-pill">
                     <span class="feature-label">Valor consenso</span>
-                    <span class="feature-value">{% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None %}${{ multi_model.consenso.precio|floatformat:2 }}{% elif resultado.valor_intrinseco is not None %}${{ resultado.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</span>
+                    <span class="feature-value">{% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None %}${{ multi_model.consenso.precio|floatformat:2 }}{% else %}N/D{% endif %}</span>
                 </div>
                 <div class="feature-pill">
                     <span class="feature-label">Margen estimado</span>
-                    <span class="feature-value">{% if multi_model and multi_model.consenso and multi_model.consenso.upside_pct is not None %}{{ multi_model.consenso.upside_pct|floatformat:2 }}%{% elif resultado.diferencia_pct is not None %}{{ resultado.diferencia_pct|floatformat:2 }}%{% else %}N/D{% endif %}</span>
+                    <span class="feature-value">{% if multi_model and multi_model.consenso and multi_model.consenso.upside_pct is not None %}{{ multi_model.consenso.upside_pct|floatformat:2 }}%{% else %}N/D{% endif %}</span>
                 </div>
                 <div class="feature-pill">
                     <span class="feature-label">Dividendo anual</span>
@@ -1329,11 +1329,6 @@
                     <span class="text-muted small">Confianza: {{ company_stage.confidence }}</span>
                   </div>
                 </div>
-                <div class="ms-auto text-end d-none d-md-block">
-                  <span class="badge bg-{{ company_stage.color }} bg-opacity-10 text-{{ company_stage.color }} border border-{{ company_stage.color }} px-3 py-2">
-                    DCF {{ company_stage.dcf_utility }}
-                  </span>
-                </div>
               </div>
 
               <!-- ── Barra de progreso (6 etapas) ── -->
@@ -1427,12 +1422,6 @@
                 </div>
               </div>
 
-              <!-- ── Warning DCF (condicional) ── -->
-              {% if company_stage.dcf_warning %}
-              <div class="alert {% if company_stage.dcf_utility == 'No es útil' %}alert-danger{% else %}alert-warning{% endif %} small mb-3 py-2">
-                <strong>DCF {{ company_stage.dcf_utility }}:</strong> {{ company_stage.dcf_warning }}
-              </div>
-              {% endif %}
 
               <!-- ── Tabla de métricas de la app con relevancia ── -->
               {% if company_stage.filtros_relevancia %}
@@ -1528,7 +1517,12 @@
                       <span class="badge px-3 py-2 fs-6 {% if consenso.veredicto == 'Subvaluada' %}bg-success{% elif consenso.veredicto == 'Sobrevaluada' %}bg-danger{% else %}bg-secondary{% endif %}">{{ consenso.veredicto }}</span>
                       {% endif %}
                       {% else %}
-                      <div class="text-muted fs-5">Sin datos suficientes</div>
+                      <div class="fw-semibold fs-5 mb-2">No calculable</div>
+                      {% if consenso.razon_no_calculable %}
+                      <p class="text-muted small mb-0">{{ consenso.razon_no_calculable }}</p>
+                      {% else %}
+                      <p class="text-muted small mb-0">No hay modelos aplicables con peso &gt; 0 para calcular un precio consenso.</p>
+                      {% endif %}
                       {% endif %}
                     </div>
                     <div class="mt-3 pt-3" style="border-top:1px solid var(--surface-border);">
@@ -1635,9 +1629,9 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-dcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="fw-semibold me-2">Flujo de Caja Descontado (DCF)</span>
                   {% if resultado.valor_intrinseco is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">DCF: ${{ resultado.valor_intrinseco|floatformat:2 }}</span>{% endif %}
-                  {% if resultado.estado == "SUBVALUADA" %}<span class="badge bg-success badge-estado-acordeon small">Subvaluada</span>
-                  {% elif resultado.estado == "SOBREVALUADA" %}<span class="badge bg-danger badge-estado-acordeon small">Sobrevaluada</span>
-                  {% elif resultado.estado == "RAZONABLE" %}<span class="badge bg-warning text-dark badge-estado-acordeon small">Razonable</span>{% endif %}
+                  {% if resultado.estado == "SUBVALUADA" %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>
+                  {% elif resultado.estado == "SOBREVALUADA" %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>
+                  {% elif resultado.estado == "RAZONABLE" %}<span class="badge bg-warning-subtle text-warning-emphasis badge-estado-acordeon small">Razonable</span>{% endif %}
                 </button>
               </h2>
               <div id="acc-dcf" class="accordion-collapse collapse">
@@ -1912,37 +1906,7 @@
               </div>{# /acc-dcf collapse #}
             </div>{# /acc-dcf item #}
 
-            {# ── 2. Reverse DCF ── #}
-            {% if multi_model %}{% with rdcf=multi_model.modelos.reverse_dcf consenso_mm=multi_model.consenso %}{% if rdcf %}
-            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-rdcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">Reverse DCF</span>
-                  {% if rdcf.g_implicita_pct is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">g implícita {{ rdcf.g_implicita_pct|floatformat:1 }}%</span>{% endif %}
-                  <span class="badge {% if rdcf.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif rdcf.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ rdcf.relevancia }}</span>
-                </button>
-              </h2>
-              <div id="acc-rdcf" class="accordion-collapse collapse">
-                <div class="accordion-body">
-                  <p class="mb-2 text-muted small">Parte del precio de mercado y calcula qué tasa de crecimiento implica ese precio.</p>
-                  {% if rdcf.aplicable and rdcf.g_implicita is not None %}
-                  <div class="row g-3">
-                    <div class="col-md-4"><span class="text-muted small d-block">Crecimiento implícito</span><span class="fs-4 fw-bold">{{ rdcf.g_implicita_pct|floatformat:1 }}%</span></div>
-                    <div class="col-md-4"><span class="text-muted small d-block">CAGR histórico</span><span class="fs-4 fw-bold">{{ rdcf.cagr_historico_pct|floatformat:1 }}%</span></div>
-                    <div class="col-md-4"><span class="text-muted small d-block">Expectativa del mercado</span><span class="fs-4 fw-bold {% if rdcf.veredicto == 'Conservador' %}text-success{% elif rdcf.veredicto == 'Optimista' %}text-danger{% else %}text-warning{% endif %}">{{ rdcf.veredicto }}</span></div>
-                  </div>
-                  <div class="alert alert-light mt-3 small mb-0">
-                    El precio actual de <strong>${{ consenso_mm.precio_actual|floatformat:2 }}</strong> implica un crecimiento del FCF del
-                    <strong>{{ rdcf.g_implicita_pct|floatformat:1 }}% anual</strong> durante 5 años. Vs CAGR histórico de <strong>{{ rdcf.cagr_historico_pct|floatformat:1 }}%</strong> → expectativa
-                    <strong class="{% if rdcf.veredicto == 'Conservador' %}text-success{% elif rdcf.veredicto == 'Optimista' %}text-danger{% else %}text-warning{% endif %}">{{ rdcf.veredicto }}</strong>.
-                  </div>
-                  {% else %}<p class="text-muted mb-0">{{ rdcf.detalle }}</p>{% endif %}
-                </div>
-              </div>
-            </div>
-            {% endif %}{% endwith %}{% endif %}
-
-            {# ── 3. P/E Trailing ── #}
+            {# ── 2. P/E Trailing ── #}
             {% if multi_model %}{% with m=multi_model.modelos.pe_trailing %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2131,6 +2095,158 @@
               </div>
             </div>
             {% endif %}{% endwith %}{% endif %}
+
+            {# ── 10. Valor de Liquidación — visible desde etapa 4 ── #}
+            {% if multi_model and multi_model.stage_context.stage >= 4 %}{% with m=multi_model.modelos.liquidation_value %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-liq" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
+                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  {# El NCAV es un piso de seguridad, no un precio objetivo — solo mostrar badge en stage 6 #}
+                  {% if multi_model.stage_context.stage >= 6 %}{% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}{% endif %}
+                </button>
+              </h2>
+              <div id="acc-liq" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Calcula el Valor Neto de Activos Corrientes (NCAV), la metodología Net-Net de Benjamin Graham. Mide cuánto recibirían los accionistas si la empresa liquidara todos sus activos corrientes y cancelara la totalidad de sus pasivos.</p>
+                  {% if m.veredicto %}
+                  <div class="mb-3">
+                    <span class="badge fs-6 px-3 py-2
+                      {% if m.veredicto_zona_altman == 'safe' %}bg-success-subtle text-success-emphasis
+                      {% elif m.veredicto_zona_altman == 'grey' %}bg-warning-subtle text-warning-emphasis
+                      {% elif m.veredicto_zona_altman == 'distress' %}bg-danger-subtle text-danger-emphasis
+                      {% elif m.veredicto == 'Deep Value (Net-Net)' %}bg-success-subtle text-success-emphasis
+                      {% elif m.veredicto == 'Insolvente' or m.veredicto == 'Riesgo de insolvencia real' %}bg-danger-subtle text-danger-emphasis
+                      {% else %}bg-warning-subtle text-warning-emphasis{% endif %}">
+                      {{ m.veredicto }}
+                    </span>
+                    {% if m.veredicto_zona_altman == 'safe' %}
+                    <span class="badge bg-success-subtle text-success-emphasis ms-2 small">Z-Score: Seguro</span>
+                    {% elif m.veredicto_zona_altman == 'grey' %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis ms-2 small">Z-Score: Zona Gris</span>
+                    {% elif m.veredicto_zona_altman == 'distress' %}
+                    <span class="badge bg-danger-subtle text-danger-emphasis ms-2 small">Z-Score: Distress</span>
+                    {% endif %}
+                    {% if m.veredicto_descripcion %}<p class="text-muted small mt-2 mb-0">{{ m.veredicto_descripcion }}</p>{% endif %}
+                  </div>
+                  {% endif %}
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">Activos corrientes</span><span class="fw-semibold fs-5">{% if m.current_assets_billones is not None %}${{ m.current_assets_billones|floatformat:2 }}B{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Pasivos totales</span><span class="fw-semibold fs-5">{% if m.total_liab_billones is not None %}${{ m.total_liab_billones|floatformat:2 }}B{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">NCAV total</span><span class="fw-semibold fs-5">{% if m.ncav_billones is not None %}${{ m.ncav_billones|floatformat:2 }}B{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor/acción estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── Informativo: Reverse DCF ── #}
+            {% if multi_model %}{% with rdcf=multi_model.modelos.reverse_dcf consenso_mm=multi_model.consenso %}{% if rdcf %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-rdcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">Reverse DCF</span>
+                  {% if rdcf.g_implicita_pct is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">g implícita {{ rdcf.g_implicita_pct|floatformat:1 }}%</span>{% endif %}
+                  <span class="badge {% if rdcf.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif rdcf.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ rdcf.relevancia }}</span>
+                  <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">Informativo</span>
+                </button>
+              </h2>
+              <div id="acc-rdcf" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="mb-2 text-muted small">Parte del precio de mercado y calcula qué tasa de crecimiento implica ese precio. No produce un valor intrínseco.</p>
+                  {% if rdcf.aplicable and rdcf.g_implicita is not None %}
+                  <div class="row g-3">
+                    <div class="col-md-4"><span class="text-muted small d-block">Crecimiento implícito</span><span class="fs-4 fw-bold">{{ rdcf.g_implicita_pct|floatformat:1 }}%</span></div>
+                    <div class="col-md-4"><span class="text-muted small d-block">CAGR histórico</span><span class="fs-4 fw-bold">{{ rdcf.cagr_historico_pct|floatformat:1 }}%</span></div>
+                    <div class="col-md-4"><span class="text-muted small d-block">Expectativa del mercado</span><span class="fs-4 fw-bold {% if rdcf.veredicto == 'Conservador' %}text-success{% elif rdcf.veredicto == 'Optimista' %}text-danger{% else %}text-warning{% endif %}">{{ rdcf.veredicto }}</span></div>
+                  </div>
+                  <div class="alert alert-light mt-3 small mb-0">
+                    El precio actual de <strong>${{ consenso_mm.precio_actual|floatformat:2 }}</strong> implica un crecimiento del FCF del
+                    <strong>{{ rdcf.g_implicita_pct|floatformat:1 }}% anual</strong> durante 5 años. Vs CAGR histórico de <strong>{{ rdcf.cagr_historico_pct|floatformat:1 }}%</strong> → expectativa
+                    <strong class="{% if rdcf.veredicto == 'Conservador' %}text-success{% elif rdcf.veredicto == 'Optimista' %}text-danger{% else %}text-warning{% endif %}">{{ rdcf.veredicto }}</strong>.
+                  </div>
+                  {% else %}<p class="text-muted mb-0">{{ rdcf.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── Informativo: Altman Z-Score — visible desde etapa 5 ── #}
+            {% if multi_model and multi_model.stage_context.stage >= 5 and multi_model.altman %}{% with az=multi_model.altman %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-altman" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">Altman Z-Score</span>
+                  {% if az.disponible %}
+                    <span class="badge ms-2 small
+                      {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis
+                      {% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis
+                      {% else %}bg-danger-subtle text-danger-emphasis{% endif %}">
+                      Z = {{ az.z_score }}
+                    </span>
+                    <span class="badge ms-2 small
+                      {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis
+                      {% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis
+                      {% else %}bg-danger-subtle text-danger-emphasis{% endif %}">
+                      {{ az.zona }}
+                    </span>
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">N/D</span>
+                  {% endif %}
+                  <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">Informativo</span>
+                </button>
+              </h2>
+              <div id="acc-altman" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">El Altman Z-Score (1968) es una métrica de solvencia que combina cinco ratios financieros para estimar la probabilidad de quiebra. No produce un precio intrínseco; se usa como indicador de riesgo crediticio.</p>
+                  {% if az.disponible %}
+                  <div class="mb-4">
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                      <span>Distress (&lt; 1.81)</span>
+                      <span>Zona Gris (1.81–2.99)</span>
+                      <span>Segura (&gt; 2.99)</span>
+                    </div>
+                    <div class="position-relative" style="height:20px;">
+                      <div class="d-flex h-100 rounded overflow-hidden">
+                        <div style="width:36.2%; background:#dc354555;"></div>
+                        <div style="width:23.6%; background:#ffc10755;"></div>
+                        <div style="width:40.2%; background:#19875455;"></div>
+                      </div>
+                      <div class="position-absolute top-0" style="left:{{ az.z_position_pct }}%; transform:translateX(-50%); width:3px; height:100%; background:var(--text-primary);"></div>
+                    </div>
+                    <div class="text-center mt-1">
+                      <span class="fw-bold fs-5
+                        {% if az.zona_code == 'safe' %}text-success
+                        {% elif az.zona_code == 'grey' %}text-warning
+                        {% else %}text-danger{% endif %}">
+                        Z = {{ az.z_score }}
+                      </span>
+                      <span class="text-muted small ms-2">— {{ az.interpretacion }}</span>
+                    </div>
+                  </div>
+                  <table class="table table-sm table-borderless mb-3">
+                    <thead><tr><th class="text-muted small">Factor</th><th class="text-muted small">Definición</th><th class="text-muted small text-end">Valor</th><th class="text-muted small text-end">Peso</th></tr></thead>
+                    <tbody>
+                      <tr><td class="small fw-semibold">X1</td><td class="small text-muted">Capital de trabajo / Activos totales</td><td class="small text-end">{{ az.componentes.x1_pct|floatformat:1 }}%</td><td class="small text-end">1.2</td></tr>
+                      <tr><td class="small fw-semibold">X2</td><td class="small text-muted">Ganancias retenidas / Activos totales</td><td class="small text-end">{{ az.componentes.x2_pct|floatformat:1 }}%</td><td class="small text-end">1.4</td></tr>
+                      <tr><td class="small fw-semibold">X3</td><td class="small text-muted">EBIT / Activos totales</td><td class="small text-end">{{ az.componentes.x3_pct|floatformat:1 }}%</td><td class="small text-end">3.3</td></tr>
+                      <tr><td class="small fw-semibold">X4</td><td class="small text-muted">Market Cap / Pasivos totales</td><td class="small text-end">{{ az.componentes.x4|floatformat:2 }}x</td><td class="small text-end">0.6</td></tr>
+                      <tr><td class="small fw-semibold">X5</td><td class="small text-muted">Revenue / Activos totales</td><td class="small text-end">{{ az.componentes.x5|floatformat:2 }}x</td><td class="small text-end">1.0</td></tr>
+                    </tbody>
+                  </table>
+                  {% else %}
+                  <p class="text-muted small">{{ az.detalle }}</p>
+                  {% endif %}
+                  {% if az.detalle and az.disponible %}<p class="text-muted small mb-0">{{ az.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endwith %}{% endif %}
 
           </div>{# /accordion #}
         </div>{# /col-12 accordions #}
@@ -2800,8 +2916,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (precioHistoricoEl && precioDataEl && typeof Chart !== "undefined") {
         try {
             const precioData = JSON.parse(precioDataEl.textContent);
-            const valorIntrinseco = {% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None %}{{ multi_model.consenso.precio }}{% elif resultado.valor_intrinseco is not None %}{{ resultado.valor_intrinseco }}{% else %}null{% endif %};
-            const labelIntrinseco = {% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None %}"Consenso multi-modelo"{% else %}"Valor intrínseco (DCF)"{% endif %};
+            const valorIntrinseco = {% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None %}{{ multi_model.consenso.precio }}{% else %}null{% endif %};
+            const labelIntrinseco = "Valor consenso";
             const isDark = document.body.classList.contains("theme-dark");
             const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
             const textColor = isDark ? "#e2e8f0" : "#0b1d35";
