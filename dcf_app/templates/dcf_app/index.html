@@ -557,6 +557,12 @@
         }
     }
 
+    /* ── Estado badge en acordeones ─────────────────── */
+    .badge-estado-acordeon {
+        position: absolute;
+        right: 3rem;
+    }
+
     /* ── Loading overlay ─────────────────────────────── */
     #analysis-loading {
         display: none;
@@ -718,7 +724,7 @@
 </section>
 
 {% if recent_records %}
-<section class="recent-section{% if resultado %} d-none{% endif %}" data-recent-container>
+<section class="recent-section d-none" data-recent-container>
     <div class="card soft-card shadow-lg border-0">
         <div class="card-body">
             <div class="section-header">
@@ -1222,10 +1228,15 @@
                 <div class="col-md-4">
                   <div class="p-4 rounded-3 h-100 d-flex flex-column justify-content-between" style="background:var(--surface-card); border:1px solid var(--surface-border);">
                     <div>
-                      <p class="text-muted small text-uppercase fw-semibold mb-1" style="letter-spacing:.05em;">Precio consenso</p>
+                      <div class="d-flex align-items-center gap-2 mb-1">
+                        <p class="text-muted small text-uppercase fw-semibold mb-0" style="letter-spacing:.05em;">Precio consenso</p>
+                      </div>
                       {% if consenso.precio is not None %}
-                      <div class="display-6 fw-bold mb-1">${{ consenso.precio|floatformat:2 }}</div>
-                      <div class="small text-muted mb-3">Precio actual: ${{ consenso.precio_actual|floatformat:2 }}</div>
+                      <div class="d-flex align-items-baseline gap-3 mb-1">
+                        <div class="display-6 fw-bold">${{ consenso.precio|floatformat:2 }}</div>
+                        <span class="badge bg-secondary-subtle text-secondary-emphasis">Actual: ${{ consenso.precio_actual|floatformat:2 }}</span>
+                      </div>
+                      <div class="mb-3"></div>
                       {% if consenso.upside_pct is not None %}
                       <div class="fs-5 fw-semibold mb-3 {% if consenso.upside_pct >= 0 %}text-success{% else %}text-danger{% endif %}">
                         {% if consenso.upside_pct >= 0 %}▲{% else %}▼{% endif %} {{ consenso.upside_pct|floatformat:1 }}%
@@ -1254,13 +1265,17 @@
                         <span>Rango de modelos</span>
                         <span>${{ consenso.rango_max|floatformat:2 }}</span>
                       </div>
-                      <div class="position-relative rounded-pill" style="height:12px; background:linear-gradient(to right, rgba(220,38,38,0.3), rgba(251,191,36,0.4), rgba(34,197,94,0.3)); overflow:visible;">
-                        <div id="marker-actual" class="position-absolute" style="top:-6px; transform:translateX(-50%); width:4px; height:24px; background:#ef4444; border-radius:2px;" title="Precio actual"></div>
-                        <div id="marker-consenso" class="position-absolute" style="top:-8px; transform:translateX(-50%); width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-bottom:14px solid #2563eb;" title="Precio consenso"></div>
+                      <div class="position-relative rounded-pill" style="height:12px; background:linear-gradient(to right, rgba(220,38,38,0.3), rgba(251,191,36,0.4), rgba(34,197,94,0.3)); overflow:visible; margin-top:1.8rem; margin-bottom:1.8rem;">
+                        <div id="marker-consenso" class="position-absolute" style="top:-8px; transform:translateX(-50%); width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-bottom:14px solid #2563eb;">
+                          <div style="position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); white-space:nowrap; font-size:0.72rem; font-weight:600; color:#2563eb; background:var(--surface-card); padding:1px 5px; border-radius:4px; border:1px solid #2563eb;">${{ consenso.precio|floatformat:2 }}</div>
+                        </div>
+                        <div id="marker-actual" class="position-absolute" style="top:-6px; transform:translateX(-50%); width:4px; height:24px; background:#ef4444; border-radius:2px;">
+                          <div style="position:absolute; top:calc(100% + 4px); left:50%; transform:translateX(-50%); white-space:nowrap; font-size:0.72rem; font-weight:600; color:#ef4444; background:var(--surface-card); padding:1px 5px; border-radius:4px; border:1px solid #ef4444;">${{ consenso.precio_actual|floatformat:2 }}</div>
+                        </div>
                       </div>
-                      <div class="d-flex justify-content-between small mt-2">
-                        <span class="text-danger fw-semibold">● Precio actual</span>
-                        <span class="text-primary fw-semibold">▲ Precio consenso</span>
+                      <div class="d-flex flex-column gap-1 small" style="margin-top:3.5rem;">
+                        <span class="text-danger fw-semibold">● Precio actual: ${{ consenso.precio_actual|floatformat:2 }}</span>
+                        <span class="text-primary fw-semibold">▲ Precio consenso: ${{ consenso.precio|floatformat:2 }}</span>
                       </div>
                     </div>
                     {% else %}
@@ -1337,9 +1352,9 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-dcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="fw-semibold me-2">Flujo de Caja Descontado (DCF)</span>
                   {% if resultado.valor_intrinseco is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">DCF: ${{ resultado.valor_intrinseco|floatformat:2 }}</span>{% endif %}
-                  {% if resultado.estado == "SUBVALUADA" %}<span class="badge bg-success ms-2 small">Subvaluada</span>
-                  {% elif resultado.estado == "SOBREVALUADA" %}<span class="badge bg-danger ms-2 small">Sobrevaluada</span>
-                  {% elif resultado.estado == "RAZONABLE" %}<span class="badge bg-warning text-dark ms-2 small">Razonable</span>{% endif %}
+                  {% if resultado.estado == "SUBVALUADA" %}<span class="badge bg-success badge-estado-acordeon small">Subvaluada</span>
+                  {% elif resultado.estado == "SOBREVALUADA" %}<span class="badge bg-danger badge-estado-acordeon small">Sobrevaluada</span>
+                  {% elif resultado.estado == "RAZONABLE" %}<span class="badge bg-warning text-dark badge-estado-acordeon small">Razonable</span>{% endif %}
                 </button>
               </h2>
               <div id="acc-dcf" class="accordion-collapse collapse">
@@ -1652,6 +1667,7 @@
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-pe" class="accordion-collapse collapse">
@@ -1659,7 +1675,7 @@
                   <p class="text-muted small mb-3">Multiplica el EPS (ganancias por acción) por el P/E de referencia del sector.</p>
                   <div class="row g-3">
                     <div class="col-md-3"><span class="text-muted small d-block">EPS TTM</span>{% with v=resultado.datos_empresa.eps_ttm %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">P/E sector (ref.)</span>{% with v=resultado.datos_empresa.pe_ratio_raw %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">P/E sector (ref.)</span><span class="fw-semibold fs-5">{% if m.pe_sector_ref is not None %}{{ m.pe_sector_ref|floatformat:1 }}x{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
@@ -1677,6 +1693,7 @@
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-ps" class="accordion-collapse collapse">
@@ -1684,7 +1701,7 @@
                   <p class="text-muted small mb-3">Multiplica el Revenue por acción por el P/S de referencia del sector.</p>
                   <div class="row g-3">
                     <div class="col-md-3"><span class="text-muted small d-block">Revenue TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">P/S sector (ref.)</span>{% with v=resultado.datos_empresa.ps_ratio_raw %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">P/S sector (ref.)</span><span class="fw-semibold fs-5">{% if m.ps_sector_ref is not None %}{{ m.ps_sector_ref|floatformat:1 }}x{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/A{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
@@ -1702,6 +1719,7 @@
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-pgp" class="accordion-collapse collapse">
@@ -1726,6 +1744,7 @@
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-tam" class="accordion-collapse collapse">
@@ -1761,6 +1780,7 @@
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-pfcf" class="accordion-collapse collapse">
@@ -1785,6 +1805,7 @@
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-fwd-e" class="accordion-collapse collapse">
@@ -1810,6 +1831,7 @@
                   <span class="fw-semibold me-2">{{ m.nombre }}</span>
                   {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-fwd-fcf" class="accordion-collapse collapse">
@@ -2286,14 +2308,20 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    form.addEventListener("submit", function () {
+    form.addEventListener("submit", function (event) {
         if (!hiddenTicker.value) {
             const fallbackSymbol = extractSymbol(input.value);
             hiddenTicker.value = fallbackSymbol;
             hiddenName.value = hiddenName.value || input.value.trim();
         }
-        if (hiddenTicker.value) {
+        if (hiddenTicker.value && typeof showAnalysisLoading === "function") {
+            event.preventDefault();
             showAnalysisLoading(hiddenTicker.value);
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    form.submit();
+                });
+            });
         }
     });
 

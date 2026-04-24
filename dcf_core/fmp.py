@@ -292,6 +292,32 @@ class FMPClient:
 
         return items
 
+    def get_company_profile(self, ticker: str) -> dict:
+        """Devuelve el perfil básico de la empresa (sector, industria, etc.)."""
+        ticker = ticker.upper().strip()
+        if not ticker:
+            return {}
+        try:
+            data = self._request(f"api/v3/profile/{ticker}", params={})
+            if isinstance(data, list) and data:
+                return data[0]
+        except Exception:
+            pass
+        return {}
+
+
+def obtener_sector_empresa(ticker: str) -> tuple[str, str]:
+    """Devuelve (sector, industria) desde FMP. Retorna ('', '') si no disponible."""
+    try:
+        cliente = FMPClient()
+        perfil = cliente.get_company_profile(ticker)
+        sector = (perfil.get("sector") or "").strip()
+        industria = (perfil.get("industry") or "").strip()
+        return sector, industria
+    except Exception:
+        return "", ""
+
+
 def obtener_fcf_historico(ticker: str, minimo: int = 6, limite: int = 10) -> List[FCFEntry]:
     """
     Recupera el historial de Free Cash Flow para un ticker utilizando Financial Modeling Prep.

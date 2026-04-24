@@ -356,6 +356,7 @@ def _modelo_pe_trailing(financials: dict, ratios: dict) -> dict:
     return {
         "valor": round(valor, 2),
         "aplicable": True,
+        "pe_sector_ref": pe_sector,
         "detalle": f"EPS TTM ${eps:.2f} × P/E sector {pe_sector:.1f}x",
     }
 
@@ -376,6 +377,7 @@ def _modelo_ps(financials: dict, ratios: dict) -> dict:
     return {
         "valor": round(valor, 2),
         "aplicable": True,
+        "ps_sector_ref": ps_sector,
         "detalle": f"Revenue/acción ${rps:.2f} × P/S sector {ps_sector:.1f}x",
     }
 
@@ -653,6 +655,10 @@ def run_all_models(
             entry["discount_factor_pct"] = r.get("discount_factor_pct")
             entry["ps_objetivo"] = r.get("ps_objetivo")
             entry["sector_scale"] = r.get("sector_scale")
+        elif key == "pe_trailing":
+            entry["pe_sector_ref"] = r.get("pe_sector_ref")
+        elif key == "ps":
+            entry["ps_sector_ref"] = r.get("ps_sector_ref")
 
         modelos[key] = entry
 

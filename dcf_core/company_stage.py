@@ -308,6 +308,46 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
             scores[5] += 1.0
             scores[6] += 1.0
 
+    # ── SEÑAL 6: FCF Reversal ────────────────────────────────────────────────
+    # Si el FCF fue positivo en el pasado y ahora es negativo → Decline, no Startup.
+    if fcf_vals and consec_neg >= 2:
+        older_vals = fcf_vals[consec_neg:]
+        if any(v > 0 for v in older_vals):
+            scores[6] += 3.0
+            scores[1] = max(0.0, scores[1] - 2.0)
+
+    # ── SEÑAL 7: Longitud del historial de FCF ───────────────────────────────
+    # Una startup tiene poco historial; una empresa en decline tiene historial largo.
+    n_fcf = len(fcf_vals)
+    if n_fcf >= 6:
+        scores[6] += 1.5
+        scores[1] = max(0.0, scores[1] - 1.5)
+    elif n_fcf >= 4:
+        scores[6] += 0.5
+        scores[1] = max(0.0, scores[1] - 0.5)
+    elif n_fcf <= 1:
+        scores[1] += 1.0
+
+    # ── SEÑAL 8: Deterioro del FCF ───────────────────────────────────────────
+    # Si el FCF se está poniendo más negativo con el tiempo → Decline.
+    # Si el FCF mejora (menos negativo) → más Startup/Growth.
+    if consec_neg >= 3 and n_fcf >= 4:
+        recent_avg  = sum(fcf_vals[:2]) / 2
+        older_avg   = sum(fcf_vals[2:4]) / 2
+        if recent_avg < older_avg:          # empeorando → Decline
+            scores[6] += 2.0
+            scores[1] = max(0.0, scores[1] - 1.0)
+        else:                               # mejorando → Startup/Growth
+            scores[1] += 1.0
+            scores[2] += 0.5
+
+    # ── SEÑAL 9: Ausencia total de datos fundamentales + FCF negativo largo ──
+    # Una startup genuina normalmente tiene al menos revenue o margen reportado.
+    # Empresa con todos los datos N/D y FCF negativo 3+ años → crisis/decline.
+    if revenue_growth is None and net_margin is None and consec_neg >= 3 and n_fcf >= 4:
+        scores[6] += 1.5
+        scores[1] = max(0.0, scores[1] - 1.0)
+
     # ── Determinar etapa ganadora ────────────────────────────────────────────
     sorted_stages = sorted(scores.items(), key=lambda x: x[1], reverse=True)
     top_stage, top_score  = sorted_stages[0]

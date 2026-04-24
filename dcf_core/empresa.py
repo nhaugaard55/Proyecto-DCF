@@ -18,7 +18,7 @@ from .finanzas import (
 
 from .marketaux import MarketauxError, obtener_noticias_marketaux
 from .finnhub import FinnhubError, obtener_noticias_finnhub
-from .fmp import FCFEntry
+from .fmp import FCFEntry, obtener_sector_empresa
 from .utils import parse_datetime_epoch
 
 MAX_NEWS_ITEMS = 18
@@ -468,7 +468,11 @@ def analizar_empresa(
     history = empresa_yf.history(period="1d")
 
     nombre = info.get("longName", ticker)
-    sector = info.get("sector", "Desconocido")
+    sector = info.get("sector") or ""
+    if not sector:
+        sector, _ = obtener_sector_empresa(ticker)
+    if not sector:
+        sector = "Desconocido"
     beta = to_float(info.get("beta"), 1.0)
     tax_rate_info = to_float(info.get("effectiveTaxRate"), 0.25)
     cost_of_debt_info = to_float(info.get("yield"), 0.05)
