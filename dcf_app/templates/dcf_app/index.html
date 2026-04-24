@@ -441,6 +441,37 @@
     .results-section .table tbody tr:hover {
         background: var(--table-hover-bg);
     }
+    .multi-model-table th,
+    .multi-model-table td {
+        vertical-align: middle;
+        line-height: 1.25;
+    }
+    .multi-model-table .model-cell,
+    .multi-model-table .relevance-cell {
+        white-space: nowrap;
+    }
+        .multi-model-table .relevance-cell {
+            min-width: 7rem;
+        }
+    .multi-model-table .detail-cell {
+        max-width: 18rem;
+    }
+    .historical-price-chart {
+        height: 260px;
+        width: 100%;
+    }
+    .stage-signals-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+    .stage-signals-table td:first-child {
+        width: 46%;
+    }
+    .stage-signals-table td:last-child {
+        width: 54%;
+        text-align: right;
+        overflow-wrap: normal;
+    }
     .results-section .list-group-item {
         background-color: var(--table-bg);
         color: var(--table-text);
@@ -554,6 +585,257 @@
         }
         .hero-summary {
             margin-top: 2rem;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .hero-section {
+            border-radius: 1.25rem;
+            padding: 1.5rem 1rem;
+            margin-bottom: 1.5rem;
+            max-width: 100%;
+        }
+
+        .hero-section::after {
+            width: 18rem;
+            height: 18rem;
+            top: -7rem;
+            right: -8rem;
+        }
+
+        .hero-title {
+            font-size: 1.85rem;
+            line-height: 1.15;
+        }
+
+        .hero-subtitle {
+            font-size: 0.95rem;
+        }
+
+        .hero-list {
+            margin-top: 1.25rem;
+        }
+
+        .hero-summary {
+            display: grid !important;
+            grid-template-columns: 1fr;
+            gap: 0.75rem !important;
+            margin-top: 1.25rem;
+        }
+
+        .feature-pill {
+            min-width: 0;
+            width: 100%;
+            border-radius: 0.85rem;
+            padding: 0.8rem 0.9rem;
+        }
+
+        .feature-value {
+            font-size: 1.1rem;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+
+        .form-card {
+            border-radius: 1rem;
+            padding: 1.15rem;
+        }
+
+        .form-card .btn,
+        #analysis-form-card .btn[type="submit"] {
+            width: 100%;
+        }
+
+        #analysis-form-card .col-12.d-flex {
+            align-items: stretch !important;
+            gap: 0.65rem !important;
+        }
+
+        .soft-card {
+            border-radius: 1rem;
+            max-width: 100%;
+        }
+
+        .soft-card .card-body {
+            padding: 1rem;
+            min-width: 0;
+        }
+
+        .hero-section .row,
+        .results-section .row,
+        .results-section [class^="col"],
+        .results-section [class*=" col"] {
+            min-width: 0;
+        }
+
+        .recent-chip {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.65rem;
+            padding: 0.85rem;
+        }
+
+        .recent-chip-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.65rem;
+        }
+
+        .recent-chip-status {
+            grid-column: 1 / -1;
+            width: fit-content;
+        }
+
+        .recent-chip-value {
+            min-width: 0;
+        }
+
+        .recent-chip-date {
+            margin-left: 0;
+        }
+
+        .results-section .row {
+            --bs-gutter-y: 1rem;
+        }
+
+        .results-section h2,
+        .results-section h3,
+        .results-section h5 {
+            line-height: 1.25;
+        }
+
+        .results-section .badge {
+            max-width: 100%;
+            white-space: normal;
+            line-height: 1.2;
+            text-align: left;
+        }
+
+        .results-section .table-responsive {
+            margin-left: -0.25rem;
+            margin-right: -0.25rem;
+            padding-bottom: 0.25rem;
+        }
+
+        .results-section .table {
+            min-width: 560px;
+            font-size: 0.78rem !important;
+        }
+
+        .multi-model-table {
+            min-width: 760px !important;
+        }
+
+        .multi-model-table th,
+        .multi-model-table td {
+            padding-top: 0.65rem;
+            padding-bottom: 0.65rem;
+        }
+
+        .multi-model-table .detail-cell {
+            display: none;
+        }
+
+        .historical-price-chart {
+            height: 320px;
+        }
+
+        .stage-signals-table td {
+            padding-top: 0.35rem !important;
+            padding-bottom: 0.35rem !important;
+        }
+
+        .stage-signals-table td:first-child {
+            width: 42%;
+            padding-left: 0 !important;
+            padding-right: 0.5rem !important;
+        }
+
+        .stage-signals-table td:last-child {
+            width: 58%;
+            padding-left: 0.5rem !important;
+            padding-right: 0 !important;
+            font-size: 0.82rem;
+            line-height: 1.25;
+            white-space: normal;
+            overflow-wrap: normal;
+        }
+
+        .results-section .list-group-item {
+            align-items: flex-start !important;
+            gap: 0.85rem;
+            padding: 0.85rem;
+        }
+
+        .results-section .list-group-item > span:last-child {
+            flex-shrink: 0;
+            text-align: right;
+            max-width: 36%;
+            overflow-wrap: anywhere;
+        }
+
+        .accordion-button {
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            padding: 0.9rem 2.5rem 0.9rem 0.9rem;
+            line-height: 1.25;
+        }
+
+        .accordion-button > .fw-semibold {
+            flex: 1 1 100%;
+        }
+
+        .accordion-button .badge {
+            margin-left: 0 !important;
+        }
+
+        .badge-estado-acordeon {
+            position: static;
+            right: auto;
+        }
+
+        .accordion-body {
+            padding: 1rem;
+        }
+
+        .accordion-body .row.p-3 {
+            padding: 0 !important;
+        }
+
+        .display-6 {
+            font-size: 1.75rem;
+        }
+
+        #valuation-range-bar .d-flex.justify-content-between {
+            gap: 0.5rem;
+        }
+
+        .tradingview-widget-container {
+            height: 360px !important;
+        }
+
+        #news-nav-controls {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        #news-nav-controls .btn {
+            flex: 1 1 0;
+        }
+
+        .results-actions {
+            align-items: stretch;
+            gap: 0.75rem !important;
+        }
+
+        .results-actions form,
+        .results-actions .btn {
+            width: 100%;
+        }
+
+        .loading-card {
+            padding: 1.5rem;
         }
     }
 
@@ -1090,7 +1372,7 @@
               <div class="row g-3 mb-3">
                 <div class="col-md-6">
                   <p class="small text-muted mb-2">{{ company_stage.stage_description }}</p>
-                  <table class="table table-sm table-borderless mb-0">
+                  <table class="table table-sm table-borderless mb-0 stage-signals-table">
                     <tbody>
                       <tr>
                         <td class="small text-muted py-1">Tendencia FCF</td>
@@ -1262,7 +1544,6 @@
                     <div id="valuation-range-bar" data-min="{{ consenso.rango_min }}" data-max="{{ consenso.rango_max }}" data-consenso="{{ consenso.precio|default:0 }}" data-actual="{{ consenso.precio_actual }}">
                       <div class="d-flex justify-content-between small text-muted mb-1">
                         <span>${{ consenso.rango_min|floatformat:2 }}</span>
-                        <span>Rango de modelos</span>
                         <span>${{ consenso.rango_max|floatformat:2 }}</span>
                       </div>
                       <div class="position-relative rounded-pill" style="height:12px; background:linear-gradient(to right, rgba(220,38,38,0.3), rgba(251,191,36,0.4), rgba(34,197,94,0.3)); overflow:visible; margin-top:1.8rem; margin-bottom:1.8rem;">
@@ -1286,7 +1567,7 @@
               </div>
               <div class="mt-4">
                 <div class="table-responsive">
-                  <table class="table table-sm align-middle" style="background:var(--table-bg); color:var(--table-text); font-size:0.84rem;">
+                  <table class="table table-sm align-middle multi-model-table" style="background:var(--table-bg); color:var(--table-text); font-size:0.84rem;">
                     <thead style="background:var(--table-header-bg);">
                       <tr>
                         <th>Modelo</th>
@@ -1295,13 +1576,13 @@
                         <th class="text-end">Diferencia</th>
                         <th class="text-end">Peso</th>
                         <th class="text-center">Relevancia</th>
-                        <th>Detalle</th>
+                        <th class="detail-cell">Detalle</th>
                       </tr>
                     </thead>
                     <tbody>
                       {% for key, m in mm.modelos.items %}
                       <tr {% if m.peso == 0 %}style="opacity:0.45;"{% endif %}>
-                        <td class="fw-semibold {% if m.peso == 0 %}text-decoration-line-through text-muted{% endif %}">{{ m.nombre }}</td>
+                        <td class="fw-semibold model-cell {% if m.peso == 0 %}text-decoration-line-through text-muted{% endif %}">{{ m.nombre }}</td>
                         <td class="text-end">
                           {% if key == "reverse_dcf" %}
                             {% if m.g_implicita_pct is not None %}<span class="text-muted fst-italic small">g = {{ m.g_implicita_pct|floatformat:1 }}%</span>{% else %}<span class="text-muted">N/A</span>{% endif %}
@@ -1319,8 +1600,8 @@
                           {% else %}—{% endif %}
                         </td>
                         <td class="text-end">{% if m.peso > 0 %}<span class="fw-semibold">{{ m.peso_pct|floatformat:1 }}%</span>{% else %}—{% endif %}</td>
-                        <td class="text-center">{% if m.relevancia == "Útil" %}✅ Útil{% elif m.relevancia == "Algo útil" %}⚠️ Algo útil{% else %}❌ No útil{% endif %}</td>
-                        <td class="text-muted small">{{ m.detalle }}</td>
+                        <td class="text-center relevance-cell">{% if m.relevancia == "Útil" %}✅ Útil{% elif m.relevancia == "Algo útil" %}⚠️ Algo útil{% else %}❌ No útil{% endif %}</td>
+                        <td class="text-muted small detail-cell">{{ m.detalle }}</td>
                       </tr>
                       {% endfor %}
                     </tbody>
@@ -1332,7 +1613,9 @@
               {% if resultado.precio_historico %}
               <div class="mt-4 pt-3" style="border-top:1px solid var(--surface-border);">
                 <p class="text-muted small text-uppercase fw-semibold mb-3" style="letter-spacing:.05em;">Precio histórico vs consenso multi-modelo</p>
-                <canvas id="precioHistoricoChart" height="60"></canvas>
+                <div class="historical-price-chart">
+                  <canvas id="precioHistoricoChart"></canvas>
+                </div>
               </div>
               {% endif %}
 
@@ -1987,7 +2270,7 @@
 </section>
 
 {# ---- Botones de acción ---- #}
-<div class="d-flex flex-wrap justify-content-center gap-3 mt-5 mb-4">
+<div class="results-actions d-flex flex-wrap justify-content-center gap-3 mt-5 mb-4">
     <form method="get" action="{% url 'dcf_pdf' %}">
         <input type="hidden" name="ticker" value="{{ ticker }}">
         <button type="submit" class="btn btn-outline-primary btn-lg px-4">⬇ Descargar PDF</button>
@@ -2522,6 +2805,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const isDark = document.body.classList.contains("theme-dark");
             const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
             const textColor = isDark ? "#e2e8f0" : "#0b1d35";
+            const isMobileChart = window.matchMedia("(max-width: 575.98px)").matches;
             new Chart(precioHistoricoEl, {
                 type: "line",
                 data: {
@@ -2550,24 +2834,44 @@ document.addEventListener("DOMContentLoaded", function () {
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     interaction: { mode: "index", intersect: false },
                     scales: {
                         x: {
-                            ticks: { color: textColor, maxTicksLimit: 8 },
+                            ticks: {
+                                color: textColor,
+                                autoSkip: true,
+                                maxTicksLimit: isMobileChart ? 3 : 8,
+                                maxRotation: isMobileChart ? 0 : 35,
+                                minRotation: 0,
+                                font: { size: isMobileChart ? 10 : 12 },
+                                callback: function(value) {
+                                    const label = this.getLabelForValue(value);
+                                    return isMobileChart ? String(label).slice(0, 4) : label;
+                                },
+                            },
                             grid: { color: gridColor },
                         },
                         y: {
-                            ticks: { color: textColor, callback: (v) => `$${v.toFixed(2)}` },
+                            ticks: {
+                                color: textColor,
+                                maxTicksLimit: isMobileChart ? 4 : 6,
+                                font: { size: isMobileChart ? 10 : 12 },
+                                callback: (v) => `$${v.toFixed(2)}`,
+                            },
                             grid: { color: gridColor },
                         },
                     },
                     plugins: {
                         legend: {
+                            position: "top",
                             labels: {
                                 color: textColor,
                                 usePointStyle: true,
                                 pointStyle: "line",
-                                pointStyleWidth: 24,
+                                pointStyleWidth: isMobileChart ? 18 : 24,
+                                boxWidth: isMobileChart ? 18 : 24,
+                                font: { size: isMobileChart ? 11 : 12 },
                             }
                         },
                         tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}` } },

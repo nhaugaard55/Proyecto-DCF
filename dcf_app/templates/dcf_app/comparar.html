@@ -23,6 +23,43 @@
 .compare-row:last-child { border-bottom: none; }
 .compare-label { color: var(--text-muted); }
 .compare-winner { font-weight: 700; color: #22c55e; }
+
+@media (max-width: 575.98px) {
+    .compare-card {
+        padding: 1rem;
+    }
+
+    .compare-card > .d-flex {
+        align-items: flex-start !important;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .compare-card .badge {
+        white-space: normal;
+        text-align: left;
+    }
+
+    .compare-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    .compare-row > :last-child {
+        overflow-wrap: anywhere;
+    }
+
+    .compare-actions {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem !important;
+    }
+
+    .compare-actions .btn {
+        width: 100%;
+    }
+}
 </style>
 {% endblock %}
 
@@ -160,7 +197,7 @@
       </tbody>
     </table>
   </div>
-  <div class="d-flex gap-3 mt-3">
+  <div class="compare-actions d-flex flex-wrap gap-3 mt-3">
     <a href="{% url 'dcf_excel' %}?ticker={{ ticker_a }}" class="btn btn-sm btn-outline-success">⬇ Excel {{ ticker_a }}</a>
     <a href="{% url 'dcf_excel' %}?ticker={{ ticker_b }}" class="btn btn-sm btn-outline-success">⬇ Excel {{ ticker_b }}</a>
     <a href="{% url 'dcf_pdf' %}?ticker={{ ticker_a }}" class="btn btn-sm btn-outline-primary">⬇ PDF {{ ticker_a }}</a>

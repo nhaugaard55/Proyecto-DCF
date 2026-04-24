@@ -5,6 +5,34 @@
 <a href="{% url 'comparar' %}" class="btn btn-outline-light btn-sm">⇌ Comparar</a>
 {% endblock %}
 
+{% block extra_head %}
+<style>
+  .watchlist-card {
+    background: var(--surface-card);
+    border-color: var(--surface-border) !important;
+  }
+
+  @media (max-width: 575.98px) {
+    .watchlist-card {
+      align-items: stretch !important;
+      flex-direction: column;
+      padding: 1rem !important;
+    }
+
+    .watchlist-card-actions {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem !important;
+      width: 100%;
+    }
+
+    .watchlist-card-actions .btn {
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-8">
@@ -14,8 +42,7 @@
     {% if watchlist %}
     <div class="d-flex flex-column gap-3">
       {% for item in watchlist %}
-      <div class="p-4 rounded-3 border d-flex align-items-center justify-content-between gap-3"
-           style="background:var(--surface-card); border-color:var(--surface-border)!important;">
+      <div class="watchlist-card p-4 rounded-3 border d-flex align-items-center justify-content-between gap-3">
         <div>
           <div class="fw-bold fs-5">{{ item.ticker }}</div>
           {% if item.company_name %}
@@ -23,7 +50,7 @@
           {% endif %}
           <div class="text-muted small">Agregado {{ item.added_at|date:"d/m/Y" }}</div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="watchlist-card-actions d-flex gap-2">
           <a href="{% url 'home' %}?ticker={{ item.ticker }}" class="btn btn-sm btn-outline-primary">Analizar</a>
           <button class="btn btn-sm btn-outline-danger watchlist-remove-btn"
                   data-ticker="{{ item.ticker }}">Quitar</button>
