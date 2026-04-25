@@ -774,25 +774,62 @@
             overflow-wrap: anywhere;
         }
 
+        /* Accordion model buttons: 3-zone layout (left / center-price / right-verdict) */
         .accordion-button {
-            align-items: flex-start;
-            flex-wrap: wrap;
-            gap: 0.45rem;
-            padding: 0.9rem 2.5rem 0.9rem 0.9rem;
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0.85rem 3rem 0.85rem 1rem;
             line-height: 1.25;
+            gap: 0;
         }
 
-        .accordion-button > .fw-semibold {
-            flex: 1 1 100%;
+        /* Zone left: name + relevance badge (+ Informativo if applicable) */
+        .acc-left {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            max-width: 44%;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .acc-left .fw-semibold {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .accordion-button .badge {
-            margin-left: 0 !important;
+        /* Zone center: price — absolutely centered in the button */
+        .acc-price {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-weight: 600;
+            font-size: 0.82rem;
+            background: var(--bs-secondary-bg-subtle, #e9ecef);
+            color: var(--bs-secondary-color, #6c757d);
+            padding: 0.2em 0.65em;
+            border-radius: var(--bs-border-radius, 0.375rem);
         }
 
-        .badge-estado-acordeon {
-            position: static;
-            right: auto;
+        /* Zone right: verdict — absolutely before Bootstrap chevron (≈2.75rem wide) */
+        .acc-verdict {
+            position: absolute;
+            right: 2.75rem;
+            white-space: nowrap;
+        }
+
+        /* Mobile: collapse to inline stack */
+        @media (max-width: 767px) {
+            .accordion-button {
+                flex-wrap: wrap;
+                gap: 0.35rem;
+                padding: 0.85rem 2.5rem 0.85rem 0.85rem;
+            }
+            .acc-left  { max-width: 100%; }
+            .acc-price { position: static; transform: none; left: auto; }
+            .acc-verdict { position: static; right: auto; }
         }
 
         .accordion-body {
@@ -1627,11 +1664,14 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-dcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">Flujo de Caja Descontado (DCF)</span>
-                  {% if resultado.valor_intrinseco is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">DCF: ${{ resultado.valor_intrinseco|floatformat:2 }}</span>{% endif %}
-                  {% if resultado.estado == "SUBVALUADA" %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>
-                  {% elif resultado.estado == "SOBREVALUADA" %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>
-                  {% elif resultado.estado == "RAZONABLE" %}<span class="badge bg-warning-subtle text-warning-emphasis badge-estado-acordeon small">Razonable</span>{% endif %}
+                  <span class="acc-left">
+                    <span class="fw-semibold">Flujo de Caja Descontado (DCF)</span>
+                    {% if multi_model %}{% with dcf_m=multi_model.modelos.dcf %}{% if dcf_m %}<span class="badge {% if dcf_m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif dcf_m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ dcf_m.relevancia }}</span>{% endif %}{% endwith %}{% endif %}
+                  </span>
+                  {% if resultado.valor_intrinseco is not None %}<span class="acc-price">DCF: ${{ resultado.valor_intrinseco|floatformat:2 }}</span>{% endif %}
+                  {% if resultado.estado == "SUBVALUADA" %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small">Subvaluada</span>
+                  {% elif resultado.estado == "SOBREVALUADA" %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small">Sobrevaluada</span>
+                  {% elif resultado.estado == "RAZONABLE" %}<span class="badge bg-warning-subtle text-warning-emphasis acc-verdict small">Razonable</span>{% endif %}
                 </button>
               </h2>
               <div id="acc-dcf" class="accordion-collapse collapse">
@@ -1911,10 +1951,12 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pe" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
-                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
-                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                  </span>
+                  {% if m.valor is not None %}<span class="acc-price">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-pe" class="accordion-collapse collapse">
@@ -1937,10 +1979,12 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-ps" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
-                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
-                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                  </span>
+                  {% if m.valor is not None %}<span class="acc-price">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-ps" class="accordion-collapse collapse">
@@ -1963,10 +2007,12 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pgp" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
-                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
-                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                  </span>
+                  {% if m.valor is not None %}<span class="acc-price">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-pgp" class="accordion-collapse collapse">
@@ -1988,10 +2034,12 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-tam" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
-                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
-                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                  </span>
+                  {% if m.valor is not None %}<span class="acc-price">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-tam" class="accordion-collapse collapse">
@@ -2024,10 +2072,12 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pfcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
-                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
-                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                  </span>
+                  {% if m.valor is not None %}<span class="acc-price">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-pfcf" class="accordion-collapse collapse">
@@ -2049,10 +2099,12 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-fwd-e" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
-                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
-                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                  </span>
+                  {% if m.valor is not None %}<span class="acc-price">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-fwd-e" class="accordion-collapse collapse">
@@ -2075,10 +2127,12 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-fwd-fcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
-                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
-                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                  </span>
+                  {% if m.valor is not None %}<span class="acc-price">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-fwd-fcf" class="accordion-collapse collapse">
@@ -2101,10 +2155,12 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-schwab" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
-                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
-                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                  </span>
+                  {% if m.valor is not None %}<span class="acc-price">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small">Sobrevaluada</span>{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-schwab" class="accordion-collapse collapse">
@@ -2179,11 +2235,13 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-liq" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
-                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
-                  {# El NCAV es un piso de seguridad, no un precio objetivo — solo mostrar badge en stage 6 #}
-                  {% if multi_model.stage_context.stage >= 6 %}{% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}{% endif %}
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                  </span>
+                  {% if m.valor is not None %}<span class="acc-price">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  {# NCAV solo como veredicto en stage 6 #}
+                  {% if multi_model.stage_context.stage >= 6 %}{% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small">Sobrevaluada</span>{% endif %}{% endif %}{% endif %}
                 </button>
               </h2>
               <div id="acc-liq" class="accordion-collapse collapse">
@@ -2228,10 +2286,12 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-rdcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">Reverse DCF</span>
-                  {% if rdcf.g_implicita_pct is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">g implícita {{ rdcf.g_implicita_pct|floatformat:1 }}%</span>{% endif %}
-                  <span class="badge {% if rdcf.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif rdcf.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ rdcf.relevancia }}</span>
-                  <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">Informativo</span>
+                  <span class="acc-left">
+                    <span class="fw-semibold">Reverse DCF</span>
+                    <span class="badge {% if rdcf.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif rdcf.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ rdcf.relevancia }}</span>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis small">Informativo</span>
+                  </span>
+                  {% if rdcf.g_implicita_pct is not None %}<span class="acc-price">g implícita {{ rdcf.g_implicita_pct|floatformat:1 }}%</span>{% endif %}
                 </button>
               </h2>
               <div id="acc-rdcf" class="accordion-collapse collapse">
@@ -2259,24 +2319,16 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-altman" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="fw-semibold me-2">Altman Z-Score</span>
-                  {% if az.disponible %}
-                    <span class="badge ms-2 small
-                      {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis
-                      {% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis
-                      {% else %}bg-danger-subtle text-danger-emphasis{% endif %}">
-                      Z = {{ az.z_score }}
-                    </span>
-                    <span class="badge ms-2 small
-                      {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis
-                      {% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis
-                      {% else %}bg-danger-subtle text-danger-emphasis{% endif %}">
-                      {{ az.zona }}
-                    </span>
-                  {% else %}
-                    <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">N/D</span>
-                  {% endif %}
-                  <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">Informativo</span>
+                  <span class="acc-left">
+                    <span class="fw-semibold">Altman Z-Score</span>
+                    {% if az.disponible %}
+                      <span class="badge small {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis{% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis{% else %}bg-danger-subtle text-danger-emphasis{% endif %}">{{ az.zona }}</span>
+                    {% else %}
+                      <span class="badge bg-secondary-subtle text-secondary-emphasis small">N/D</span>
+                    {% endif %}
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis small">Informativo</span>
+                  </span>
+                  {% if az.disponible %}<span class="acc-price badge {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis{% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis{% else %}bg-danger-subtle text-danger-emphasis{% endif %}">Z = {{ az.z_score }}</span>{% endif %}
                 </button>
               </h2>
               <div id="acc-altman" class="accordion-collapse collapse">
