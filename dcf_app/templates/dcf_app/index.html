@@ -1659,7 +1659,7 @@
                     <span class="fw-semibold">Flujo de Caja Descontado (DCF)</span>
                     {% if multi_model %}{% with dcf_m=multi_model.modelos.dcf %}{% if dcf_m %}<span class="badge {% if dcf_m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif dcf_m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ dcf_m.relevancia }}</span>{% endif %}{% endwith %}{% endif %}
                   </span>
-                  {% if resultado.valor_intrinseco is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">DCF: ${{ resultado.valor_intrinseco|floatformat:2 }}</span>{% endif %}
+                  {% if resultado.valor_intrinseco is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ resultado.valor_intrinseco|floatformat:2 }}</span>{% endif %}
                   {% if resultado.estado == "SUBVALUADA" %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>
                   {% elif resultado.estado == "SOBREVALUADA" %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>
                   {% elif resultado.estado == "RAZONABLE" %}<span class="badge bg-warning-subtle text-warning-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Razonable</span>{% endif %}
@@ -2282,7 +2282,7 @@
                     <span class="badge {% if rdcf.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif rdcf.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ rdcf.relevancia }}</span>
                     <span class="badge bg-secondary-subtle text-secondary-emphasis small">Informativo</span>
                   </span>
-                  {% if rdcf.g_implicita_pct is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">g implícita {{ rdcf.g_implicita_pct|floatformat:1 }}%</span>{% endif %}
+                  {% if rdcf.g_implicita_pct is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">Crecimiento implícito: {{ rdcf.g_implicita_pct|floatformat:1 }}%</span>{% endif %}
                 </button>
               </h2>
               <div id="acc-rdcf" class="accordion-collapse collapse">
@@ -2319,7 +2319,7 @@
                     {% endif %}
                     <span class="badge bg-secondary-subtle text-secondary-emphasis small">Informativo</span>
                   </span>
-                  {% if az.disponible %}<span class="acc-price badge {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis{% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis{% else %}bg-danger-subtle text-danger-emphasis{% endif %}" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">Z = {{ az.z_score }}</span>{% endif %}
+                  {% if az.disponible %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;pointer-events:none;"><span class="badge {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis{% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis{% else %}bg-danger-subtle text-danger-emphasis{% endif %}">Z = {{ az.z_score }}</span></span>{% endif %}
                 </button>
               </h2>
               <div id="acc-altman" class="accordion-collapse collapse">
