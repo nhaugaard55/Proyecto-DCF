@@ -774,18 +774,24 @@
             overflow-wrap: anywhere;
         }
 
-        /* Accordion model buttons: 3-zone flex layout */
+        /* Accordion model buttons: 4-column grid layout (left | center | verdict | chevron) */
         .accordion-button {
-            display: flex;
+            display: grid;
+            grid-template-columns: 40% 1fr auto auto;
             align-items: center;
-            padding: 0.85rem 2.75rem 0.85rem 1rem;
+            column-gap: 0.5rem;
+            padding: 0.85rem 1rem;
             line-height: 1.25;
-            gap: 0.5rem;
+        }
+        /* Chevron lives in column 4 — remove Bootstrap's margin-left:auto */
+        .accordion-button::after {
+            margin-left: 0 !important;
+            grid-column: 4;
         }
 
-        /* Zone left: name + relevance badge (+ Informativo) — fixed 40% */
+        /* Zone 1: name + relevance badge (+ Informativo) */
         .acc-left {
-            flex: 0 0 40%;
+            grid-column: 1;
             min-width: 0;
             display: flex;
             align-items: center;
@@ -797,9 +803,9 @@
             text-overflow: ellipsis;
         }
 
-        /* Zone center: price — fills remaining space, content centered */
+        /* Zone 2: price — centered within its column */
         .acc-price {
-            flex: 1 1 0;
+            grid-column: 2;
             text-align: center;
             font-weight: 600;
             font-size: 0.82rem;
@@ -807,18 +813,24 @@
             color: var(--bs-secondary-color, #6c757d);
         }
 
-        /* Zone right: verdict — shrinks to content, sits just before Bootstrap chevron */
+        /* Zone 3: verdict badge */
         .acc-verdict {
-            flex-shrink: 0;
+            grid-column: 3;
             white-space: nowrap;
         }
 
-        /* Mobile: stack vertically */
+        /* Mobile: collapse to 2-col grid, name full-width on first row */
         @media (max-width: 767px) {
-            .accordion-button { flex-wrap: wrap; gap: 0.35rem; padding: 0.85rem 2.5rem 0.85rem 0.85rem; }
-            .acc-left  { flex: 1 1 100%; }
-            .acc-price { flex: 0 0 auto; text-align: left; }
-            .acc-verdict { flex: 0 0 auto; }
+            .accordion-button {
+                grid-template-columns: 1fr auto;
+                grid-template-rows: auto auto;
+                row-gap: 0.2rem;
+                padding: 0.75rem 1rem;
+            }
+            .acc-left    { grid-column: 1; grid-row: 1; }
+            .accordion-button::after { grid-column: 2; grid-row: 1; }
+            .acc-price   { grid-column: 1; grid-row: 2; text-align: left; }
+            .acc-verdict { grid-column: 2; grid-row: 2; }
         }
 
         .accordion-body {
