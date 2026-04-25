@@ -613,13 +613,6 @@ def analizar_empresa(
     debt_to_capital = (debt / (debt + equity)) if (debt + equity) else 0
     volume = to_float(info.get("volume"), 0)
     revenue_growth = info.get("revenueGrowth")
-    icr = None
-    if info.get("totalInterestExpense"):
-        try:
-            icr = info.get("ebitda", 0) / info.get("totalInterestExpense")
-        except (TypeError, ZeroDivisionError):
-            icr = None
-
     filtros = [
         {
             "nombre": "P/E",
@@ -669,13 +662,6 @@ def analizar_empresa(
             "valor": f"{revenue_growth:.2%}" if isinstance(revenue_growth, (int, float)) else "N/D",
             "criterio": "> 0%",
             "cumple": isinstance(revenue_growth, (int, float)) and revenue_growth > 0,
-        },
-        {
-            "nombre": "ICR",
-            "descripcion": "Interest Coverage Ratio — Capacidad de cubrir intereses con el EBITDA",
-            "valor": f"{icr:.2f}" if isinstance(icr, (int, float)) else "N/D",
-            "criterio": "> 2",
-            "cumple": isinstance(icr, (int, float)) and icr > 2,
         },
     ]
 

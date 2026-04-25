@@ -131,7 +131,6 @@ _METRIC_RELEVANCE: dict[str, dict[int, str]] = {
     "ROE":            {1: "n", 2: "n", 3: "a", 4: "u", 5: "u", 6: "n"},
     "Debt/Capital":   {1: "u", 2: "u", 3: "u", 4: "u", 5: "u", 6: "u"},
     "Revenue Growth": {1: "u", 2: "u", 3: "u", 4: "a", 5: "n", 6: "n"},
-    "ICR":            {1: "n", 2: "n", 3: "a", 4: "u", 5: "u", 6: "u"},
     "Safety Margin":  {1: "n", 2: "n", 3: "a", 4: "a", 5: "u", 6: "a"},
     "Volumen":        {1: "a", 2: "a", 3: "a", 4: "a", 5: "a", 6: "a"},
 }
