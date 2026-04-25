@@ -558,6 +558,48 @@ def analizar_empresa(
     except Exception:
         ebit_val = None
 
+    # EPS 5-year CAGR — needed by Schwab Intrinsic Value model
+    eps_growth_5y: Optional[float] = None
+    eps_growth_5y_fuente: Optional[str] = None
+    try:
+        _eps_stmt = getattr(empresa_yf, "income_stmt", None)
+        if _eps_stmt is None or _eps_stmt.empty:
+            _eps_stmt = getattr(empresa_yf, "financials", None)
+        if _eps_stmt is not None and not _eps_stmt.empty:
+            # Try EPS directly from income statement first
+            for _eps_label in ("Diluted EPS", "Basic EPS"):
+                if _eps_label in _eps_stmt.index:
+                    _eps_s = _eps_stmt.loc[_eps_label].dropna()
+                    if len(_eps_s) >= 2:
+                        _eps_recent = to_optional_float(_eps_s.iloc[0])
+                        _eps_oldest = to_optional_float(_eps_s.iloc[-1])
+                        _n = len(_eps_s)
+                        if (
+                            _eps_recent is not None and _eps_oldest is not None
+                            and _eps_oldest > 0 and _eps_recent > 0
+                        ):
+                            eps_growth_5y = (_eps_recent / _eps_oldest) ** (1 / _n) - 1
+                            eps_growth_5y_fuente = f"{_eps_label} CAGR ({_n}a)"
+                    break
+            # Fallback: Net Income CAGR (proxy when share count is stable)
+            if eps_growth_5y is None and "Net Income" in _eps_stmt.index:
+                _ni_s = _eps_stmt.loc["Net Income"].dropna()
+                if len(_ni_s) >= 2:
+                    _ni_r = to_optional_float(_ni_s.iloc[0])
+                    _ni_o = to_optional_float(_ni_s.iloc[-1])
+                    _n = len(_ni_s)
+                    if _ni_r is not None and _ni_o is not None and _ni_o > 0 and _ni_r > 0:
+                        eps_growth_5y = (_ni_r / _ni_o) ** (1 / _n) - 1
+                        eps_growth_5y_fuente = f"Net Income CAGR ({_n}a)"
+    except Exception:
+        eps_growth_5y = None
+    # Final fallback: YoY earningsGrowth from info
+    if eps_growth_5y is None:
+        _eg = to_optional_float(info.get("earningsGrowth"))
+        if _eg is not None:
+            eps_growth_5y = _eg
+            eps_growth_5y_fuente = "YoY earningsGrowth (yfinance)"
+
     fcf: list[float] = []
     fcf_presentacion: list[tuple[Optional[int], float]] = []
     if fcf_historial:
@@ -756,6 +798,8 @@ def analizar_empresa(
         "retained_earnings": retained_earnings_val,
         "ebit": ebit_val,
         "working_capital": working_capital_val,
+        "eps_growth_5y": eps_growth_5y,
+        "eps_growth_5y_fuente": eps_growth_5y_fuente,
         "beta": beta,
         "tasa_impositiva": tax_rate,
         "tasa_impositiva_pct": tax_rate * 100 if tax_rate is not None else None,

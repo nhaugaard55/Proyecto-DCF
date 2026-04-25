@@ -43,6 +43,26 @@ _DEFAULT_RATIOS: dict[str, float] = {
     "pe": 20.0, "ps": 3.0, "pgp": 7.0, "pfcf": 18.0, "pe_fwd": 18.0
 }
 
+# Sector P/E ratios from Damodaran (NYU) — used exclusively by Schwab IV model
+# Source: Damodaran Online, January 2025, US market aggregates
+_SECTOR_PE_DAMODARAN: dict[str, float] = {
+    "Technology":              35.0,
+    "Healthcare":              24.0,
+    "Consumer Cyclical":       21.0,
+    "Consumer Defensive":      22.0,
+    "Financial Services":      15.0,
+    "Energy":                  12.0,
+    "Industrials":             25.0,
+    "Utilities":               17.0,
+    "Basic Materials":         17.0,
+    "Real Estate":             30.0,
+    "Communication Services":  22.0,
+}
+_DEFAULT_SECTOR_PE_SCHWAB = 22.0
+_MARKET_RETURN_SCHWAB = 0.08   # Schwab long-term capital market assumption
+_YEARS_SCHWAB = 5
+_MAX_GROWTH_RAW_SCHWAB = 0.75  # cap extreme values before reduction table
+
 _SECTOR_TAM_SCALE: dict[str, float] = {
     "Technology": 1.25,
     "Healthcare": 1.15,
@@ -81,6 +101,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 0.5, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 1.0, "liquidation_value": 0.0,
+        "schwab_iv": 0.0,
         "tam_note": True, "asset_note": False,
     },
     2: {  # Hyper Growth
@@ -89,6 +110,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 1.0, "liquidation_value": 0.0,
+        "schwab_iv": 0.3,
         "tam_note": True, "asset_note": False,
     },
     3: {  # Break Even
@@ -97,6 +119,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.5, "fwd_fcf": 0.5,
         "tam": 0.5, "liquidation_value": 0.0,
+        "schwab_iv": 0.5,
         "tam_note": False, "asset_note": False,
     },
     4: {  # Operating Leverage
@@ -105,6 +128,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 1.0, "pfcf_trailing": 0.5,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.5, "liquidation_value": 0.0,
+        "schwab_iv": 1.2,
         "tam_note": False, "asset_note": False,
     },
     5: {  # Capital Return
@@ -113,6 +137,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 0.5, "pfcf_trailing": 1.0,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,
+        "schwab_iv": 1.5,
         "tam_note": False, "asset_note": False,
     },
     6: {  # Decline — los modelos de crecimiento pierden relevancia
@@ -121,12 +146,14 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 0.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 0.70,
+        "schwab_iv": 0.3,
         "tam_note": False, "asset_note": True,
     },
 }
 
 _MODEL_KEYS = ["dcf", "reverse_dcf", "pe_trailing", "ps", "pgp",
-               "tam", "pfcf_trailing", "fwd_earnings", "fwd_fcf", "liquidation_value"]
+               "tam", "pfcf_trailing", "fwd_earnings", "fwd_fcf",
+               "schwab_iv", "liquidation_value"]
 
 _MODEL_NOMBRES = {
     "dcf":               "DCF",
@@ -138,6 +165,7 @@ _MODEL_NOMBRES = {
     "pfcf_trailing":     "P/FCF Trailing",
     "fwd_earnings":      "P/E Forward",
     "fwd_fcf":           "P/FCF Forward",
+    "schwab_iv":         "Schwab Intrinsic Value",
     "liquidation_value": "Valor de Liquidación",
 }
 
@@ -535,6 +563,135 @@ def _modelo_fwd_fcf(financials: dict, ratios: dict) -> dict:
     }
 
 
+def _schwab_sector_pe(sector: Optional[str]) -> float:
+    """Devuelve el P/E sectorial de la tabla Damodaran para el modelo Schwab."""
+    if not sector:
+        return _DEFAULT_SECTOR_PE_SCHWAB
+    for key, pe in _SECTOR_PE_DAMODARAN.items():
+        if key.lower() in sector.lower():
+            return pe
+    return _DEFAULT_SECTOR_PE_SCHWAB
+
+
+def _schwab_reduction(value: float) -> float:
+    """
+    Tabla de reducción de Schwab.
+    Para growth: value es el porcentaje (ej. 25.0 para 25%).
+    Para sector P/E: value es el múltiplo directo (ej. 55.35).
+    Devuelve la fracción de reducción (0.0 – 0.40).
+    """
+    if value < 6:    return 0.0
+    elif value < 12: return 0.05
+    elif value < 20: return 0.10
+    elif value < 30: return 0.15
+    elif value < 35: return 0.20
+    elif value < 40: return 0.225
+    elif value < 45: return 0.25
+    elif value < 50: return 0.275
+    elif value < 55: return 0.30
+    elif value < 60: return 0.325
+    elif value < 65: return 0.35
+    elif value < 70: return 0.375
+    else:            return 0.40
+
+
+def _modelo_schwab_iv(financials: dict) -> dict:
+    """
+    Modelo — Schwab Forward Earnings Discounted (PEG-CAPM Hybrid).
+
+    Fórmula: IV = (EPS_ttm × (1+g_adj)^N × PE_adj) / (1+r_capm)^N
+    Replica la Intrinsic Value Calculator de Charles Schwab para clientes retail.
+    """
+    datos = financials.get("datos_empresa") or {}
+    metricas = financials.get("metricas") or {}
+
+    eps_ttm = _sf(datos.get("eps_ttm"))
+    eps_growth_5y = _sf(datos.get("eps_growth_5y"))
+    beta = _sf(datos.get("beta"))
+    tasa_rf = _sf(metricas.get("tasa_rf"))
+    sector = datos.get("sector")
+
+    if eps_ttm is None or eps_ttm <= 0:
+        return {
+            "valor": None, "aplicable": False,
+            "razon_no_aplicable": "EPS negativo o no disponible",
+            "detalle": "El modelo Schwab requiere EPS TTM positivo",
+        }
+
+    if eps_growth_5y is None:
+        return {
+            "valor": None, "aplicable": False,
+            "razon_no_aplicable": "Tasa de crecimiento EPS no calculable",
+            "detalle": "Historia insuficiente para estimar CAGR de EPS a 5 años",
+        }
+
+    beta_usado = beta if beta is not None else 1.0
+    beta_warning = beta is None
+    rf = tasa_rf if tasa_rf is not None else 0.045
+    sector_pe = _schwab_sector_pe(sector)
+
+    # Capear crecimiento extremo antes del lookup
+    g_raw = min(eps_growth_5y, _MAX_GROWTH_RAW_SCHWAB)
+
+    # Ajustar growth rate con tabla de reducción
+    g_pct = g_raw * 100
+    g_reduction = _schwab_reduction(g_pct)
+    g_adj = min(g_raw * (1 - g_reduction), 0.40)
+
+    # Ajustar sector P/E con misma tabla (input es el P/E directo, no un %)
+    pe_reduction = _schwab_reduction(sector_pe)
+    pe_adj = min(sector_pe * (1 - pe_reduction), 40.0)
+
+    # CAPM
+    r_capm = rf + beta_usado * (_MARKET_RETURN_SCHWAB - rf)
+
+    # Valor intrínseco
+    N = _YEARS_SCHWAB
+    try:
+        eps_projected = eps_ttm * (1 + g_adj) ** N
+        price_future = eps_projected * pe_adj
+        iv = price_future / (1 + r_capm) ** N
+    except (ZeroDivisionError, OverflowError):
+        return {
+            "valor": None, "aplicable": False,
+            "razon_no_aplicable": "Error aritmético",
+            "detalle": "No se pudo calcular el valor intrínseco",
+        }
+
+    iv = round(iv, 2)
+    eps_growth_fuente = datos.get("eps_growth_5y_fuente") or ""
+
+    detalle = (
+        f"IV = EPS TTM ${eps_ttm:.2f} × (1+{g_adj*100:.2f}%)^{N} × {pe_adj:.2f}x "
+        f"÷ (1+{r_capm*100:.2f}%)^{N} = ${iv:.2f}. "
+        f"Sector P/E {sector_pe:.1f}x ajustado → {pe_adj:.2f}x (−{pe_reduction*100:.1f}%). "
+        f"g {eps_growth_5y*100:.2f}% ajustado → {g_adj*100:.2f}% (−{g_reduction*100:.1f}%). "
+        f"r_CAPM = {rf*100:.2f}% + {beta_usado:.2f}×({_MARKET_RETURN_SCHWAB*100:.0f}%−{rf*100:.2f}%) = {r_capm*100:.2f}%"
+        + (f". Fuente growth: {eps_growth_fuente}" if eps_growth_fuente else "")
+        + (" | β=1.0 asumido (dato no disponible)" if beta_warning else "")
+    )
+
+    return {
+        "valor": iv,
+        "aplicable": True,
+        "razon_no_aplicable": None,
+        "eps_ttm": eps_ttm,
+        "eps_growth_5y_raw_pct": round(eps_growth_5y * 100, 2),
+        "g_adj_pct": round(g_adj * 100, 2),
+        "g_reduction_pct": round(g_reduction * 100, 1),
+        "sector_pe_raw": round(sector_pe, 2),
+        "pe_adj": round(pe_adj, 2),
+        "pe_reduction_pct": round(pe_reduction * 100, 1),
+        "r_capm_pct": round(r_capm * 100, 2),
+        "r_capm_rf_pct": round(rf * 100, 2),
+        "r_capm_beta": round(beta_usado, 2),
+        "beta_warning": beta_warning,
+        "eps_growth_fuente": eps_growth_fuente,
+        "n_years": N,
+        "detalle": detalle,
+    }
+
+
 def _modelo_liquidation_value(financials: dict) -> dict:
     """Modelo 10 — Valor de Liquidación (Benjamin Graham Net-Net)."""
     datos = financials.get("datos_empresa") or {}
@@ -755,6 +912,7 @@ def run_all_models(
         "pfcf_trailing":     _modelo_pfcf_trailing(financials, ratios),
         "fwd_earnings":      _modelo_fwd_earnings(financials, ratios),
         "fwd_fcf":           _modelo_fwd_fcf(financials, ratios),
+        "schwab_iv":         _modelo_schwab_iv(financials),
         "liquidation_value": _modelo_liquidation_value(financials),
     }
 
@@ -843,6 +1001,21 @@ def run_all_models(
             entry["pe_sector_ref"] = r.get("pe_sector_ref")
         elif key == "ps":
             entry["ps_sector_ref"] = r.get("ps_sector_ref")
+        elif key == "schwab_iv":
+            entry["eps_ttm"] = r.get("eps_ttm")
+            entry["eps_growth_5y_raw_pct"] = r.get("eps_growth_5y_raw_pct")
+            entry["g_adj_pct"] = r.get("g_adj_pct")
+            entry["g_reduction_pct"] = r.get("g_reduction_pct")
+            entry["sector_pe_raw"] = r.get("sector_pe_raw")
+            entry["pe_adj"] = r.get("pe_adj")
+            entry["pe_reduction_pct"] = r.get("pe_reduction_pct")
+            entry["r_capm_pct"] = r.get("r_capm_pct")
+            entry["r_capm_rf_pct"] = r.get("r_capm_rf_pct")
+            entry["r_capm_beta"] = r.get("r_capm_beta")
+            entry["beta_warning"] = r.get("beta_warning")
+            entry["eps_growth_fuente"] = r.get("eps_growth_fuente")
+            entry["n_years"] = r.get("n_years")
+            entry["razon_no_aplicable"] = r.get("razon_no_aplicable")
         elif key == "liquidation_value":
             entry["ncav_billones"] = r.get("ncav_billones")
             entry["current_assets_billones"] = r.get("current_assets_billones")

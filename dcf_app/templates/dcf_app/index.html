@@ -2096,7 +2096,85 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 10. Valor de Liquidación — visible desde etapa 4 ── #}
+            {# ── 10. Schwab Intrinsic Value (PEG-CAPM Hybrid) ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.schwab_iv %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-schwab" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="fw-semibold me-2">{{ m.nombre }}</span>
+                  {% if m.valor is not None %}<span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 small">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} ms-2 small">{{ m.relevancia }}</span>
+                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis badge-estado-acordeon small">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis badge-estado-acordeon small">Sobrevaluada</span>{% endif %}{% endif %}
+                </button>
+              </h2>
+              <div id="acc-schwab" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Replica la calculadora de valor intrínseco de Charles Schwab. Proyecta el EPS a {{ m.n_years|default:"5" }} años usando el crecimiento histórico ajustado, aplica el P/E del sector ajustado, y descuenta al presente con CAPM. Penaliza automáticamente crecimientos y múltiplos altos para ser conservador.</p>
+
+                  {% if m.aplicable %}
+                  <div class="row g-3 mb-3">
+                    <div class="col-6 col-md-3">
+                      <span class="text-muted small d-block">EPS TTM</span>
+                      <span class="fw-semibold fs-5">${{ m.eps_ttm|floatformat:2 }}</span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <span class="text-muted small d-block">Valor estimado</span>
+                      <span class="fw-semibold fs-5">${{ m.valor|floatformat:2 }}</span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <span class="text-muted small d-block">Precio actual</span>
+                      <span class="fw-semibold fs-5">${{ m.precio_actual|floatformat:2 }}</span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <span class="text-muted small d-block">Peso en consenso</span>
+                      <span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span>
+                    </div>
+                  </div>
+
+                  <table class="table table-sm table-borderless mb-3">
+                    <thead><tr>
+                      <th class="text-muted small">Input</th>
+                      <th class="text-muted small text-end">Valor original</th>
+                      <th class="text-muted small text-end">Reducción Schwab</th>
+                      <th class="text-muted small text-end">Valor ajustado</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr>
+                        <td class="small fw-semibold">Crecimiento EPS{% if m.eps_growth_fuente %} <span class="text-muted fw-normal">({{ m.eps_growth_fuente }})</span>{% endif %}</td>
+                        <td class="small text-end">{{ m.eps_growth_5y_raw_pct|floatformat:2 }}%</td>
+                        <td class="small text-end">−{{ m.g_reduction_pct|floatformat:1 }}%</td>
+                        <td class="small text-end fw-semibold">{{ m.g_adj_pct|floatformat:2 }}%</td>
+                      </tr>
+                      <tr>
+                        <td class="small fw-semibold">P/E sectorial (Damodaran)</td>
+                        <td class="small text-end">{{ m.sector_pe_raw|floatformat:1 }}x</td>
+                        <td class="small text-end">−{{ m.pe_reduction_pct|floatformat:1 }}%</td>
+                        <td class="small text-end fw-semibold">{{ m.pe_adj|floatformat:2 }}x</td>
+                      </tr>
+                      <tr>
+                        <td class="small fw-semibold">Tasa CAPM{% if m.beta_warning %} <span class="badge bg-warning-subtle text-warning-emphasis">β=1.0 est.</span>{% endif %}</td>
+                        <td class="small text-end">Rf {{ m.r_capm_rf_pct|floatformat:2 }}% + β {{ m.r_capm_beta|floatformat:2 }} × (8% − Rf)</td>
+                        <td class="small text-end">—</td>
+                        <td class="small text-end fw-semibold">{{ m.r_capm_pct|floatformat:2 }}%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div class="alert alert-light small mb-3 py-2">
+                    <strong>Limitaciones:</strong> Sensible al P/E sectorial. No incorpora balance sheet (dos empresas con igual EPS y β idéntico obtienen el mismo valor independientemente de su deuda). No aplica con EPS negativo. Penaliza growth alto aunque sea sostenible (Buffett moats).
+                  </div>
+
+                  {% else %}
+                  <p class="text-muted mb-0">{{ m.razon_no_aplicable|default:m.detalle }}</p>
+                  {% endif %}
+
+                  {% if m.detalle and m.aplicable %}<p class="text-muted small mb-0" style="font-size:0.75rem;">{{ m.detalle }}</p>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 11. Valor de Liquidación — visible desde etapa 4 ── #}
             {% if multi_model and multi_model.stage_context.stage >= 4 %}{% with m=multi_model.modelos.liquidation_value %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
