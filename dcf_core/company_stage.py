@@ -228,6 +228,9 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     net_margin     = _safe_float(financials.get("net_margin"))
     has_dividends  = bool(financials.get("has_dividends", False))
 
+    datos_empresa = financials.get("datos_empresa") or {}
+    revenue_ttm   = _safe_float(datos_empresa.get("revenue_ttm"))
+
     # CAGR de FCF (de metricas; puede ser el promedio o CAGR según método elegido)
     metricas = financials.get("metricas") or {}
     cagr_raw = _safe_float(metricas.get("crecimiento_cagr"))
@@ -263,7 +266,7 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         if revenue_growth < 0:
             scores[6] += 3.0
         elif revenue_growth > 0.40:
-            scores[2] += 3.0
+            scores[2] += 4.0
         elif revenue_growth > 0.20:
             scores[2] += 2.0
             scores[3] += 1.0
@@ -287,6 +290,20 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         else:
             scores[4] += 2.0
             scores[5] += 1.0
+
+    # ── Calibración Startup vs Hyper Growth ────────────────────────────────
+    # FCF negativo y rentabilidad negativa son comunes a Startup e Hyper
+    # Growth. Cuando el revenue crece >40% anual, esa señal debe dominar la
+    # distinción: la empresa ya está escalando, aunque todavía queme caja.
+    # Si además supera $1B de revenue anual, deja de encajar con "ingresos
+    # bajos", por lo que Startup queda penalizada.
+    if revenue_growth is not None and revenue_growth > 0.40:
+        scores[2] += 2.0
+        scores[1] = max(0.0, scores[1] - 1.5)
+
+        if revenue_ttm is not None and revenue_ttm >= 1_000_000_000:
+            scores[2] += 1.5
+            scores[1] = max(0.0, scores[1] - 2.0)
 
     # ── SEÑAL 4: Dividendos / Buybacks ──────────────────────────────────────
     if has_dividends:

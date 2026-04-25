@@ -6,6 +6,7 @@ import pandas as pd
 from django.test import SimpleTestCase
 
 from dcf_core.DCF_Main import ejecutar_dcf
+from dcf_core.company_stage import detect_company_stage
 from dcf_core.finanzas import seleccionar_metodo_crecimiento
 from dcf_core.fmp import FMPClientError
 from dcf_core.multi_model_valuation import _modelo_reverse_dcf, run_all_models
@@ -96,6 +97,29 @@ class MultiModelValuationTests(SimpleTestCase):
             reverse_higher_net_debt["g_implicita_pct"],
             reverse_base["g_implicita_pct"],
         )
+
+
+class CompanyStageDetectionTests(SimpleTestCase):
+    def test_high_revenue_growth_with_scale_is_hyper_growth_despite_negative_fcf(self) -> None:
+        financials = {
+            "revenue_growth_raw": 1.104,
+            "net_margin": -0.227,
+            "has_dividends": False,
+            "fcf_historico": [
+                {"anio": 2024, "valor": -1.45},
+                {"anio": 2023, "valor": -0.91},
+                {"anio": 2022, "valor": -0.37},
+            ],
+            "metricas": {"crecimiento_cagr": None},
+            "datos_empresa": {"revenue_ttm": 5_000_000_000.0},
+            "filtros": [],
+        }
+
+        stage = detect_company_stage("CRWV", financials)
+
+        self.assertEqual(stage["stage"], 2)
+        self.assertEqual(stage["stage_name"], "Hyper Growth")
+        self.assertGreater(stage["scores"][2], stage["scores"][1])
 
 
 class AutomaticAnalysisTests(SimpleTestCase):
