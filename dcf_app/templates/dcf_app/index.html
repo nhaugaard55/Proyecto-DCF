@@ -774,24 +774,22 @@
             overflow-wrap: anywhere;
         }
 
-        /* Accordion model buttons: 3-zone layout (left / center-price / right-verdict) */
+        /* Accordion model buttons: 3-zone flex layout */
         .accordion-button {
-            position: relative;
             display: flex;
             align-items: center;
-            padding: 0.85rem 3rem 0.85rem 1rem;
+            padding: 0.85rem 2.75rem 0.85rem 1rem;
             line-height: 1.25;
-            gap: 0;
+            gap: 0.5rem;
         }
 
-        /* Zone left: name + relevance badge (+ Informativo if applicable) */
+        /* Zone left: name + relevance badge (+ Informativo) — fixed 40% */
         .acc-left {
+            flex: 0 0 40%;
+            min-width: 0;
             display: flex;
             align-items: center;
             gap: 0.45rem;
-            max-width: 44%;
-            flex-shrink: 0;
-            overflow: hidden;
         }
         .acc-left .fw-semibold {
             white-space: nowrap;
@@ -799,37 +797,28 @@
             text-overflow: ellipsis;
         }
 
-        /* Zone center: price — absolutely centered in the button */
+        /* Zone center: price — fills remaining space, content centered */
         .acc-price {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            white-space: nowrap;
+            flex: 1 1 0;
+            text-align: center;
             font-weight: 600;
             font-size: 0.82rem;
-            background: var(--bs-secondary-bg-subtle, #e9ecef);
+            white-space: nowrap;
             color: var(--bs-secondary-color, #6c757d);
-            padding: 0.2em 0.65em;
-            border-radius: var(--bs-border-radius, 0.375rem);
         }
 
-        /* Zone right: verdict — absolutely before Bootstrap chevron (≈2.75rem wide) */
+        /* Zone right: verdict — shrinks to content, sits just before Bootstrap chevron */
         .acc-verdict {
-            position: absolute;
-            right: 2.75rem;
+            flex-shrink: 0;
             white-space: nowrap;
         }
 
-        /* Mobile: collapse to inline stack */
+        /* Mobile: stack vertically */
         @media (max-width: 767px) {
-            .accordion-button {
-                flex-wrap: wrap;
-                gap: 0.35rem;
-                padding: 0.85rem 2.5rem 0.85rem 0.85rem;
-            }
-            .acc-left  { max-width: 100%; }
-            .acc-price { position: static; transform: none; left: auto; }
-            .acc-verdict { position: static; right: auto; }
+            .accordion-button { flex-wrap: wrap; gap: 0.35rem; padding: 0.85rem 2.5rem 0.85rem 0.85rem; }
+            .acc-left  { flex: 1 1 100%; }
+            .acc-price { flex: 0 0 auto; text-align: left; }
+            .acc-verdict { flex: 0 0 auto; }
         }
 
         .accordion-body {
