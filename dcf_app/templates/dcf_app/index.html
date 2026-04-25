@@ -2109,7 +2109,7 @@
               </h2>
               <div id="acc-schwab" class="accordion-collapse collapse">
                 <div class="accordion-body">
-                  <p class="text-muted small mb-3">Replica la calculadora de valor intrínseco de Charles Schwab. Proyecta el EPS a {{ m.n_years|default:"5" }} años usando el crecimiento histórico ajustado, aplica el P/E del sector ajustado, y descuenta al presente con CAPM. Penaliza automáticamente crecimientos y múltiplos altos para ser conservador.</p>
+                  <p class="text-muted small mb-3">Proyecta el EPS a {{ m.n_years|default:"5" }} años usando el CAGR histórico ajustado, aplica el P/E sectorial ajustado como múltiplo de salida, y descuenta al presente con CAPM. La tabla de reducción penaliza progresivamente crecimientos y múltiplos altos para producir una valuación conservadora.</p>
 
                   {% if m.aplicable %}
                   <div class="row g-3 mb-3">
@@ -2146,7 +2146,7 @@
                         <td class="small text-end fw-semibold">{{ m.g_adj_pct|floatformat:2 }}%</td>
                       </tr>
                       <tr>
-                        <td class="small fw-semibold">P/E sectorial (Damodaran)</td>
+                        <td class="small fw-semibold">P/E sectorial</td>
                         <td class="small text-end">{{ m.sector_pe_raw|floatformat:1 }}x</td>
                         <td class="small text-end">−{{ m.pe_reduction_pct|floatformat:1 }}%</td>
                         <td class="small text-end fw-semibold">{{ m.pe_adj|floatformat:2 }}x</td>
