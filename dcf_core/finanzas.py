@@ -185,7 +185,7 @@ def calcular_tabla_sensibilidad(fcf_actual, wacc_base, crecimiento_base, debt, a
     for w in waccs:
         row = []
         for g in crecimientos:
-            if w <= 0 or w <= g:
+            if w <= 0:
                 row.append(None)
                 continue
             fcf_proj = proyectar_fcf(fcf_actual, g)

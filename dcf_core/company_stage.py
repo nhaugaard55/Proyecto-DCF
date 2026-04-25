@@ -240,7 +240,8 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     if not fcf_vals:
         fcf_trend = "Sin datos"
     elif consec_neg >= 3:
-        scores[1] += 3.0
+        scores[1] += 2.0
+        scores[2] += 1.0
         fcf_trend = _fcf_trend_label(fcf_vals)
     elif consec_neg >= 1:
         scores[2] += 2.0
@@ -281,7 +282,8 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     else:
         margin_display = f"{net_margin:.1%}"
         if net_margin < -0.20:
-            scores[1] += 2.0
+            scores[1] += 1.0
+            scores[2] += 1.0
         elif net_margin < 0:
             scores[2] += 1.0
             scores[3] += 1.0
