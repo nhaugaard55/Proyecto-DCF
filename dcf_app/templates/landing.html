@@ -1140,12 +1140,28 @@
         <span class="ticker-chg ${t.up ? 'up' : 'dn'}">${t.chg}</span>
       </div>`
     ).join('');
+    // Reinicia la animación para que arranque desde 0 con el contenido ya medido
+    track.style.animation = 'none';
+    track.offsetHeight; // fuerza reflow
+    track.style.animation = '';
   }
 
   fetch('/api/ticker-strip/')
     .then(r => r.json())
     .then(d => { if (d.tickers && d.tickers.length) renderStrip(d.tickers); })
     .catch(() => {/* strip permanece vacío sin ruido */});
+
+  // Reinicia la animación cuando el browser restaura la página desde bfcache
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) {
+      const track = document.getElementById('ticker-track');
+      if (track && track.children.length) {
+        track.style.animation = 'none';
+        track.offsetHeight;
+        track.style.animation = '';
+      }
+    }
+  });
 
   // ── Ticker search with dropdown + loading overlay ─────────────
   (function () {
