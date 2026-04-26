@@ -32,7 +32,7 @@ def _get_api_key() -> str:
     key = os.environ.get("MARKETAUX_API_KEY", "").strip()
     if not key:
         raise MarketauxError(
-            "No se encontró la clave de API de Marketaux. Definí MARKETAUX_API_KEY para habilitar las noticias."
+            "No se encontró la clave de API de Marketaux. Define MARKETAUX_API_KEY para habilitar las noticias."
         )
     return key
 

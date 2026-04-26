@@ -112,6 +112,7 @@ def _compose_prompt(noticias: Iterable[Mapping[str, object]], idioma: str) -> st
     nombre_idioma = _idioma_nombre(idioma)
     instruccion = (
         f"Eres un analista financiero hispanohablante experto en mercados de capitales. "
+        f"Independientemente del idioma en que estén escritas las noticias, respondé SIEMPRE en español. "
         f"Se te entregan TODAS las noticias recientes disponibles sobre {empresa}. "
         f"Tu tarea es redactar en {nombre_idioma} un resumen completo y narrativo que cubra TODAS las noticias listadas, sin omitir ninguna. "
         "Organiza el resumen en dos o tres párrafos bien conectados, usando tono periodístico latino con transiciones fluidas ('además', 'sin embargo', 'mientras tanto', 'por su parte', 'en paralelo'). "
@@ -387,7 +388,7 @@ def generar_resumen_sentimiento(
 
     api_token = os.environ.get("HUGGINGFACE_API_TOKEN", "").strip()
     if not api_token:
-        raise AISummaryError("Definí HUGGINGFACE_API_TOKEN para habilitar el resumen con IA.")
+        raise AISummaryError("Define HUGGINGFACE_API_TOKEN para habilitar el resumen con IA.")
 
     # Prompt para modelos de instrucción (zephyr, mistral, etc.)
     prompt = _compose_prompt(noticias, idioma)

@@ -32,7 +32,7 @@ def _get_api_key() -> str:
     key = os.environ.get("FINNHUB_API_KEY", "").strip()
     if not key:
         raise FinnhubError(
-            "No se encontró la clave de API de Finnhub. Definí FINNHUB_API_KEY para habilitar las noticias."
+            "No se encontró la clave de API de Finnhub. Define FINNHUB_API_KEY para habilitar las noticias."
         )
     return key
 

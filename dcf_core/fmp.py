@@ -65,7 +65,7 @@ class FMPClient:
         if not self._api_key:
             raise FMPClientError(
                 "No se encontró la clave de API para Financial Modeling Prep. "
-                "Definí la variable de entorno FMP_API_KEY antes de ejecutar el análisis."
+                "Define la variable de entorno FMP_API_KEY antes de ejecutar el análisis."
             )
 
     def _request(self, endpoint: str, params: Optional[dict] = None):

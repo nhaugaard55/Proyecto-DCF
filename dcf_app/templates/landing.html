@@ -114,10 +114,18 @@
       padding: clamp(3rem, 5vw, 5rem) clamp(1.5rem, 4vw, 4rem);
       margin: 2rem 0 3rem;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
       box-shadow: var(--pill-shadow);
     }
-    .hero-section::after {
+    .hero-blob {
+      position: absolute;
+      inset: 0;
+      border-radius: 2rem;
+      overflow: hidden;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .hero-blob::after {
       content: "";
       position: absolute;
       width: 32rem;
@@ -125,9 +133,9 @@
       background: var(--hero-overlay);
       top: -10rem;
       right: -8rem;
-      z-index: 0;
     }
     .hero-section > * { position: relative; z-index: 1; }
+    .hero-blob { z-index: 0; }
 
     .hero-eyebrow {
       display: inline-flex;
@@ -498,10 +506,18 @@
       margin: 3rem 0;
       text-align: center;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
       box-shadow: var(--pill-shadow);
     }
-    .cta-section::after {
+    .cta-blob {
+      position: absolute;
+      inset: 0;
+      border-radius: 2rem;
+      overflow: hidden;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .cta-blob::after {
       content: "";
       position: absolute;
       width: 28rem;
@@ -510,9 +526,9 @@
       top: -8rem;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 0;
     }
     .cta-section > * { position: relative; z-index: 1; }
+    .cta-blob { z-index: 0; }
 
     /* ── TICKER STRIP ─────────────────────────────────────────── */
     .ticker-strip {
@@ -745,6 +761,7 @@
 
 <!-- ═══ HERO ════════════════════════════════════════════════════ -->
 <section class="hero-section">
+  <div class="hero-blob" aria-hidden="true"></div>
   <div class="row align-items-center g-4">
     <div class="col-lg-6">
       <div class="hero-eyebrow">
@@ -869,7 +886,7 @@
           <td><span class="mock-model-badge ok">✅ Útil</span></td>
         </tr>
         <tr>
-          <td>Price to Sales</td>
+          <td>P/S</td>
           <td><strong>$220.80</strong></td>
           <td><span class="mock-model-badge warn">⚠️ Algo útil</span></td>
         </tr>
@@ -1058,8 +1075,9 @@
 
 <!-- ═══ CTA ══════════════════════════════════════════════════════ -->
 <section class="cta-section">
+  <div class="cta-blob" aria-hidden="true"></div>
   <h2 class="hero-title mb-3">¿Cuánto vale tu<br>próxima inversión?</h2>
-  <p class="hero-subtitle mx-auto" style="max-width:420px;">Ingresá el ticker y obtené el análisis completo en segundos.</p>
+  <p class="hero-subtitle mx-auto" style="max-width:420px;">Ingresa el ticker y obtén el análisis completo en segundos.</p>
   <div class="hero-input-group mx-auto justify-content-center">
     <div class="hero-search-wrapper">
       <input

@@ -309,7 +309,7 @@ def dcf_view(request):
             }
             return redirect(f"{reverse('home')}?{urlencode(query_params)}")
 
-        error = "Por favor ingresá un ticker válido."
+        error = "Por favor ingresa un ticker válido."
 
     ticker = request.GET.get("ticker", "").strip().upper()
 
