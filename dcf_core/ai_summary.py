@@ -1,13 +1,157 @@
-"""Generates market sentiment summaries using Hugging Face Inference API."""
+"""Generates market sentiment summaries using Groq (primary) or Hugging Face (fallback)."""
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import re
 from typing import Iterable, Mapping, Optional
 
 import requests
+
+
+# ── Groq ──────────────────────────────────────────────────────────────────────
+_GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+_GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+
+# Escala de sentimiento: (score_min, score_max, etiqueta, color Bootstrap)
+_ESCALA_SENTIMIENTO = [
+    ( 4,  5, "Muy positivo", "success"),
+    ( 2,  3, "Positivo",     "info"),
+    (-1,  1, "Neutral",      "secondary"),
+    (-3, -2, "Negativo",     "warning"),
+    (-5, -4, "Muy negativo", "danger"),
+]
+
+
+def _score_a_label(score: int) -> tuple[str, str]:
+    for lo, hi, label, color in _ESCALA_SENTIMIENTO:
+        if lo <= score <= hi:
+            return label, color
+    return "Neutral", "secondary"
+
+
+def _extraer_json(texto: str) -> Optional[dict]:
+    """Extrae el primer objeto JSON válido de una respuesta LLM."""
+    texto = re.sub(r"```(?:json)?\s*", "", texto).strip()
+    texto = re.sub(r"```\s*$", "", texto).strip()
+    inicio = texto.find("{")
+    if inicio == -1:
+        return None
+    profundidad = 0
+    for i, c in enumerate(texto[inicio:], inicio):
+        if c == "{":
+            profundidad += 1
+        elif c == "}":
+            profundidad -= 1
+            if profundidad == 0:
+                try:
+                    return json.loads(texto[inicio : i + 1])
+                except json.JSONDecodeError:
+                    return None
+    return None
+
+
+def _construir_resultado_sentimiento(
+    score: Optional[int],
+    resumen: str,
+    temas: list,
+    modelo: str,
+) -> dict:
+    """Devuelve el dict estándar que consume el template."""
+    score_val = max(-5, min(5, int(score))) if score is not None else 0
+    label, color = _score_a_label(score_val)
+    parrafos = [p.strip() for p in (resumen or "").split("\n\n") if p.strip()]
+    tiene_score = score is not None
+    return {
+        "score": score_val if tiene_score else None,
+        "score_pct": round((score_val + 5) / 10 * 100, 1) if tiene_score else None,
+        "label": label if tiene_score else None,
+        "color": color if tiene_score else None,
+        "resumen": resumen or "",
+        "parrafos": parrafos,
+        "temas": [t for t in (temas or []) if isinstance(t, str) and t.strip()],
+        "modelo": modelo,
+    }
+
+
+def _generar_con_groq(noticias: list, empresa: str, api_key: str) -> dict:
+    """Llama a Groq y devuelve el dict de sentimiento estructurado."""
+    items: list[str] = []
+    for i, n in enumerate(noticias[:14], 1):
+        titulo = (n.get("titulo") or "").strip()[:160]
+        resumen_n = (n.get("resumen") or "").strip()[:250]
+        fuente = (n.get("fuente") or "").strip()
+        linea = f"{i}. {titulo}"
+        if fuente:
+            linea += f" [{fuente}]"
+        if resumen_n:
+            linea += f"\n   {resumen_n}"
+        items.append(linea)
+
+    modelo_id = os.environ.get("GROQ_SUMMARY_MODEL", _GROQ_DEFAULT_MODEL)
+
+    prompt = (
+        f"Eres un analista financiero experto en mercados de capitales. "
+        f"Analiza las noticias recientes sobre {empresa} y responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional.\n\n"
+        "NOTICIAS:\n" + "\n".join(items) + "\n\n"
+        "Formato de respuesta requerido:\n"
+        "{\n"
+        '  "score": <entero de -5 a +5>,\n'
+        '  "resumen": "<dos párrafos analíticos en español separados por \\n\\n. '
+        "Tono periodístico financiero. Menciona hechos concretos de las noticias. "
+        'Máximo 200 palabras en total.>",\n'
+        '  "temas": ["<tema 1>", "<tema 2>", "<tema 3>"]\n'
+        "}\n\n"
+        "Escala de score:\n"
+        "-5: crisis grave, escándalo mayor o riesgo de quiebra\n"
+        "-3/-4: resultados muy negativos o problemas serios\n"
+        "-1/-2: levemente negativo o mixto con sesgo negativo\n"
+        "0/1: neutral, mixto o sin tendencia clara\n"
+        "2/3: positivo — buenos resultados o perspectivas favorables\n"
+        "4/5: excepcionalmente positivo — hito histórico o supera ampliamente expectativas\n\n"
+        "Reglas: solo JSON válido, en español, temas de 2-5 palabras."
+    )
+
+    try:
+        resp = requests.post(
+            _GROQ_API_URL,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": modelo_id,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "max_tokens": 600,
+            },
+            timeout=30,
+        )
+    except requests.RequestException as exc:
+        raise AISummaryError(f"No se pudo contactar la API de Groq ({exc}).") from exc
+
+    if resp.status_code == 401:
+        raise AISummaryError("Token de Groq inválido o sin permisos (401).")
+    if resp.status_code == 429:
+        raise AISummaryError("Groq: límite de cuota alcanzado. Intenta más tarde (429).")
+    if resp.status_code != 200:
+        raise AISummaryError(f"Groq devolvió un error {resp.status_code}: {resp.text[:200]}")
+
+    try:
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"]
+    except (ValueError, KeyError, IndexError) as exc:
+        raise AISummaryError("Groq devolvió una respuesta con formato inesperado.") from exc
+
+    parsed = _extraer_json(content)
+    if not parsed or "resumen" not in parsed:
+        raise AISummaryError("Groq no devolvió un JSON con los campos requeridos.")
+
+    return _construir_resultado_sentimiento(
+        score=parsed.get("score"),
+        resumen=parsed.get("resumen", ""),
+        temas=parsed.get("temas", []),
+        modelo=f"groq/{modelo_id}",
+    )
 
 
 class AISummaryError(RuntimeError):
@@ -477,3 +621,37 @@ def generar_resumen_sentimiento(
         raise ultimo_error
 
     raise AISummaryError("No se pudo generar el resumen: no hay modelos configurados para intentar.")
+
+
+def generar_analisis_sentimiento(
+    noticias: Iterable[Mapping[str, object]],
+    idioma: str = "es",
+) -> dict:
+    """
+    Genera un análisis de sentimiento estructurado a partir de noticias.
+
+    Intenta Groq primero (si GROQ_API_KEY está configurada) y cae en
+    HuggingFace como fallback. Siempre devuelve un dict con:
+        score, score_pct, label, color, resumen, parrafos, temas, modelo
+    """
+    noticias = list(noticias)
+    if not noticias:
+        raise AISummaryError("No hay noticias para analizar.")
+
+    empresa = str(noticias[0].get("empresa") or "la compañía analizada")
+
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if groq_key:
+        try:
+            return _generar_con_groq(noticias, empresa, groq_key)
+        except AISummaryError:
+            pass  # continuar con HuggingFace
+
+    # Fallback: HuggingFace (devuelve texto plano → envolver en dict)
+    resumen_texto = generar_resumen_sentimiento(noticias, idioma=idioma)
+    return _construir_resultado_sentimiento(
+        score=None,
+        resumen=resumen_texto,
+        temas=[],
+        modelo="huggingface",
+    )

@@ -7,7 +7,7 @@ import pandas as pd
 
 import yfinance as yf
 
-from .ai_summary import AISummaryError, generar_resumen_sentimiento
+from .ai_summary import AISummaryError, generar_analisis_sentimiento
 from .finanzas import (
     obtener_tasa_libre_riesgo,
     calcular_wacc,
@@ -311,11 +311,11 @@ def _generate_ai_summary(
         if relevantes_contenido:
             noticias_resumen = relevantes_contenido
 
-    resumen_noticias: Optional[str] = None
+    resumen_noticias: Optional[dict] = None
     resumen_noticias_error: Optional[str] = None
 
     try:
-        resumen_noticias = generar_resumen_sentimiento(noticias_resumen)
+        resumen_noticias = generar_analisis_sentimiento(noticias_resumen)
     except AISummaryError as exc:
         resumen_noticias_error = _limpiar_mensaje_api(str(exc))
     except Exception as exc:
