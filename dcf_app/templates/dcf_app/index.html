@@ -529,9 +529,8 @@
         color: var(--text-primary);
     }
     .ai-summary-title {
-        font-size: 0.95rem;
+        font-size: 0.85rem;
         font-weight: 600;
-        margin-bottom: 0.35rem;
         text-transform: uppercase;
         letter-spacing: 0.06em;
         color: var(--text-muted);
@@ -539,7 +538,49 @@
     .ai-summary-text {
         margin: 0;
         font-size: 0.95rem;
-        line-height: 1.5;
+        line-height: 1.6;
+    }
+    .ai-summary-text p:last-child { margin-bottom: 0; }
+    /* ── Gauge de sentimiento ── */
+    .sentiment-gauge { margin: 0.85rem 0 1rem; }
+    .sentiment-bar-wrap {
+        position: relative;
+        height: 8px;
+        border-radius: 4px;
+        background: linear-gradient(to right,
+            #dc3545 0%, #dc3545 20%,
+            #fd7e14 20%, #fd7e14 38%,
+            #6c757d 38%, #6c757d 62%,
+            #0dcaf0 62%, #0dcaf0 80%,
+            #198754 80%, #198754 100%
+        );
+    }
+    .sentiment-marker {
+        position: absolute;
+        top: 50%;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--text-primary);
+        border: 2.5px solid var(--surface-card);
+        box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+        transform: translate(-50%, -50%);
+    }
+    .sentiment-scale-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.68rem;
+        color: var(--text-muted);
+        margin-top: 0.3rem;
+    }
+    .sentiment-tema {
+        display: inline-block;
+        padding: 0.2rem 0.7rem;
+        font-size: 0.78rem;
+        border-radius: 999px;
+        background: var(--surface-card);
+        border: 1px solid var(--surface-border);
+        color: var(--text-muted);
     }
     .ticker-search-wrapper {
         position: relative;
@@ -2480,13 +2521,51 @@
                         </div>
                     </div>
                     {% if resultado.resumen_noticias %}
+                    {% with s=resultado.resumen_noticias %}
                     <div class="ai-summary">
-                        <div class="ai-summary-title">Resumen IA del sentimiento</div>
-                        <p class="ai-summary-text">{{ resultado.resumen_noticias }}</p>
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                            <div class="ai-summary-title">Análisis IA del sentimiento</div>
+                            {% if s.label %}
+                            <span class="badge rounded-pill
+                                {% if s.color == 'success' %}bg-success
+                                {% elif s.color == 'info' %}bg-info text-dark
+                                {% elif s.color == 'warning' %}bg-warning text-dark
+                                {% elif s.color == 'danger' %}bg-danger
+                                {% else %}bg-secondary{% endif %}
+                                px-3">{{ s.label }}{% if s.score is not None %} ({{ s.score|stringformat:"+d" }}){% endif %}</span>
+                            {% endif %}
+                        </div>
+                        {% if s.score is not None %}
+                        <div class="sentiment-gauge">
+                            <div class="sentiment-bar-wrap">
+                                <div class="sentiment-marker" style="left:{{ s.score_pct }}%"></div>
+                            </div>
+                            <div class="sentiment-scale-labels">
+                                <span>Muy negativo</span>
+                                <span>Neutral</span>
+                                <span>Muy positivo</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if s.parrafos %}
+                        <div class="ai-summary-text mb-2">
+                            {% for p in s.parrafos %}<p>{{ p }}</p>{% endfor %}
+                        </div>
+                        {% elif s.resumen %}
+                        <p class="ai-summary-text mb-2">{{ s.resumen }}</p>
+                        {% endif %}
+                        {% if s.temas %}
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            {% for tema in s.temas %}
+                            <span class="sentiment-tema">{{ tema }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
+                    {% endwith %}
                     {% elif resultado.resumen_noticias_error %}
                     <div class="ai-summary bg-transparent p-0">
-                        <div class="ai-summary-title">Resumen IA</div>
+                        <div class="ai-summary-title">Análisis IA</div>
                         <p class="ai-summary-text text-muted">{{ resultado.resumen_noticias_error }}</p>
                     </div>
                     {% endif %}
