@@ -9,6 +9,7 @@ import yfinance as yf
 
 from .ai_summary import AISummaryError, generar_analisis_sentimiento
 from .finanzas import (
+    G_TERMINAL,
     obtener_tasa_libre_riesgo,
     calcular_wacc,
     proyectar_fcf,
@@ -507,7 +508,22 @@ def analizar_empresa(
                 if not cash_series.empty:
                     cash = to_float(cash_series.iloc[0], 0)
                     break
-    net_debt = debt - cash
+    net_debt = debt - cash  # LT-only, mantenido por compatibilidad
+
+    # Deuda total (LP + corriente) para cálculo correcto del equity value
+    total_debt = debt
+    current_debt = 0.0
+    if balance is not None and not balance.empty:
+        if "Total Debt" in balance.index:
+            _td = balance.loc["Total Debt"].dropna()
+            if not _td.empty:
+                total_debt = to_float(_td.iloc[0], 0)
+        elif "Short Long Term Debt" in balance.index:
+            _cd = balance.loc["Short Long Term Debt"].dropna()
+            if not _cd.empty:
+                current_debt = to_float(_cd.iloc[0], 0)
+                total_debt = debt + current_debt
+    net_debt_total = total_debt - cash
 
     # --- Additional balance sheet fields for Liquidation Value and Altman Z-Score ---
     total_current_assets_val = None
@@ -713,19 +729,30 @@ def analizar_empresa(
         for i, (year, valor) in enumerate(fcf_presentacion[:7])
     ]
 
-    fcf_proyectado = proyectar_fcf(fcf_actual, tasa_crecimiento)
-    fcf_proyecciones = [
-        {"anio": año_actual + i, "valor": to_billions(valor)}
-        for i, valor in enumerate(fcf_proyectado, start=1)
-    ]
+    crecimiento_largo_plazo = G_TERMINAL  # unificado con Reverse DCF (2.5%)
 
-    crecimiento_largo_plazo = 0.02
-    valor_total = calcular_valor_intrinseco(fcf_proyectado, wacc)
-    equity_value = (valor_total - debt) if valor_total is not None else None
-    valor_por_accion = (equity_value / acciones) if equity_value is not None and acciones else None
-
-    diferencia = (valor_por_accion - precio) if valor_por_accion is not None else None
-    diferencia_pct = ((diferencia / precio) * 100) if diferencia is not None and precio else None
+    # Corrección 3: FCF negativo/cero → DCF no aplicable (evita heurística de convergencia)
+    # Corrección 1: WACC None → DCF no aplicable
+    if not fcf or fcf_actual <= 0 or wacc is None:
+        fcf_proyectado: list[float] = []
+        fcf_proyecciones: list[dict] = []
+        valor_total = None
+        equity_value = None
+        valor_por_accion = None
+        diferencia = None
+        diferencia_pct = None
+    else:
+        fcf_proyectado = proyectar_fcf(fcf_actual, tasa_crecimiento)
+        fcf_proyecciones = [
+            {"anio": año_actual + i, "valor": to_billions(valor)}
+            for i, valor in enumerate(fcf_proyectado, start=1)
+        ]
+        valor_total = calcular_valor_intrinseco(fcf_proyectado, wacc)
+        # Corrección 4: restar deuda neta total (LP + corriente − caja) en vez de solo LP
+        equity_value = (valor_total - net_debt_total) if valor_total is not None else None
+        valor_por_accion = (equity_value / acciones) if equity_value is not None and acciones else None
+        diferencia = (valor_por_accion - precio) if valor_por_accion is not None else None
+        diferencia_pct = ((diferencia / precio) * 100) if diferencia is not None and precio else None
 
     dividend_yield = normalizar_dividend_yield(
         info.get("dividendYield"), info.get("dividendRate"), precio
@@ -752,7 +779,7 @@ def analizar_empresa(
     })
 
     valor_terminal = None
-    if valor_total is not None:
+    if valor_total is not None and wacc is not None:
         fcf_final = fcf_proyectado[-1] if fcf_proyectado else 0
         if wacc > 0 and crecimiento_largo_plazo < wacc:
             valor_terminal = (fcf_final * (1 + crecimiento_largo_plazo)) / (wacc - crecimiento_largo_plazo)
@@ -786,10 +813,13 @@ def analizar_empresa(
         "market_cap_billones": to_billions(equity),
         "deuda": debt,
         "deuda_billones": to_billions(debt),
+        "deuda_corriente": current_debt,
+        "deuda_total": total_debt,
+        "deuda_total_billones": to_billions(total_debt),
         "caja": cash,
         "caja_billones": to_billions(cash),
-        "deuda_neta": net_debt,
-        "deuda_neta_billones": to_billions(net_debt),
+        "deuda_neta": net_debt_total,          # LP + corriente − caja
+        "deuda_neta_billones": to_billions(net_debt_total),
         # Balance sheet extras for Liquidation Value and Altman Z-Score
         "total_current_assets": total_current_assets_val,
         "total_current_liabilities": total_current_liabilities_val,

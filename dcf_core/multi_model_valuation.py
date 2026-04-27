@@ -14,6 +14,8 @@ from __future__ import annotations
 import math
 from typing import Optional
 
+from .finanzas import G_TERMINAL
+
 # scipy se importa de forma diferida para que el módulo sea importable
 # incluso si scipy no está instalado (en ese caso reverse_dcf = None).
 try:
@@ -84,7 +86,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 0.5, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 1.0, "liquidation_value": 0.0,
+        "tam": 0.3, "liquidation_value": 0.0,  # reducido de 1.0: TAM es orientativo
         "schwab_iv": 0.0,
         "tam_note": True, "asset_note": False,
     },
@@ -93,7 +95,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 1.0, "liquidation_value": 0.0,
+        "tam": 0.2, "liquidation_value": 0.0,  # reducido de 1.0
         "schwab_iv": 0.3,
         "tam_note": True, "asset_note": False,
     },
@@ -102,7 +104,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.5, "fwd_fcf": 0.5,
-        "tam": 0.5, "liquidation_value": 0.0,
+        "tam": 0.1, "liquidation_value": 0.0,  # reducido de 0.5
         "schwab_iv": 0.5,
         "tam_note": False, "asset_note": False,
     },
@@ -111,7 +113,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.5, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.5,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
-        "tam": 0.5, "liquidation_value": 0.0,
+        "tam": 0.25, "liquidation_value": 0.0,  # reducido de 0.5
         "schwab_iv": 1.2,
         "tam_note": False, "asset_note": False,
     },
@@ -260,6 +262,11 @@ def _modelo_reverse_dcf(financials: dict, wacc: float) -> dict:
                 "aplicable": False,
                 "detalle": "scipy no disponible para resolver Reverse DCF"}
 
+    if wacc is None:
+        return {"valor": None, "g_implicita": None, "veredicto": None,
+                "aplicable": False,
+                "detalle": "WACC no disponible — Reverse DCF no aplicable"}
+
     if precio is None or acciones is None or not acciones or fcf_ttm is None:
         return {"valor": None, "g_implicita": None, "veredicto": None,
                 "aplicable": False, "detalle": "Datos insuficientes"}
@@ -272,7 +279,7 @@ def _modelo_reverse_dcf(financials: dict, wacc: float) -> dict:
     # Reverse DCF debe partir del enterprise value implícito del equity actual.
     # Usar deuda neta lo vuelve más realista en compañías con mucha caja.
     enterprise_value = precio * acciones + (deuda_neta if deuda_neta is not None else deuda)
-    g_terminal = 0.025
+    g_terminal = G_TERMINAL  # unificado con el DCF principal (2.5%)
 
     def _ev_dado_g(g: float) -> float:
         """Calcula enterprise value teórico para una tasa g explícita a 5 años."""
@@ -402,9 +409,12 @@ def _modelo_pgp(financials: dict, ratios: dict) -> dict:
     acciones = _sf(datos.get("acciones"))
     pgp_sector = ratios["pgp"]
 
-    if gp is None or acciones is None or not acciones:
+    if gp is None or gp <= 0:
         return {"valor": None, "aplicable": False,
-                "detalle": "Gross Profit TTM o acciones no disponibles"}
+                "detalle": "Gross Profit TTM negativo, cero o no disponible — P/GP no aplicable"}
+    if acciones is None or not acciones:
+        return {"valor": None, "aplicable": False,
+                "detalle": "Acciones no disponibles"}
 
     gps = gp / acciones
     valor = gps * pgp_sector
@@ -427,6 +437,12 @@ def _modelo_tam(financials: dict, ratios: dict, stage: int, wacc: float) -> dict
             "valor": None,
             "aplicable": False,
             "detalle": "Revenue TTM o acciones no disponibles para estimar TAM.",
+        }
+    if wacc is None:
+        return {
+            "valor": None,
+            "aplicable": False,
+            "detalle": "WACC no disponible — TAM no calculable.",
         }
 
     assumptions = _STAGE_TAM_ASSUMPTIONS.get(stage, _STAGE_TAM_ASSUMPTIONS[4])

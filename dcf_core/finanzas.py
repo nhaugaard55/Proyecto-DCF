@@ -2,6 +2,9 @@ import math
 import os
 import requests
 
+# Tasa de crecimiento a perpetuidad compartida por DCF y Reverse DCF
+G_TERMINAL = 0.025
+
 # Obtiene la tasa libre de riesgo desde la API de la Fed
 
 _FRED_API_KEY_DEFAULT = "03b0d61b2efbea3313f92d4d117af8df"
@@ -36,7 +39,7 @@ def calcular_wacc(beta, debt, equity, cost_of_debt, tax_rate, risk_free_rate=0.0
     """Calcula el WACC con fórmula tradicional."""
     cost_of_equity = risk_free_rate + beta * (market_return - risk_free_rate)
     if equity + debt == 0:
-        return 0
+        return None  # No se puede calcular: DCF aguas abajo retornará None
     return (equity / (equity + debt)) * cost_of_equity + (debt / (equity + debt)) * cost_of_debt * (1 - tax_rate)
 
 # Proyecta el Free Cash Flow (FCF) a futuro
@@ -217,9 +220,9 @@ def calcular_tabla_sensibilidad(fcf_actual, wacc_base, crecimiento_base, debt, a
 # Calcula el valor intrínseco de la empresa usando FCF proyectado y valor residual
 
 
-def calcular_valor_intrinseco(fcf_proyectado, wacc, crecimiento_perpetuo=0.02):
+def calcular_valor_intrinseco(fcf_proyectado, wacc, crecimiento_perpetuo=G_TERMINAL):
     """Calcula el valor intrínseco con FCF proyectado y valor residual."""
-    if not fcf_proyectado or wacc <= 0:
+    if not fcf_proyectado or wacc is None or wacc <= 0:
         return None
 
     vp_fcf = sum(
