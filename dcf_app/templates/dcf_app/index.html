@@ -2103,6 +2103,9 @@
                     <div class="col-md-3"><span class="text-muted small d-block">Ingreso desc.</span>{% with v=m.revenue_objetivo_desc_billones %}<span class="fw-semibold">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
                   </div>
                   {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  <p class="small mt-2 mb-0" style="color:var(--text-muted);background:rgba(234,179,8,0.08);border-left:3px solid #ca8a04;padding:.45rem .75rem;border-radius:0 .375rem .375rem 0;">
+                    Modelo orientativo — el TAM se estima a partir del revenue actual de la empresa, no de datos de mercado externos. Usar como referencia aproximada.
+                  </p>
                 </div>
               </div>
             </div>
