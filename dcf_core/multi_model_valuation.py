@@ -152,7 +152,7 @@ _MODEL_NOMBRES = {
     "pfcf_trailing":     "P/FCF Trailing",
     "fwd_earnings":      "P/E Forward",
     "fwd_fcf":           "P/FCF Forward",
-    "schwab_iv":         "Forward Earnings Discounted",
+    "schwab_iv":         "Earnings Growth Model",
     "liquidation_value": "Valor de Liquidación",
 }
 
@@ -571,7 +571,7 @@ def _modelo_fwd_fcf(financials: dict, ratios: dict) -> dict:
 
 def _fed_reduction(value: float) -> float:
     """
-    Tabla de reducción del Forward Earnings Discounted model.
+    Tabla de reducción del Earnings Growth Model.
     Para growth: value es el porcentaje (ej. 25.0 para 25%).
     Para sector P/E: value es el múltiplo directo (ej. 55.35).
     Devuelve la fracción de reducción (0.0 – 0.40).
@@ -593,7 +593,7 @@ def _fed_reduction(value: float) -> float:
 
 def _modelo_schwab_iv(financials: dict, ratios: dict) -> dict:
     """
-    Modelo — Forward Earnings Discounted (PEG-CAPM Hybrid).
+    Modelo — Earnings Growth Model (PEG-CAPM Hybrid).
 
     Fórmula: IV = (EPS_ttm × (1+g_adj)^N × PE_adj) / (1+r_capm)^N
     Penaliza crecimientos y múltiplos altos con una tabla de reducción progresiva.

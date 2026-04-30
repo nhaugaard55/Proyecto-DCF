@@ -2193,7 +2193,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 10. Schwab Intrinsic Value (PEG-CAPM Hybrid) ── #}
+            {# ── 10. Earnings Growth Model (PEG-CAPM Hybrid) ── #}
             {% if multi_model %}{% with m=multi_model.modelos.schwab_iv %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2234,7 +2234,7 @@
                     <thead><tr>
                       <th class="text-muted small">Parámetro</th>
                       <th class="text-muted small text-end">Valor original</th>
-                      <th class="text-muted small text-end">Reducción Schwab</th>
+                      <th class="text-muted small text-end">Reducción EGM</th>
                       <th class="text-muted small text-end">Valor ajustado</th>
                     </tr></thead>
                     <tbody>
