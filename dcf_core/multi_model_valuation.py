@@ -1058,6 +1058,20 @@ def run_all_models(
         modelos_usados = [k for k in _MODEL_KEYS if modelos[k]["valor"] is not None and modelos[k]["peso"] > 0]
         modelos_excluidos = [k for k in _MODEL_KEYS if modelos[k]["peso"] == 0 or not modelos[k]["aplicable"]]
 
+        variance = sum(
+            modelos[k]["peso"] * (modelos[k]["valor"] - precio_consenso) ** 2
+            for k in modelos_usados
+        )
+        dr = math.sqrt(variance) / precio_consenso if precio_consenso else None
+        if dr is None:
+            dr_label, dr_color = None, None
+        elif dr < 0.10:
+            dr_label, dr_color = "Alta consistencia entre modelos", "success"
+        elif dr <= 0.25:
+            dr_label, dr_color = "Consistencia moderada", "warning"
+        else:
+            dr_label, dr_color = "Alta dispersión — consenso poco confiable", "danger"
+
         consenso = {
             "precio": precio_consenso,
             "precio_actual": precio_actual,
@@ -1067,8 +1081,13 @@ def run_all_models(
             "veredicto": veredicto_final,
             "modelos_usados": len(modelos_usados),
             "modelos_usados_keys": modelos_usados,
+            "modelos_en_consenso": modelos_usados,
             "modelos_excluidos": modelos_excluidos,
             "confianza": _confianza(len(modelos_usados)),
+            "disagreement_ratio": round(dr, 4) if dr is not None else None,
+            "disagreement_ratio_pct": round(dr * 100, 1) if dr is not None else None,
+            "disagreement_label": dr_label,
+            "disagreement_color": dr_color,
             "disponible": True,
             "razon_no_calculable": None,
         }

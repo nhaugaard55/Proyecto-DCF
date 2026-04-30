@@ -1609,6 +1609,12 @@
                     <div class="mt-3 pt-3" style="border-top:1px solid var(--surface-border);">
                       <div class="small text-muted">{{ consenso.modelos_usados }} modelo{{ consenso.modelos_usados|pluralize:"s" }} usados</div>
                       <div class="small text-muted">Confianza: <strong>{{ consenso.confianza }}</strong></div>
+                      {% if consenso.disagreement_ratio is not None %}
+                      <div class="small mt-1">
+                        DR: <strong class="text-{{ consenso.disagreement_color }}">{{ consenso.disagreement_ratio_pct }}%</strong>
+                        <span class="text-muted">— {{ consenso.disagreement_label }}</span>
+                      </div>
+                      {% endif %}
                     </div>
                   </div>
                 </div>
