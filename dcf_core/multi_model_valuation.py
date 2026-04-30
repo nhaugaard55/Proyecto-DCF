@@ -87,7 +87,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 0.5, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 0.3, "liquidation_value": 0.0,  # reducido de 1.0: TAM es orientativo
+        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.0,
         "tam_note": True, "asset_note": False,
     },
@@ -96,7 +96,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 0.2, "liquidation_value": 0.0,  # reducido de 1.0
+        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.3,
         "tam_note": True, "asset_note": False,
     },
@@ -105,7 +105,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.5, "fwd_fcf": 0.5,
-        "tam": 0.1, "liquidation_value": 0.0,  # reducido de 0.5
+        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.5,
         "tam_note": False, "asset_note": False,
     },
@@ -114,7 +114,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pe_trailing": 0.5, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.5,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
-        "tam": 0.25, "liquidation_value": 0.0,  # reducido de 0.5
+        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 1.2,
         "tam_note": False, "asset_note": False,
     },
@@ -469,7 +469,8 @@ def _modelo_tam(financials: dict, ratios: dict, stage: int, wacc: float) -> dict
 
     return {
         "valor": round(valor, 2),
-        "aplicable": True,
+        "aplicable": False,
+        "modo": "escenario",
         "detalle": detalle,
         "tam_estimado_billones": _to_billions(tam_estimado),
         "revenue_objetivo_billones": _to_billions(revenue_objetivo),
@@ -983,6 +984,7 @@ def run_all_models(
             entry["cagr_historico_pct"] = r.get("cagr_historico_pct")
             entry["veredicto"] = r.get("veredicto")
         elif key == "tam":
+            entry["modo"] = r.get("modo")
             entry["tam_estimado_billones"] = r.get("tam_estimado_billones")
             entry["revenue_objetivo_billones"] = r.get("revenue_objetivo_billones")
             entry["revenue_objetivo_desc_billones"] = r.get("revenue_objetivo_desc_billones")
