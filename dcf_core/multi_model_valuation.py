@@ -115,7 +115,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 1.0, "pfcf_trailing": 0.5,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
-        "schwab_iv": 1.2,
+        "schwab_iv": 0.8,
         "tam_note": False, "asset_note": False,
     },
     5: {  # Capital Return
@@ -124,7 +124,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 0.5, "pfcf_trailing": 1.0,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,
-        "schwab_iv": 1.5,
+        "schwab_iv": 0.8,
         "tam_note": False, "asset_note": False,
     },
     6: {  # Decline — los modelos de crecimiento pierden relevancia
@@ -133,7 +133,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 0.0, "pfcf_trailing": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 0.70,
-        "schwab_iv": 0.3,
+        "schwab_iv": 0.0,
         "tam_note": False, "asset_note": True,
     },
 }
