@@ -15,7 +15,7 @@ from __future__ import annotations
 import math
 from typing import Optional
 
-from .finanzas import G_TERMINAL
+from .finanzas import G_TERMINAL, calcular_valor_intrinseco, proyectar_fcf
 
 # scipy se importa de forma diferida para que el módulo sea importable
 # incluso si scipy no está instalado (en ese caso reverse_dcf = None).
@@ -222,11 +222,32 @@ def _relevancia_desde_peso(peso_raw: float) -> str:
 # Modelos individuales
 # ---------------------------------------------------------------------------
 
+def _dcf_escenario(fcf_ttm: float, cagr: float, wacc: float, deuda_neta: float, acciones: float) -> Optional[float]:
+    """Calcula valor por acción para un escenario DCF con los parámetros dados."""
+    if fcf_ttm <= 0 or wacc is None or wacc <= 0 or not acciones:
+        return None
+    proyectado = proyectar_fcf(fcf_ttm, cagr)
+    valor_total = calcular_valor_intrinseco(proyectado, wacc)
+    if valor_total is None:
+        return None
+    equity = valor_total - deuda_neta
+    valor_por_accion = equity / acciones
+    return round(valor_por_accion, 2)
+
+
 def _modelo_dcf(financials: dict) -> dict:
     """Modelo 1 — Reutiliza el DCF ya calculado por la app."""
     valor = _sf(financials.get("valor_intrinseco"))
-    crecimiento_pct = _sf((financials.get("metricas") or {}).get("crecimiento_pct"))
-    wacc_pct = _sf((financials.get("metricas") or {}).get("wacc_pct"))
+    metricas = financials.get("metricas") or {}
+    crecimiento_pct = _sf(metricas.get("crecimiento_pct"))
+    wacc_pct = _sf(metricas.get("wacc_pct"))
+    cagr = _sf(metricas.get("crecimiento_cagr")) or 0.05
+    wacc = _sf(metricas.get("wacc")) or 0.08
+
+    datos = financials.get("datos_empresa") or {}
+    fcf_ttm = _sf(datos.get("fcf_ttm")) or 0.0
+    deuda_neta = _sf(datos.get("deuda_neta")) or 0.0
+    acciones = _sf(datos.get("acciones")) or 0.0
 
     detalle = "Proyección DCF ya calculada"
     if crecimiento_pct is not None and wacc_pct is not None:
@@ -235,10 +256,29 @@ def _modelo_dcf(financials: dict) -> dict:
             f"y WACC {wacc_pct:.2f}%"
         )
 
+    escenarios = {
+        "bear": {
+            "valor": _dcf_escenario(fcf_ttm, cagr * 0.6, wacc * 1.1, deuda_neta, acciones),
+            "cagr_usado": round(cagr * 0.6 * 100, 2),
+            "wacc_usado": round(wacc * 1.1 * 100, 2),
+        },
+        "base": {
+            "valor": valor,
+            "cagr_usado": round(cagr * 100, 2),
+            "wacc_usado": round(wacc * 100, 2),
+        },
+        "bull": {
+            "valor": _dcf_escenario(fcf_ttm, cagr * 1.4, wacc * 0.9, deuda_neta, acciones),
+            "cagr_usado": round(cagr * 1.4 * 100, 2),
+            "wacc_usado": round(wacc * 0.9 * 100, 2),
+        },
+    }
+
     return {
         "valor": valor,
         "aplicable": valor is not None,
         "detalle": detalle,
+        "escenarios": escenarios,
     }
 
 
@@ -978,7 +1018,9 @@ def run_all_models(
             "detalle": r.get("detalle", ""),
         }
 
-        if key == "reverse_dcf":
+        if key == "dcf":
+            entry["escenarios"] = r.get("escenarios")
+        elif key == "reverse_dcf":
             entry["g_implicita"] = r.get("g_implicita")
             entry["g_implicita_pct"] = r.get("g_implicita_pct")
             entry["cagr_historico_pct"] = r.get("cagr_historico_pct")
