@@ -1710,6 +1710,13 @@
         <div class="col-12">
           <div class="accordion accordion-flush" id="modelos-accordion">
 
+            {# ── GRUPO 1: Valuación ── #}
+            <div class="d-flex align-items-center gap-2 mb-2 mt-1">
+              <span class="badge px-3 py-2 fw-semibold" style="background:var(--bs-primary);font-size:.75rem;letter-spacing:.04em;">Valuación</span>
+              <hr class="flex-grow-1 my-0 opacity-25">
+              <span class="text-muted small">Modelos que producen precio por acción</span>
+            </div>
+
             {# ── 1. DCF (abierto por defecto) ── #}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2144,46 +2151,6 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 6. TAM asistido ── #}
-            {% if multi_model %}{% with m=multi_model.modelos.tam %}{% if m %}
-            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-tam" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="acc-left">
-                    <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge bg-warning-subtle text-warning-emphasis small">Escenario orientativo</span>
-                  </span>
-                  {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                </button>
-              </h2>
-              <div id="acc-tam" class="accordion-collapse collapse">
-                <div class="accordion-body">
-                  <p class="text-muted small mb-3">Estima el tamaño del mercado direccionable a partir de los ingresos actuales, supuestos de penetración por etapa y un múltiplo P/S capturado del sector.</p>
-                  <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">Ingresos TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">TAM estimado</span>{% with v=m.tam_estimado_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Ingreso objetivo</span>{% with v=m.revenue_objetivo_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Penetración actual</span>{% with v=m.penetracion_actual_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Penetración objetivo</span>{% with v=m.penetracion_objetivo_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Descuento ejecución</span>{% with v=m.execution_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:0 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
-                  </div>
-                  <div class="row g-3 mt-1">
-                    <div class="col-md-3"><span class="text-muted small d-block">Factor sectorial</span>{% with v=m.sector_scale %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:2 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">P/S objetivo</span>{% with v=m.ps_objetivo %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:2 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Factor de descuento</span>{% with v=m.discount_factor_pct %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Ingreso desc.</span>{% with v=m.revenue_objetivo_desc_billones %}<span class="fw-semibold">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                  </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
-                  <p class="small mt-2 mb-0" style="color:var(--text-muted);background:rgba(234,179,8,0.08);border-left:3px solid #ca8a04;padding:.45rem .75rem;border-radius:0 .375rem .375rem 0;">
-                    Modelo orientativo — el TAM se estima a partir del revenue actual de la empresa, no de datos de mercado externos. Usar como referencia aproximada.
-                  </p>
-                </div>
-              </div>
-            </div>
-            {% endif %}{% endwith %}{% endif %}
-
             {# ── 7. P/FCF Trailing ── #}
             {% if multi_model %}{% with m=multi_model.modelos.pfcf_trailing %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
@@ -2398,6 +2365,13 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
+            {# ── GRUPO 2: Diagnóstico ── #}
+            <div class="d-flex align-items-center gap-2 mb-2 mt-3">
+              <span class="badge px-3 py-2 fw-semibold" style="background:#495057;font-size:.75rem;letter-spacing:.04em;">Diagnóstico</span>
+              <hr class="flex-grow-1 my-0 opacity-25">
+              <span class="text-muted small">No producen precio — explican riesgo o expectativas</span>
+            </div>
+
             {# ── Informativo: Reverse DCF ── #}
             {% if multi_model %}{% with rdcf=multi_model.modelos.reverse_dcf consenso_mm=multi_model.consenso %}{% if rdcf %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
@@ -2494,6 +2468,53 @@
               </div>
             </div>
             {% endwith %}{% endif %}
+
+            {# ── GRUPO 3: Escenario orientativo ── #}
+            <div class="d-flex align-items-center gap-2 mb-2 mt-3">
+              <span class="badge px-3 py-2 fw-semibold" style="background:#ca8a04;font-size:.75rem;letter-spacing:.04em;">Escenario orientativo</span>
+              <hr class="flex-grow-1 my-0 opacity-25">
+              <span class="text-muted small">TAM estimado — no entra al consenso</span>
+            </div>
+
+            {# ── TAM asistido (Escenario orientativo) ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.tam %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-tam" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis small">Escenario orientativo</span>
+                  </span>
+                  {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                </button>
+              </h2>
+              <div id="acc-tam" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Estima el tamaño del mercado direccionable a partir de los ingresos actuales, supuestos de penetración por etapa y un múltiplo P/S capturado del sector.</p>
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">Ingresos TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">TAM estimado</span>{% with v=m.tam_estimado_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Ingreso objetivo</span>{% with v=m.revenue_objetivo_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Penetración actual</span>{% with v=m.penetracion_actual_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Penetración objetivo</span>{% with v=m.penetracion_objetivo_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Descuento ejecución</span>{% with v=m.execution_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:0 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  <div class="row g-3 mt-1">
+                    <div class="col-md-3"><span class="text-muted small d-block">Factor sectorial</span>{% with v=m.sector_scale %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:2 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">P/S objetivo</span>{% with v=m.ps_objetivo %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:2 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Factor de descuento</span>{% with v=m.discount_factor_pct %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Ingreso desc.</span>{% with v=m.revenue_objetivo_desc_billones %}<span class="fw-semibold">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  <p class="small mt-2 mb-0" style="color:var(--text-muted);background:rgba(234,179,8,0.08);border-left:3px solid #ca8a04;padding:.45rem .75rem;border-radius:0 .375rem .375rem 0;">
+                    Modelo orientativo — el TAM se estima a partir del revenue actual de la empresa, no de datos de mercado externos. Usar como referencia aproximada.
+                  </p>
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
 
           </div>{# /accordion #}
         </div>{# /col-12 accordions #}
