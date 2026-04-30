@@ -539,15 +539,19 @@ def _modelo_fwd_fcf(financials: dict, ratios: dict) -> dict:
     fcf_ttm = _sf(datos.get("fcf_ttm"))
     acciones = _sf(datos.get("acciones"))
     pfcf_sector = ratios["pfcf"]
-    net_margin = _sf(financials.get("net_margin")) or 0.10
+    net_margin = _sf(financials.get("net_margin"))
     rev_growth = _sf((financials.get("metricas") or {}).get("crecimiento_cagr")) or 0.05
 
     if fcf_ttm is None or acciones is None or not acciones or fcf_ttm <= 0:
         return {"valor": None, "aplicable": False,
                 "detalle": "FCF TTM negativo o no disponible — Forward P/FCF no aplicable"}
 
+    if net_margin is None or net_margin <= 0:
+        return {"valor": None, "aplicable": False,
+                "detalle": "Margen neto negativo — Forward P/FCF no estimable con pérdidas"}
+
     # FCF forward estimado con ajuste de margen
-    margen_fcf = abs(net_margin)
+    margen_fcf = net_margin
     ajuste = 1 + (rev_growth * margen_fcf)
     fcf_fwd = fcf_ttm * ajuste
     fcfps_fwd = fcf_fwd / acciones
