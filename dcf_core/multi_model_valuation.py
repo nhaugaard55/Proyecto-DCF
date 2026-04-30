@@ -1,9 +1,10 @@
 """
 Motor de valuación multi-modelo.
 
-Calcula el valor intrínseco de una empresa usando 9 modelos distintos,
-los pondera según la etapa del ciclo de vida detectada por company_stage.py,
-y produce un precio consenso final.
+Ejecuta 11 modelos de valuación que producen precio por acción, más
+1 métrica auxiliar de solvencia (Altman Z-Score) que no entra al consenso.
+Los modelos se ponderan mediante un sistema de pesos adaptativos por etapa (1–6)
+detectada por company_stage.py, y producen un precio consenso final.
 
 No realiza llamadas adicionales a APIs — usa exclusivamente los datos
 ya presentes en el dict `financials` (resultado de analizar_empresa()).
@@ -878,7 +879,7 @@ def run_all_models(
     wacc: float,
 ) -> dict:
     """
-    Ejecuta los 9 modelos de valuación y calcula el precio consenso ponderado.
+    Ejecuta los 11 modelos de valuación y calcula el precio consenso ponderado.
 
     Parámetros:
         ticker:     Símbolo bursátil (solo para contexto en el retorno).
