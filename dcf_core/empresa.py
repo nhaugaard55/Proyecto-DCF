@@ -574,6 +574,23 @@ def analizar_empresa(
     except Exception:
         ebit_val = None
 
+    # EBITDA — primary from yfinance info, fallback EBIT + D&A from cashflow
+    ebitda_val = to_optional_float(info.get("ebitda"))
+    if ebitda_val is None and ebit_val is not None:
+        try:
+            _cf = getattr(empresa_yf, "cashflow", None)
+            if _cf is not None and not _cf.empty:
+                for _da_label in ("Depreciation & Amortization", "Depreciation", "DepreciationAndAmortization"):
+                    if _da_label in _cf.index:
+                        _da_s = _cf.loc[_da_label].dropna()
+                        if not _da_s.empty:
+                            _da = to_optional_float(_da_s.iloc[0])
+                            if _da is not None:
+                                ebitda_val = ebit_val + abs(_da)
+                            break
+        except Exception:
+            pass
+
     # EPS 5-year CAGR — needed by Schwab Intrinsic Value model
     eps_growth_5y: Optional[float] = None
     eps_growth_5y_fuente: Optional[str] = None
@@ -827,6 +844,8 @@ def analizar_empresa(
         "total_liabilities": total_liab_val if total_liab_val is not None else to_optional_float(info.get("totalLiab")),
         "retained_earnings": retained_earnings_val,
         "ebit": ebit_val,
+        "ebitda_ttm": ebitda_val,
+        "ebitda_ttm_billones": to_billions(ebitda_val),
         "working_capital": working_capital_val,
         "eps_growth_5y": eps_growth_5y,
         "eps_growth_5y_fuente": eps_growth_5y_fuente,

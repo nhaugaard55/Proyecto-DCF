@@ -1,7 +1,7 @@
 """
 Motor de valuación multi-modelo.
 
-Ejecuta 11 modelos de valuación que producen precio por acción, más
+Ejecuta 12 modelos de valuación que producen precio por acción, más
 1 métrica auxiliar de solvencia (Altman Z-Score) que no entra al consenso.
 Los modelos se ponderan mediante un sistema de pesos adaptativos por etapa (1–6)
 detectada por company_stage.py, y producen un precio consenso final.
@@ -50,6 +50,21 @@ _MARKET_RETURN_FED = 0.08   # long-term equity market return assumption
 _YEARS_FED = 5
 _MAX_GROWTH_RAW_FED = 0.75  # cap extreme values before reduction table
 
+_SECTOR_EBITDA_MULTIPLES: dict[str, float] = {
+    "Technology":             18.0,
+    "Healthcare":             14.0,
+    "Consumer Cyclical":      12.0,
+    "Consumer Defensive":     13.0,
+    "Energy":                  7.0,
+    "Industrials":            11.0,
+    "Financial Services":      9.0,
+    "Utilities":              10.0,
+    "Real Estate":            16.0,
+    "Basic Materials":         9.0,
+    "Communication Services": 12.0,
+}
+_DEFAULT_EBITDA_MULTIPLE = 12.0
+
 _SECTOR_TAM_SCALE: dict[str, float] = {
     "Technology": 1.25,
     "Healthcare": 1.15,
@@ -86,6 +101,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.0, "reverse_dcf": 0.0,
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 0.5, "pfcf_trailing": 0.0,
+        "ev_ebitda": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.0,
@@ -95,6 +111,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.0, "reverse_dcf": 0.0,
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
+        "ev_ebitda": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.3,
@@ -104,6 +121,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.5, "reverse_dcf": 0.5,
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
+        "ev_ebitda": 0.3,
         "fwd_earnings": 0.5, "fwd_fcf": 0.5,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.5,
@@ -113,6 +131,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.5, "reverse_dcf": 0.5,
         "pe_trailing": 0.5, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.5,
+        "ev_ebitda": 0.8,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.8,
@@ -122,6 +141,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 1.0, "reverse_dcf": 1.0,
         "pe_trailing": 1.0, "ps": 0.5,
         "pgp": 0.5, "pfcf_trailing": 1.0,
+        "ev_ebitda": 1.0,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.8,
@@ -131,6 +151,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.0, "reverse_dcf": 0.0,
         "pe_trailing": 0.0, "ps": 0.0,
         "pgp": 0.0, "pfcf_trailing": 0.0,
+        "ev_ebitda": 0.4,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 0.70,
         "schwab_iv": 0.0,
@@ -139,7 +160,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
 }
 
 _MODEL_KEYS = ["dcf", "reverse_dcf", "pe_trailing", "ps", "pgp",
-               "tam", "pfcf_trailing", "fwd_earnings", "fwd_fcf",
+               "tam", "pfcf_trailing", "ev_ebitda", "fwd_earnings", "fwd_fcf",
                "schwab_iv", "liquidation_value"]
 
 _MODEL_NOMBRES = {
@@ -150,6 +171,7 @@ _MODEL_NOMBRES = {
     "pgp":               "Price to Gross Profit",
     "tam":               "TAM asistido",
     "pfcf_trailing":     "P/FCF Trailing",
+    "ev_ebitda":         "EV/EBITDA",
     "fwd_earnings":      "P/E Forward",
     "fwd_fcf":           "P/FCF Forward",
     "schwab_iv":         "Earnings Growth Model",
@@ -544,6 +566,57 @@ def _modelo_pfcf_trailing(financials: dict, ratios: dict) -> dict:
     }
 
 
+def _ebitda_multiple(sector: Optional[str]) -> tuple[float, str]:
+    """Devuelve (múltiplo EV/EBITDA, nombre_sector) para el sector dado."""
+    if sector:
+        for key, mult in _SECTOR_EBITDA_MULTIPLES.items():
+            if key.lower() in sector.lower():
+                return mult, key
+    return _DEFAULT_EBITDA_MULTIPLE, "Default"
+
+
+def _modelo_ev_ebitda(financials: dict) -> dict:
+    """Modelo EV/EBITDA — Enterprise Value implícito dividido por EBITDA TTM sectorial."""
+    datos = financials.get("datos_empresa") or {}
+    ebitda = _sf(datos.get("ebitda_ttm"))
+    acciones = _sf(datos.get("acciones"))
+    deuda_neta = _sf(datos.get("deuda_neta")) or 0.0
+    sector = datos.get("sector")
+
+    if ebitda is None or ebitda <= 0:
+        return {"valor": None, "aplicable": False,
+                "detalle": "EBITDA TTM negativo o no disponible — EV/EBITDA no aplicable"}
+    if acciones is None or not acciones:
+        return {"valor": None, "aplicable": False,
+                "detalle": "Acciones no disponibles"}
+
+    mult, sector_key = _ebitda_multiple(sector)
+    ev_estimado = ebitda * mult
+    equity_value = ev_estimado - deuda_neta
+
+    if equity_value <= 0:
+        return {
+            "valor": None,
+            "aplicable": False,
+            "detalle": (
+                f"EBITDA TTM ${_to_billions(ebitda):.2f}B × {mult:.0f}x ({sector_key}) = "
+                f"EV ${_to_billions(ev_estimado):.2f}B — Deuda neta ${_to_billions(deuda_neta):.2f}B → "
+                f"Equity negativo (deuda excede el EV estimado)"
+            ),
+        }
+
+    valor = equity_value / acciones
+    return {
+        "valor": round(valor, 2),
+        "aplicable": True,
+        "detalle": (
+            f"EBITDA TTM ${_to_billions(ebitda):.2f}B × {mult:.0f}x ({sector_key}) = "
+            f"EV ${_to_billions(ev_estimado):.2f}B — Deuda neta ${_to_billions(deuda_neta):.2f}B = "
+            f"Equity ${_to_billions(equity_value):.2f}B ÷ {acciones / 1e9:.2f}B acciones"
+        ),
+    }
+
+
 def _modelo_fwd_earnings(financials: dict, ratios: dict) -> dict:
     """Modelo 8 — Price to Forward Earnings."""
     datos = financials.get("datos_empresa") or {}
@@ -920,7 +993,7 @@ def run_all_models(
     wacc: float,
 ) -> dict:
     """
-    Ejecuta los 11 modelos de valuación y calcula el precio consenso ponderado.
+    Ejecuta los 12 modelos de valuación y calcula el precio consenso ponderado.
 
     Parámetros:
         ticker:     Símbolo bursátil (solo para contexto en el retorno).
@@ -946,6 +1019,7 @@ def run_all_models(
         "pgp":               _modelo_pgp(financials, ratios),
         "tam":               _modelo_tam(financials, ratios, stage, wacc),
         "pfcf_trailing":     _modelo_pfcf_trailing(financials, ratios),
+        "ev_ebitda":         _modelo_ev_ebitda(financials),
         "fwd_earnings":      _modelo_fwd_earnings(financials, ratios),
         "fwd_fcf":           _modelo_fwd_fcf(financials, ratios),
         "schwab_iv":         _modelo_schwab_iv(financials, ratios),
