@@ -934,3 +934,156 @@ def analizar_empresa(
         "revenue_growth_raw": to_optional_float(revenue_growth),
         "has_dividends": (dividend_yield is not None and dividend_yield > 0.005),
     }
+
+
+def build_filtros_por_etapa(resultado: dict, stage: int) -> list:
+    """Genera filtros financieros con umbrales adaptados a la etapa del ciclo de vida.
+
+    Retorna una lista con el mismo formato que resultado['filtros'].
+    Si stage no está entre 1-6, devuelve los filtros originales como fallback.
+    """
+    d = resultado.get("datos_empresa") or {}
+    precio = resultado.get("precio_actual") or 0
+    net_margin = resultado.get("net_margin")
+
+    pe = d.get("pe_ratio_raw")
+    ps = d.get("ps_ratio_raw")
+    market_cap = d.get("market_cap") or 0
+    fcf_ttm = d.get("fcf_ttm")
+    revenue_ttm = d.get("revenue_ttm")
+    gross_profit_ttm = d.get("gross_profit_ttm")
+    deuda_total = d.get("deuda_total") or 0
+    total_assets = d.get("total_assets")
+    total_liabilities = d.get("total_liabilities")
+    eps_forward = d.get("eps_forward")
+
+    equity_book = (
+        (total_assets - total_liabilities)
+        if total_assets is not None and total_liabilities is not None
+        else None
+    )
+
+    def _fmt(v, pct=False):
+        if v is None:
+            return "N/D"
+        return f"{v:.1%}" if pct else f"{v:.2f}x"
+
+    p_fcf = (market_cap / fcf_ttm) if (fcf_ttm and fcf_ttm > 0 and market_cap) else None
+    p_gp = (market_cap / gross_profit_ttm) if (gross_profit_ttm and gross_profit_ttm > 0 and market_cap) else None
+    fwd_pe = (precio / eps_forward) if (eps_forward and eps_forward > 0 and precio) else None
+    roe = (
+        (revenue_ttm * net_margin) / equity_book
+        if (revenue_ttm and net_margin and equity_book and equity_book > 0)
+        else None
+    )
+    debt_to_cap = (
+        deuda_total / (deuda_total + equity_book)
+        if (equity_book and (deuda_total + equity_book) > 0)
+        else None
+    )
+
+    if stage in (1, 2):
+        return [
+            {
+                "nombre": "P/S",
+                "descripcion": "Price to Sales — relevante para empresas de alto crecimiento sin beneficios",
+                "valor": _fmt(ps),
+                "criterio": "< 15",
+                "cumple": ps is not None and ps <= 15,
+            },
+            {
+                "nombre": "P/Gross Profit",
+                "descripcion": "Price to Gross Profit — proxy de eficiencia operativa en etapas tempranas",
+                "valor": _fmt(p_gp),
+                "criterio": "< 20",
+                "cumple": p_gp is not None and p_gp <= 20,
+            },
+        ]
+
+    if stage == 3:
+        return [
+            {
+                "nombre": "P/S",
+                "descripcion": "Price to Sales",
+                "valor": _fmt(ps),
+                "criterio": "< 10",
+                "cumple": ps is not None and ps <= 10,
+            },
+            {
+                "nombre": "Forward P/E",
+                "descripcion": "Price to Forward Earnings — empresa en punto de quiebre, usar estimación futura",
+                "valor": _fmt(fwd_pe),
+                "criterio": "< 40",
+                "cumple": fwd_pe is not None and fwd_pe <= 40,
+            },
+        ]
+
+    if stage == 4:
+        return [
+            {
+                "nombre": "P/E",
+                "descripcion": "Price to Earnings trailing",
+                "valor": _fmt(pe),
+                "criterio": "< 35",
+                "cumple": pe is not None and pe <= 35,
+            },
+            {
+                "nombre": "P/S",
+                "descripcion": "Price to Sales",
+                "valor": _fmt(ps),
+                "criterio": "< 8",
+                "cumple": ps is not None and ps <= 8,
+            },
+            {
+                "nombre": "P/FCF",
+                "descripcion": "Price to Free Cash Flow trailing",
+                "valor": _fmt(p_fcf),
+                "criterio": "< 35",
+                "cumple": p_fcf is not None and p_fcf <= 35,
+            },
+        ]
+
+    if stage == 5:
+        return [
+            {
+                "nombre": "P/E",
+                "descripcion": "Price to Earnings trailing",
+                "valor": _fmt(pe),
+                "criterio": "< 25",
+                "cumple": pe is not None and pe <= 25,
+            },
+            {
+                "nombre": "P/FCF",
+                "descripcion": "Price to Free Cash Flow trailing",
+                "valor": _fmt(p_fcf),
+                "criterio": "< 25",
+                "cumple": p_fcf is not None and p_fcf <= 25,
+            },
+            {
+                "nombre": "P/S",
+                "descripcion": "Price to Sales",
+                "valor": _fmt(ps),
+                "criterio": "< 5",
+                "cumple": ps is not None and ps <= 5,
+            },
+            {
+                "nombre": "ROE",
+                "descripcion": "Return on Equity",
+                "valor": _fmt(roe, pct=True),
+                "criterio": "> 10%",
+                "cumple": roe is not None and roe > 0.10,
+            },
+        ]
+
+    if stage == 6:
+        return [
+            {
+                "nombre": "Debt/Capital",
+                "descripcion": "Deuda total sobre capital total — crítico en etapa de declive",
+                "valor": _fmt(debt_to_cap, pct=True),
+                "criterio": "< 40%",
+                "cumple": debt_to_cap is not None and debt_to_cap < 0.40,
+            },
+        ]
+
+    return resultado.get("filtros") or []

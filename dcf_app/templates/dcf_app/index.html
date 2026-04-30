@@ -1299,21 +1299,24 @@
                     <div class="row g-3 text-center">
 
                         <!-- Paso 1: Ratios -->
-                        {% with total=resultado.filtros|length %}
+                        {% with filtros_activos=filtros_etapa|default:resultado.filtros %}
+                        {% with total=filtros_activos|length %}
                         {% with cumplidos=0 %}
-                        {% for f in resultado.filtros %}{% if f.cumple %}{% with cumplidos=cumplidos|add:1 %}{% endwith %}{% endif %}{% endfor %}
+                        {% for f in filtros_activos %}{% if f.cumple %}{% with cumplidos=cumplidos|add:1 %}{% endwith %}{% endif %}{% endfor %}
                         <div class="col-12 col-md-4">
-                            <div class="p-3 rounded-3 h-100 {% if resultado.filtros %}border{% endif %}" style="border-color: var(--bs-border-color)!important;">
+                            <div class="p-3 rounded-3 h-100 {% if filtros_activos %}border{% endif %}" style="border-color: var(--bs-border-color)!important;">
                                 <div class="fs-2 mb-1">📊</div>
                                 <div class="fw-bold mb-1">Paso 1 — Ratios</div>
-                                <div class="text-muted small mb-2">Filtros fundamentales</div>
-                                {% with aprobados=resultado.filtros|length %}
+                                <div class="text-muted small mb-2">Filtros {% if company_stage %}etapa {{ company_stage.stage_name }}{% else %}fundamentales{% endif %}</div>
+                                {% if company_stage.stage == 6 %}
+                                <div class="small text-warning mb-1">⚠️ Empresa en declive</div>
+                                {% endif %}
                                 <div class="fw-semibold">
-                                    {% for f in resultado.filtros %}{% if f.cumple %}<span class="text-success">✓</span>{% else %}<span class="text-danger">✗</span>{% endif %}{% endfor %}
+                                    {% for f in filtros_activos %}{% if f.cumple %}<span class="text-success">✓</span>{% else %}<span class="text-danger">✗</span>{% endif %}{% endfor %}
                                 </div>
-                                {% endwith %}
                             </div>
                         </div>
+                        {% endwith %}
                         {% endwith %}
                         {% endwith %}
 
