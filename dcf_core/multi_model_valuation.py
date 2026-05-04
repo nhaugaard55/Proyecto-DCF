@@ -655,14 +655,36 @@ def _modelo_ddm(financials: dict) -> dict:
     g_capped = False
     cap_msg = ""
 
+    # Paso 1: floor en 0 para dividendos estancados
     if g_raw < 0:
         g = 0.0
-    elif g_raw > 0.10:
-        g = 0.10
-        g_capped = True
-        cap_msg = f" | g capeado al 10% (CAGR histórico {g_raw*100:.1f}%)"
     else:
         g = g_raw
+
+    # Paso 2: cap absoluto al 10% (dividendo no puede crecer en perpetuidad
+    # más que la economía nominal)
+    if g > 0.10:
+        g = 0.10
+        g_capped = True
+        cap_msg = f"g capeado al 10% (CAGR histórico {g_raw*100:.1f}%)"
+
+    # Paso 3: cap relativo al 60% de Ke — previene divergencia en empresas
+    # defensivas con beta bajo y CAGR de dividendo alto (KO, JNJ, PG, T)
+    ke_60pct = ke * 0.60
+    if g >= ke_60pct:
+        g_capeado_ke = ke * 0.55
+        if not g_capped:
+            cap_msg = (
+                f"g capeado al 55% de Ke para evitar divergencia "
+                f"(CAGR histórico era {g_raw*100:.1f}%)"
+            )
+        else:
+            cap_msg = (
+                f"g capeado al 55% de Ke (CAGR histórico {g_raw*100:.1f}% → "
+                f"10% absoluto → {g_capeado_ke*100:.2f}% relativo)"
+            )
+        g = g_capeado_ke
+        g_capped = True
 
     if g >= ke:
         return {
@@ -685,13 +707,16 @@ def _modelo_ddm(financials: dict) -> dict:
         }
 
     valor = dps / spread
+    g_detalle = (
+        f"g calculada con CAGR de {dividend_years} años: {g_raw*100:.2f}%"
+        + (f" → capeado a {g*100:.2f}% ({cap_msg})" if g_capped else "")
+    )
     detalle = (
         f"DPS ${dps:.4f} ÷ (Ke {ke*100:.2f}% − g {g*100:.2f}%) = "
-        f"${dps:.4f} ÷ {spread*100:.2f}% = ${valor:.2f}"
-        f". Ke = rf {rf*100:.2f}% + β {beta_usado:.2f} × "
+        f"${dps:.4f} ÷ {spread*100:.2f}% = ${valor:.2f}. "
+        f"Ke = rf {rf*100:.2f}% + β {beta_usado:.2f} × "
         f"({_MARKET_RETURN_FED*100:.0f}% − {rf*100:.2f}%). "
-        f"g calculada con CAGR de {dividend_years} años de historial"
-        + cap_msg
+        + g_detalle
         + (" | β=1.0 asumido (dato no disponible)" if beta is None else "")
     )
 
