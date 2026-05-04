@@ -10,7 +10,7 @@ import yfinance as yf
 from .ai_summary import AISummaryError, generar_analisis_sentimiento
 from .finanzas import (
     G_TERMINAL,
-    obtener_tasa_libre_riesgo,
+    obtener_tasa_libre_riesgo_con_fuente,
     calcular_wacc,
     proyectar_fcf,
     calcular_valor_intrinseco,
@@ -558,12 +558,18 @@ def analizar_empresa(
     if working_capital_val is None and total_current_assets_val is not None and total_current_liabilities_val is not None:
         working_capital_val = total_current_assets_val - total_current_liabilities_val
 
+    income_stmt = None
+    try:
+        income_stmt = getattr(empresa_yf, "income_stmt", None)
+        if income_stmt is None or (income_stmt is not None and income_stmt.empty):
+            income_stmt = getattr(empresa_yf, "financials", None)
+    except Exception:
+        income_stmt = None
+
     # EBIT from income statement
     ebit_val = None
     try:
-        _stmt = getattr(empresa_yf, "income_stmt", None)
-        if _stmt is None or (_stmt is not None and _stmt.empty):
-            _stmt = getattr(empresa_yf, "financials", None)
+        _stmt = income_stmt
         if _stmt is not None and not _stmt.empty:
             for _ebit_label in ("EBIT", "Operating Income"):
                 if _ebit_label in _stmt.index:
@@ -595,9 +601,7 @@ def analizar_empresa(
     eps_growth_5y: Optional[float] = None
     eps_growth_5y_fuente: Optional[str] = None
     try:
-        _eps_stmt = getattr(empresa_yf, "income_stmt", None)
-        if _eps_stmt is None or _eps_stmt.empty:
-            _eps_stmt = getattr(empresa_yf, "financials", None)
+        _eps_stmt = income_stmt
         if _eps_stmt is not None and not _eps_stmt.empty:
             # Try EPS directly from income statement first
             for _eps_label in ("Diluted EPS", "Basic EPS"):
@@ -665,7 +669,7 @@ def analizar_empresa(
     pe_ratio_raw = info.get("trailingPE")
     pe_ratio = to_float(pe_ratio_raw) if pe_ratio_raw is not None else None
 
-    tasa_rf = obtener_tasa_libre_riesgo()
+    tasa_rf, rf_fuente = obtener_tasa_libre_riesgo_con_fuente()
     market_return = 0.08
 
     metodo_codigo, metodo_nombre, tasa_auto = seleccionar_metodo_crecimiento(
@@ -801,7 +805,18 @@ def analizar_empresa(
         if wacc > 0 and crecimiento_largo_plazo < wacc:
             valor_terminal = (fcf_final * (1 + crecimiento_largo_plazo)) / (wacc - crecimiento_largo_plazo)
 
+    annual_dividend = to_optional_float(info.get("dividendRate"))
     detalles_metricas = metricas_fuente or {}
+    eps_ttm = to_optional_float(info.get("trailingEps"))
+    net_income_ttm = to_optional_float(info.get("netIncomeToCommon"))
+    if net_income_ttm is None and income_stmt is not None and not income_stmt.empty and "Net Income" in income_stmt.index:
+        net_income_series = income_stmt.loc["Net Income"].dropna()
+        if not net_income_series.empty:
+            net_income_ttm = to_optional_float(net_income_series.iloc[0])
+
+    payout_ratio = to_optional_float(info.get("payoutRatio"))
+    if payout_ratio is None and eps_ttm is not None and eps_ttm > 0 and annual_dividend is not None:
+        payout_ratio = annual_dividend / eps_ttm
 
     datos_empresa = {
         "nombre": nombre,
@@ -813,12 +828,14 @@ def analizar_empresa(
         "sitio_web": info.get("website"),
         "empleados": info.get("fullTimeEmployees"),
         # Datos adicionales para valuación multi-modelo
-        "eps_ttm": to_optional_float(info.get("trailingEps")),
+        "eps_ttm": eps_ttm,
         "eps_forward": to_optional_float(info.get("forwardEps")),
         "revenue_ttm": to_optional_float(info.get("totalRevenue")),
         "revenue_ttm_billones": to_billions(info.get("totalRevenue")),
         "gross_profit_ttm": to_optional_float(info.get("grossProfits")),
         "gross_profit_ttm_billones": to_billions(info.get("grossProfits")),
+        "net_income_ttm": net_income_ttm,
+        "net_income_ttm_billones": to_billions(net_income_ttm),
         "pe_ratio_raw": pe_ratio,
         "ps_ratio_raw": ps_ratio,
         "fcf_ttm": fcf[0] if fcf else None,
@@ -831,6 +848,7 @@ def analizar_empresa(
         "deuda": debt,
         "deuda_billones": to_billions(debt),
         "deuda_corriente": current_debt,
+        "deuda_corriente_billones": to_billions(current_debt),
         "deuda_total": total_debt,
         "deuda_total_billones": to_billions(total_debt),
         "caja": cash,
@@ -839,9 +857,11 @@ def analizar_empresa(
         "deuda_neta_billones": to_billions(net_debt_total),
         # Balance sheet extras for Liquidation Value and Altman Z-Score
         "total_current_assets": total_current_assets_val,
+        "total_current_assets_billones": to_billions(total_current_assets_val),
         "total_current_liabilities": total_current_liabilities_val,
         "total_assets": total_assets_val if total_assets_val is not None else to_optional_float(info.get("totalAssets")),
         "total_liabilities": total_liab_val if total_liab_val is not None else to_optional_float(info.get("totalLiab")),
+        "total_liabilities_billones": to_billions(total_liab_val if total_liab_val is not None else to_optional_float(info.get("totalLiab"))),
         "retained_earnings": retained_earnings_val,
         "ebit": ebit_val,
         "ebitda_ttm": ebitda_val,
@@ -861,11 +881,14 @@ def analizar_empresa(
         "tasa_impositiva_anios": detalles_metricas.get("tax_rate", {}).get("años"),
         "cost_of_debt_fuente": detalles_metricas.get("cost_of_debt", {}).get("descripcion"),
         "cost_of_debt_anios": detalles_metricas.get("cost_of_debt", {}).get("años"),
+        "payout_ratio": payout_ratio,
+        "payout_ratio_pct": payout_ratio * 100 if payout_ratio is not None else None,
     }
 
     metricas = {
         "tasa_rf": tasa_rf,
         "tasa_rf_pct": tasa_rf * 100 if tasa_rf is not None else None,
+        "rf_fuente": rf_fuente,
         "market_return": market_return,
         "market_return_pct": market_return * 100 if market_return is not None else None,
         "capm": capm,
@@ -881,8 +904,6 @@ def analizar_empresa(
         "valor_terminal": to_billions(valor_terminal),
         "detalles_fuente": detalles_metricas,
     }
-
-    annual_dividend = to_optional_float(info.get("dividendRate"))
 
     # Dividend CAGR histórico (para el modelo DDM)
     _dividend_cagr: Optional[float] = None

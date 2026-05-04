@@ -485,6 +485,212 @@
         color: var(--table-text);
         border-color: var(--table-border);
     }
+    .investment-score-card {
+        border: 1px solid var(--surface-border);
+        border-radius: 1rem;
+        background: var(--surface-card);
+        padding: 1.15rem;
+        text-align: left;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    }
+    .investment-score-value {
+        font-size: clamp(2rem, 4vw, 2.75rem);
+        font-weight: 800;
+        line-height: 1;
+        color: var(--text-primary);
+    }
+    .investment-score-value span {
+        font-size: 1rem;
+        color: var(--text-muted);
+        font-weight: 700;
+    }
+    .investment-score-bar {
+        position: relative;
+        height: 0.75rem;
+        border-radius: 999px;
+        background: linear-gradient(to right, #dc2626 0%, #dc2626 35%, #f59e0b 35%, #f59e0b 65%, #16a34a 65%, #16a34a 100%);
+        margin: 1rem 0 0.45rem;
+    }
+    .investment-score-marker {
+        position: absolute;
+        top: 50%;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        border: 2px solid var(--surface-card);
+        background: var(--text-primary);
+        transform: translate(-50%, -50%);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
+    }
+    .investment-score-scale {
+        display: flex;
+        justify-content: space-between;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+    }
+    .investment-score-breakdown {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+    .investment-score-component {
+        border: 1px solid var(--surface-border);
+        border-radius: 0.75rem;
+        padding: 0.85rem;
+        background: var(--table-bg);
+        min-width: 0;
+    }
+    .investment-score-component-label {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+    }
+    @media (max-width: 991.98px) {
+        .investment-score-breakdown {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    @media (max-width: 575.98px) {
+        .investment-score-breakdown {
+            grid-template-columns: 1fr;
+        }
+    }
+    .analysis-data-toggle {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        color: var(--text-primary);
+        text-align: left;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+    .analysis-data-toggle:focus-visible {
+        outline: 3px solid rgba(59, 130, 246, 0.35);
+        outline-offset: 4px;
+        border-radius: 0.75rem;
+    }
+    .analysis-data-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 0;
+    }
+    .analysis-data-icon {
+        width: 2.4rem;
+        height: 2.4rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.75rem;
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--accent);
+        flex-shrink: 0;
+    }
+    .analysis-data-chevron {
+        color: var(--text-muted);
+        transition: transform 0.2s ease;
+        flex-shrink: 0;
+    }
+    .analysis-data-toggle[aria-expanded="true"] .analysis-data-chevron {
+        transform: rotate(180deg);
+    }
+    .analysis-data-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+    }
+    .analysis-data-group {
+        border: 1px solid var(--surface-border);
+        border-radius: 1rem;
+        padding: 1rem;
+        background: var(--surface-card);
+        min-width: 0;
+    }
+    .analysis-data-group-title {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+        font-weight: 700;
+        margin-bottom: 0.85rem;
+    }
+    .analysis-data-cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+    .analysis-data-metric {
+        border: 1px solid var(--surface-border);
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        background: var(--table-bg);
+        min-width: 0;
+    }
+    .analysis-data-label {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        line-height: 1.25;
+        margin-bottom: 0.35rem;
+    }
+    .analysis-data-value {
+        display: flex;
+        align-items: baseline;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+        color: var(--text-primary);
+        font-size: 1.15rem;
+        font-weight: 700;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+    }
+    .analysis-data-value.is-missing {
+        color: #dc2626;
+    }
+    .analysis-data-fallback {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0.12rem 0.45rem;
+        background: rgba(245, 158, 11, 0.16);
+        color: #b45309;
+        border: 1px solid rgba(245, 158, 11, 0.28);
+        font-size: 0.66rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .theme-dark .analysis-data-value.is-missing {
+        color: #fca5a5;
+    }
+    .theme-dark .analysis-data-fallback {
+        color: #fcd34d;
+        background: rgba(245, 158, 11, 0.2);
+    }
+    @media (max-width: 991.98px) {
+        .analysis-data-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    @media (max-width: 575.98px) {
+        .analysis-data-grid,
+        .analysis-data-cards {
+            grid-template-columns: 1fr;
+        }
+        .analysis-data-toggle {
+            align-items: flex-start;
+        }
+    }
     .news-list {
         display: flex;
         flex-direction: column;
@@ -1036,12 +1242,12 @@
                 </div>
             </div>
             {% else %}
-            <h1 class="hero-title">Descubrí el valor intrínseco de tus inversiones</h1>
+            <h1 class="hero-title">Descubre el valor intrínseco de tus inversiones</h1>
             <p class="hero-subtitle">Combinamos flujos de caja descontados con datos confiables del mercado para ayudarte a decidir con mayor claridad.</p>
             <ul class="hero-list">
                 <li><span class="hero-check">&#10003;</span><span>Análisis DCF en segundos con supuestos configurables.</span></li>
                 <li><span class="hero-check">&#10003;</span><span>Datos actualizados de Financial Modeling Prep y YFinance.</span></li>
-                <li><span class="hero-check">&#10003;</span><span>Exportá tus resultados en un PDF listo para compartir.</span></li>
+                <li><span class="hero-check">&#10003;</span><span>Exporta tus resultados en un PDF listo para compartir.</span></li>
             </ul>
             {% endif %}
         </div>
@@ -1239,7 +1445,7 @@
                         {% endif %}
                         {% endif %}
                     </div>
-                    <div class="row row-cols-1 row-cols-md-3 text-center gy-4 mt-3">
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 text-center gy-4 mt-3">
                         <div class="col">
                             <p class="text-muted text-uppercase small fw-semibold mb-1">Precio actual</p>
                             {% with precio=resultado.precio_actual %}
@@ -1270,7 +1476,74 @@
                             <span class="fs-4 fw-semibold">N/D</span>
                             {% endif %}
                         </div>
+                        {% if multi_model and multi_model.score_final %}
+                        {% with score=multi_model.score_final %}
+                        <div class="col">
+                            <div class="investment-score-card h-100">
+                                <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                                    <div>
+                                        <p class="text-muted text-uppercase small fw-semibold mb-1">Score final</p>
+                                        <div class="investment-score-value">{{ score.score|floatformat:1 }} <span>/ 10</span></div>
+                                    </div>
+                                    {% if score.recomendacion == "Comprar" %}
+                                    <span class="badge bg-success px-3 py-2">Comprar</span>
+                                    {% elif score.recomendacion == "Vender" %}
+                                    <span class="badge bg-danger px-3 py-2">Vender</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark px-3 py-2">Mantener</span>
+                                    {% endif %}
+                                </div>
+                                <div class="investment-score-bar" aria-label="Score final de inversión">
+                                    <span class="investment-score-marker" style="left:{% widthratio score.score 10 100 %}%"></span>
+                                </div>
+                                <div class="investment-score-scale">
+                                    <span>0</span>
+                                    <span>3.5</span>
+                                    <span>6.5</span>
+                                    <span>10</span>
+                                </div>
+                                <button class="btn btn-outline-secondary btn-sm mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#investment-score-breakdown" aria-expanded="false" aria-controls="investment-score-breakdown">Ver desglose</button>
+                            </div>
+                        </div>
+                        {% endwith %}
+                        {% endif %}
                     </div>
+                    {% if multi_model and multi_model.score_final %}
+                    {% with score=multi_model.score_final %}
+                    <div class="collapse" id="investment-score-breakdown">
+                        <div class="investment-score-breakdown">
+                            <div class="investment-score-component">
+                                <span class="investment-score-component-label">Upside</span>
+                                <div class="fw-bold">{{ score.componentes.upside.puntos|floatformat:1 }} pts</div>
+                                <div class="text-muted small">Peso {{ score.componentes.upside.peso|floatformat:2 }}</div>
+                                <div class="small mt-2">{{ score.componentes.upside.detalle }}</div>
+                            </div>
+                            <div class="investment-score-component">
+                                <span class="investment-score-component-label">Confianza</span>
+                                <div class="fw-bold">{{ score.componentes.confianza.puntos|floatformat:1 }} pts</div>
+                                <div class="text-muted small">Peso {{ score.componentes.confianza.peso|floatformat:2 }}</div>
+                                <div class="small mt-2">{{ score.componentes.confianza.detalle }}</div>
+                            </div>
+                            <div class="investment-score-component">
+                                <span class="investment-score-component-label">Solvencia</span>
+                                <div class="fw-bold">{{ score.componentes.solvencia.puntos|floatformat:1 }} pts</div>
+                                <div class="text-muted small">Peso {{ score.componentes.solvencia.peso|floatformat:2 }}</div>
+                                <div class="small mt-2">{{ score.componentes.solvencia.detalle }}</div>
+                            </div>
+                            <div class="investment-score-component">
+                                <span class="investment-score-component-label">Fundamentales</span>
+                                <div class="fw-bold">{{ score.componentes.fundamentals.puntos|floatformat:1 }} pts</div>
+                                <div class="text-muted small">Peso {{ score.componentes.fundamentals.peso|floatformat:2 }}</div>
+                                <div class="small mt-2">{{ score.componentes.fundamentals.detalle }}</div>
+                            </div>
+                        </div>
+                        {% if score.nota_etapa %}
+                        <p class="text-muted small mt-3 mb-0">{{ score.nota_etapa }}</p>
+                        {% endif %}
+                    </div>
+                    <p class="text-muted small mt-3 mb-0">Score orientativo. No constituye asesoramiento financiero. Siempre realiza tu propio análisis.</p>
+                    {% endwith %}
+                    {% endif %}
                     {% if resultado.datos_empresa.descripcion %}
                     <div class="mt-4 pt-3" style="border-top:1px solid var(--surface-border);">
                         <p class="text-muted small mb-2 fw-semibold text-uppercase" style="letter-spacing:.05em;">Sobre la empresa</p>
@@ -1287,6 +1560,328 @@
                     {% if resultado.mensaje_fuente %}
                     <div class="alert alert-info mt-4 mb-0">{{ resultado.mensaje_fuente }}</div>
                     {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card soft-card border-0">
+                <div class="card-body">
+                    <button class="analysis-data-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-data-collapse" aria-expanded="false" aria-controls="analysis-data-collapse">
+                        <span class="analysis-data-title">
+                            <span class="analysis-data-icon" aria-hidden="true">📊</span>
+                            <span>
+                                <span class="h5 d-block mb-1">Datos utilizados en el análisis</span>
+                                <span class="text-muted small">Fuentes: Financial Modeling Prep + Yahoo Finance</span>
+                            </span>
+                        </span>
+                        <span class="analysis-data-chevron" aria-hidden="true">⌄</span>
+                    </button>
+
+                    <div class="collapse mt-4" id="analysis-data-collapse">
+                        <div class="analysis-data-grid">
+                            <section class="analysis-data-group">
+                                <h3 class="analysis-data-group-title">Flujos de caja</h3>
+                                <div class="analysis-data-cards">
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">FCF TTM</span>
+                                        {% with valor=resultado.datos_empresa.fcf_ttm_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">FCF año -1</span>
+                                        {% with item=resultado.fcf_historico.1 %}
+                                        <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}"{% if item.valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">FCF año -2</span>
+                                        {% with item=resultado.fcf_historico.2 %}
+                                        <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}"{% if item.valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">FCF año -3</span>
+                                        {% with item=resultado.fcf_historico.3 %}
+                                        <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}"{% if item.valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">FCF año -4</span>
+                                        {% with item=resultado.fcf_historico.4 %}
+                                        <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}"{% if item.valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">CAGR FCF calculado</span>
+                                        {% with valor=resultado.metricas.crecimiento_cagr_pct %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">EBITDA TTM</span>
+                                        {% with valor=resultado.datos_empresa.ebitda_ttm_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="analysis-data-group">
+                                <h3 class="analysis-data-group-title">Resultados</h3>
+                                <div class="analysis-data-cards">
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Revenue TTM</span>
+                                        {% with valor=resultado.datos_empresa.revenue_ttm_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Gross Profit TTM</span>
+                                        {% with valor=resultado.datos_empresa.gross_profit_ttm_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Net Income TTM</span>
+                                        {% with valor=net_income_ttm_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">EPS TTM</span>
+                                        {% with valor=resultado.datos_empresa.eps_ttm %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">EPS Forward</span>
+                                        {% with valor=resultado.datos_empresa.eps_forward %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Net Margin %</span>
+                                        {% with valor=resultado.net_margin %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{% widthratio valor 1 100 %}%{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Revenue Growth YoY %</span>
+                                        {% with valor=resultado.revenue_growth_raw %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{% widthratio valor 1 100 %}%{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="analysis-data-group">
+                                <h3 class="analysis-data-group-title">Balance</h3>
+                                <div class="analysis-data-cards">
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Deuda largo plazo</span>
+                                        {% with valor=resultado.datos_empresa.deuda_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Deuda corriente</span>
+                                        {% with valor=deuda_corriente_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Deuda total</span>
+                                        {% with valor=resultado.datos_empresa.deuda_total_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Caja y equivalentes</span>
+                                        {% with valor=resultado.datos_empresa.caja_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Deuda neta total</span>
+                                        {% with valor=resultado.datos_empresa.deuda_neta_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Activos corrientes</span>
+                                        {% with valor=total_current_assets_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Pasivos totales</span>
+                                        {% with valor=total_liabilities_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="analysis-data-group">
+                                <h3 class="analysis-data-group-title">Tasas y valuación</h3>
+                                <div class="analysis-data-cards">
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Beta</span>
+                                        {% with valor=resultado.datos_empresa.beta %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{{ valor|floatformat:2 }}{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Rf</span>
+                                        {% with valor=resultado.metricas.tasa_rf_pct %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}
+                                        </span>
+                                        {% if rf_fuente %}
+                                        <span class="text-muted small d-block mt-1">{{ rf_fuente }}</span>
+                                        {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Rm</span>
+                                        {% with valor=resultado.metricas.market_return_pct %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Ke</span>
+                                        {% with valor=resultado.metricas.capm_pct %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Kd</span>
+                                        {% with valor=resultado.datos_empresa.cost_of_debt_pct fuente=resultado.datos_empresa.cost_of_debt_fuente %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{{ valor|floatformat:2 }}%{% if not fuente %}<span class="analysis-data-fallback">fallback</span>{% endif %}{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Tax rate</span>
+                                        {% with valor=resultado.datos_empresa.tasa_impositiva_pct fuente=resultado.datos_empresa.tasa_impositiva_fuente %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{{ valor|floatformat:2 }}%{% if not fuente %}<span class="analysis-data-fallback">fallback</span>{% endif %}{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">WACC final</span>
+                                        {% with valor=resultado.metricas.wacc_pct %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">G terminal</span>
+                                        <span class="analysis-data-value">2.50%</span>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="analysis-data-group">
+                                <h3 class="analysis-data-group-title">Acciones y mercado</h3>
+                                <div class="analysis-data-cards">
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Shares outstanding</span>
+                                        {% with valor=resultado.datos_empresa.acciones_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Precio actual</span>
+                                        {% with valor=resultado.precio_actual %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Market cap calculado</span>
+                                        {% with valor=resultado.datos_empresa.market_cap_billones %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">DPS TTM</span>
+                                        {% with valor=resultado.dividendos.annual_dividend %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="analysis-data-metric">
+                                        <span class="analysis-data-label">Payout ratio</span>
+                                        {% with valor=payout_ratio_pct %}
+                                        <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
+                                            {% if valor is not None %}{{ valor|floatformat:1 }}%{% else %}N/D{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2644,7 +3239,7 @@
                         </div>
                         {% endif %}
                     </div>
-                    <p class="text-muted small mb-3">Gráfico interactivo de TradingView · Usá el panel derecho para agregar indicadores adicionales</p>
+                    <p class="text-muted small mb-3">Gráfico interactivo de TradingView · Usa el panel derecho para agregar indicadores adicionales</p>
 
                     <!-- TradingView Widget -->
                     <div class="tradingview-widget-container" style="height: 500px;">
@@ -2781,6 +3376,7 @@
         <input type="hidden" name="ticker" value="{{ ticker }}">
         <button type="submit" class="btn btn-outline-primary btn-lg px-4">⬇ Descargar PDF</button>
     </form>
+    <a href="{% url 'dcf_executive_report' ticker %}" class="btn btn-primary btn-lg px-4">⬇ Descargar reporte ejecutivo</a>
     <a href="{% url 'dcf_excel' %}?ticker={{ ticker }}" class="btn btn-outline-success btn-lg px-4">⬇ Descargar Excel</a>
     <button type="button" id="watchlist-btn"
         class="btn btn-lg px-4 {% if in_watchlist %}btn-warning{% else %}btn-outline-warning{% endif %}"

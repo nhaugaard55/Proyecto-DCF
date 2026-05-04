@@ -10,8 +10,8 @@ G_TERMINAL = 0.025
 _FRED_API_KEY_DEFAULT = "03b0d61b2efbea3313f92d4d117af8df"
 
 
-def obtener_tasa_libre_riesgo():
-    """Obtiene la tasa libre de riesgo desde la API de la Fed."""
+def obtener_tasa_libre_riesgo_con_fuente():
+    """Obtiene la tasa libre de riesgo e indica si vino de FRED o fallback."""
     fred_api_key = os.environ.get("FRED_API_KEY", _FRED_API_KEY_DEFAULT)
     try:
         response = requests.get(
@@ -28,9 +28,17 @@ def obtener_tasa_libre_riesgo():
         datos = response.json()
         ultima = next(
             (obs for obs in datos["observations"] if obs["value"] != "."), None)
-        return float(ultima["value"]) / 100 if ultima else 0.0441
+        if ultima:
+            return float(ultima["value"]) / 100, "FRED API"
+        return 0.0441, "Fallback (4.41%)"
     except:
-        return 0.0441
+        return 0.0441, "Fallback (4.41%)"
+
+
+def obtener_tasa_libre_riesgo():
+    """Obtiene la tasa libre de riesgo desde la API de la Fed."""
+    tasa, _fuente = obtener_tasa_libre_riesgo_con_fuente()
+    return tasa
 
 # Calcula el WACC (Weighted Average Cost of Capital)
 

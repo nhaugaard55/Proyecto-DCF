@@ -9,7 +9,7 @@ from dcf_core.DCF_Main import ejecutar_dcf
 from dcf_core.company_stage import detect_company_stage
 from dcf_core.finanzas import seleccionar_metodo_crecimiento
 from dcf_core.fmp import FMPClientError
-from dcf_core.multi_model_valuation import _modelo_reverse_dcf, run_all_models
+from dcf_core.multi_model_valuation import calcular_score_final, _modelo_reverse_dcf, run_all_models
 
 
 def _sample_financials() -> dict:
@@ -36,15 +36,17 @@ def _sample_financials() -> dict:
 
 
 class MultiModelValuationTests(SimpleTestCase):
-    def test_tam_model_is_useful_in_startup_stage(self) -> None:
+    def test_tam_model_is_scenario_only_in_startup_stage(self) -> None:
         resultado = run_all_models("TEST", _sample_financials(), stage=1, wacc=0.10)
 
         tam = resultado["modelos"]["tam"]
 
-        self.assertEqual(tam["relevancia"], "Útil")
-        self.assertGreater(tam["peso_raw"], 0)
+        self.assertEqual(tam["peso_raw"], 0.0)
+        self.assertEqual(tam["peso"], 0.0)
+        self.assertEqual(tam["modo"], "escenario")
+        self.assertFalse(tam["aplicable"])
         self.assertIsNotNone(tam["valor"])
-        self.assertIn("tam", resultado["consenso"]["modelos_usados_keys"])
+        self.assertNotIn("tam", resultado["consenso"]["modelos_usados_keys"])
 
     def test_tam_model_is_excluded_in_capital_return_stage(self) -> None:
         resultado = run_all_models("TEST", _sample_financials(), stage=5, wacc=0.10)
@@ -55,6 +57,69 @@ class MultiModelValuationTests(SimpleTestCase):
         self.assertEqual(tam["peso_raw"], 0.0)
         self.assertEqual(tam["peso"], 0.0)
         self.assertNotIn("tam", resultado["consenso"]["modelos_usados_keys"])
+
+    def test_final_score_combines_consensus_solvency_and_filters(self) -> None:
+        score = calcular_score_final(
+            {
+                "disponible": True,
+                "modelos_usados": 3,
+                "precio": 118.0,
+                "precio_actual": 100.0,
+                "disagreement_ratio": 0.142,
+            },
+            {"disponible": True, "z_score": 5.68},
+            [
+                {"cumple": True},
+                {"cumple": True},
+                {"cumple": True},
+                {"cumple": True},
+                {"cumple": False},
+                {"cumple": False},
+            ],
+            stage=4,
+        )
+
+        self.assertEqual(score["score"], 7.6)
+        self.assertEqual(score["recomendacion"], "Comprar")
+        self.assertEqual(score["componentes"]["upside"]["puntos"], 7.5)
+        self.assertEqual(score["componentes"]["confianza"]["puntos"], 7.0)
+        self.assertEqual(score["componentes"]["solvencia"]["puntos"], 10.0)
+        self.assertEqual(score["componentes"]["fundamentals"]["puntos"], 6.0)
+
+    def test_final_score_uses_neutral_points_for_missing_data(self) -> None:
+        score = calcular_score_final({}, {}, None, stage=2)
+
+        self.assertEqual(score["score"], 5.0)
+        self.assertEqual(score["recomendacion"], "Mantener")
+        self.assertEqual(score["componentes"]["upside"]["puntos"], 5.0)
+        self.assertEqual(score["componentes"]["confianza"]["puntos"], 5.0)
+        self.assertEqual(score["componentes"]["solvencia"]["puntos"], 5.0)
+        self.assertEqual(score["componentes"]["fundamentals"]["puntos"], 5.0)
+        self.assertEqual(
+            score["nota_etapa"],
+            "Score orientativo — en etapas tempranas la incertidumbre es muy alta",
+        )
+
+    def test_final_score_caps_decline_with_distress_z_score(self) -> None:
+        score = calcular_score_final(
+            {
+                "disponible": True,
+                "modelos_usados": 4,
+                "precio": 150.0,
+                "precio_actual": 100.0,
+                "disagreement_ratio": 0.05,
+            },
+            {"disponible": True, "z_score": 1.2},
+            [{"cumple": True}, {"cumple": True}, {"cumple": True}, {"cumple": True}],
+            stage=6,
+        )
+
+        self.assertEqual(score["score"], 4.0)
+        self.assertEqual(score["recomendacion"], "Mantener")
+        self.assertEqual(
+            score["nota_etapa"],
+            "Empresa en declive con riesgo de insolvencia — score limitado",
+        )
 
     def test_reverse_dcf_allows_explicit_growth_above_wacc(self) -> None:
         financials = {
