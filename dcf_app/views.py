@@ -440,10 +440,23 @@ def dcf_pdf_view(request):
     if not resultado:
         return HttpResponse("No hay datos suficientes para generar el informe", status=404)
 
+    try:
+        _cs = detect_company_stage(ticker, resultado)
+    except Exception:
+        _cs = None
+    try:
+        _stage_num = (_cs or {}).get("stage", 4)
+        _wacc_val = (resultado.get("metricas") or {}).get("wacc")
+        _multi_model = run_all_models(ticker, resultado, _stage_num, _wacc_val)
+    except Exception:
+        _multi_model = None
+
     context = {
         "resultado": resultado,
         "ticker": ticker,
         "generado": timezone.now(),
+        "multi_model": _multi_model,
+        "company_stage": _cs,
     }
 
     pdf_bytes = _render_pdf("dcf_app/pdf_report.html", context)
