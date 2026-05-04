@@ -2216,7 +2216,53 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 9. Forward Earnings ── #}
+            {# ── 9. DDM (Gordon Growth) ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.ddm %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-ddm" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="acc-left">
+                    <span class="fw-semibold">DDM — Dividend Discount Model</span>
+                    {% if m.aplicable %}
+                      <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                    {% else %}
+                      <span class="badge bg-secondary-subtle text-secondary-emphasis small">No aplicable</span>
+                    {% endif %}
+                  </span>
+                  {% if m.aplicable and m.valor is not None %}
+                    <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>
+                    {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% endif %}{% endif %}
+                  {% endif %}
+                </button>
+              </h2>
+              <div id="acc-ddm" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  {% if m.aplicable %}
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">DPS TTM</span><span class="fw-semibold fs-5">{% if m.dps is not None %}${{ m.dps|floatformat:4 }}{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Ke (costo equity)</span><span class="fw-semibold fs-5">{% if m.ke_pct is not None %}{{ m.ke_pct|floatformat:2 }}%{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">g (crec. dividendo){% if m.g_capped %} <span class="badge bg-warning-subtle text-warning-emphasis" style="font-size:.65rem;">capeado</span>{% endif %}</span>
+                      <span class="fw-semibold fs-5">{% if m.g_pct is not None %}{{ m.g_pct|floatformat:2 }}%{% else %}N/D{% endif %}{% if m.g_capped and m.g_raw_pct is not None %} <span class="text-muted small">(hist. {{ m.g_raw_pct|floatformat:1 }}%)</span>{% endif %}</span>
+                    </div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Spread (Ke − g)</span><span class="fw-semibold fs-5">{% if m.spread_pct is not None %}{{ m.spread_pct|floatformat:2 }}%{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Historial dividendos</span><span class="fw-semibold fs-5">{% if m.dividend_years %}{{ m.dividend_years }} años{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-2">{{ m.detalle }}</p>{% endif %}
+                  {% else %}
+                  <p class="text-muted small mb-2">{{ m.detalle }}</p>
+                  {% endif %}
+                  <p class="small mb-0" style="color:var(--text-muted);background:rgba(108,117,125,0.07);border-left:3px solid #6c757d;padding:.45rem .75rem;border-radius:0 .375rem .375rem 0;">
+                    El DDM es más confiable en empresas con dividendos estables y predecibles: utilities, bancos, consumer staples y dividend aristocrats. Para empresas de crecimiento que no distribuyen caja, este modelo no aplica.
+                  </p>
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 10. Forward Earnings ── #}
             {% if multi_model %}{% with m=multi_model.modelos.fwd_earnings %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2244,7 +2290,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 10. Forward FCF ── #}
+            {# ── 11. Forward FCF ── #}
             {% if multi_model %}{% with m=multi_model.modelos.fwd_fcf %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2272,7 +2318,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 11. Earnings Growth Model (PEG-CAPM Hybrid) ── #}
+            {# ── 12. Earnings Growth Model (PEG-CAPM Hybrid) ── #}
             {% if multi_model %}{% with m=multi_model.modelos.schwab_iv %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2352,7 +2398,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 12. Valor de Liquidación — visible desde etapa 4 ── #}
+            {# ── 13. Valor de Liquidación — visible desde etapa 4 ── #}
             {% if multi_model and multi_model.stage_context.stage >= 4 %}{% with m=multi_model.modelos.liquidation_value %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
