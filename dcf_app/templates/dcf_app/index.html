@@ -2178,7 +2178,45 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 8. Forward Earnings ── #}
+            {# ── 8. EV/EBITDA ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.ev_ebitda %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-ev-ebitda" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    {% if m.aplicable %}
+                      <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                    {% else %}
+                      <span class="badge bg-secondary-subtle text-secondary-emphasis small">No aplicable</span>
+                    {% endif %}
+                  </span>
+                  {% if m.aplicable and m.valor is not None %}
+                    <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>
+                    {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">+{{ m.upside_pct|floatformat:1 }}%</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">{{ m.upside_pct|floatformat:1 }}%</span>{% endif %}{% endif %}
+                  {% endif %}
+                </button>
+              </h2>
+              <div id="acc-ev-ebitda" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Estima el valor de la empresa multiplicando el EBITDA TTM por el múltiplo EV/EBITDA de referencia del sector, luego resta la deuda neta para obtener el equity por acción.</p>
+                  {% if m.aplicable %}
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">EBITDA TTM</span>{% with v=resultado.datos_empresa.ebitda_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Deuda neta</span>{% with v=resultado.datos_empresa.deuda_neta_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  {% else %}
+                  <p class="text-muted small mb-0">{{ m.detalle }}</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 9. Forward Earnings ── #}
             {% if multi_model %}{% with m=multi_model.modelos.fwd_earnings %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2206,7 +2244,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 9. Forward FCF ── #}
+            {# ── 10. Forward FCF ── #}
             {% if multi_model %}{% with m=multi_model.modelos.fwd_fcf %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2234,7 +2272,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 10. Earnings Growth Model (PEG-CAPM Hybrid) ── #}
+            {# ── 11. Earnings Growth Model (PEG-CAPM Hybrid) ── #}
             {% if multi_model %}{% with m=multi_model.modelos.schwab_iv %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2314,7 +2352,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 11. Valor de Liquidación — visible desde etapa 4 ── #}
+            {# ── 12. Valor de Liquidación — visible desde etapa 4 ── #}
             {% if multi_model and multi_model.stage_context.stage >= 4 %}{% with m=multi_model.modelos.liquidation_value %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
