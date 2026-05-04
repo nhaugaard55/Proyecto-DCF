@@ -1385,10 +1385,170 @@ def run_all_models(
         "nota_especial": nota_especial,
     }
 
+    score_final = calcular_score_final(consenso, altman, financials.get("filtros"), stage)
+
     return {
         "ticker": ticker,
         "modelos": modelos,
         "consenso": consenso,
         "stage_context": stage_context,
         "altman": altman,
+        "score_final": score_final,
+    }
+
+
+def calcular_score_final(consenso_dict, altman_dict, filtros_dict, stage) -> dict:
+    """
+    Calcula un score final de inversión de 0 a 10 a partir del consenso
+    multi-modelo, la dispersión entre modelos, la solvencia y los filtros
+    fundamentales.
+
+    La función no depende de Django ni realiza llamadas externas. Si algún
+    componente no está disponible, asigna puntaje neutro para no castigar ni
+    premiar datos faltantes.
+    """
+    consenso = consenso_dict or {}
+    altman = altman_dict or {}
+    try:
+        stage_num = int(stage or 4)
+    except (TypeError, ValueError):
+        stage_num = 4
+
+    modelos_usados = consenso.get("modelos_usados")
+    try:
+        modelos_usados_count = int(modelos_usados or 0)
+    except (TypeError, ValueError):
+        modelos_usados_count = 0
+
+    precio_consenso = _sf(consenso.get("precio"))
+    precio_actual = _sf(consenso.get("precio_actual"))
+    consenso_disponible = bool(consenso.get("disponible")) and modelos_usados_count >= 2
+
+    if not consenso_disponible or precio_consenso is None or not precio_actual:
+        upside_puntos = 5.0
+        upside_detalle = "Consenso insuficiente — puntaje neutro"
+    else:
+        upside = (precio_consenso - precio_actual) / precio_actual
+        if upside >= 0.30:
+            upside_puntos = 10.0
+        elif upside >= 0.15:
+            upside_puntos = 7.5
+        elif upside >= 0.00:
+            upside_puntos = 5.0
+        elif upside >= -0.15:
+            upside_puntos = 2.5
+        else:
+            upside_puntos = 0.0
+        upside_detalle = f"Upside {upside * 100:+.1f}%"
+
+    dr = _sf(consenso.get("disagreement_ratio"))
+    if dr is None:
+        confianza_puntos = 5.0
+        confianza_detalle = "DR no disponible — puntaje neutro"
+    elif dr < 0.10:
+        confianza_puntos = 10.0
+        confianza_detalle = f"DR {dr * 100:.1f}% — alta consistencia"
+    elif dr < 0.20:
+        confianza_puntos = 7.0
+        confianza_detalle = f"DR {dr * 100:.1f}% — consistencia moderada"
+    elif dr <= 0.35:
+        confianza_puntos = 4.0
+        confianza_detalle = f"DR {dr * 100:.1f}% — dispersión elevada"
+    else:
+        confianza_puntos = 1.0
+        confianza_detalle = f"DR {dr * 100:.1f}% — alta dispersión"
+
+    z_score = _sf(altman.get("z_score"))
+    altman_disponible = bool(altman.get("disponible")) and z_score is not None
+    if not altman_disponible:
+        solvencia_puntos = 5.0
+        solvencia_detalle = "Z-Score no disponible — puntaje neutro"
+    elif z_score > 2.99:
+        solvencia_puntos = 10.0
+        solvencia_detalle = f"Z-Score {z_score:.2f} — zona segura"
+    elif z_score >= 1.81:
+        solvencia_puntos = 6.0
+        solvencia_detalle = f"Z-Score {z_score:.2f} — zona gris"
+    else:
+        solvencia_puntos = 2.0
+        solvencia_detalle = f"Z-Score {z_score:.2f} — zona peligro"
+
+    filtros = []
+    if isinstance(filtros_dict, dict):
+        filtros = list(filtros_dict.values())
+    elif isinstance(filtros_dict, (list, tuple)):
+        filtros = list(filtros_dict)
+
+    filtros_totales = len(filtros)
+    if not filtros_totales:
+        fundamentals_puntos = 5.0
+        fundamentals_detalle = "Filtros no disponibles — puntaje neutro"
+    else:
+        filtros_ok = 0
+        for filtro in filtros:
+            cumple = filtro.get("cumple") if isinstance(filtro, dict) else getattr(filtro, "cumple", False)
+            if cumple:
+                filtros_ok += 1
+        ratio_cumplimiento = filtros_ok / filtros_totales
+        if ratio_cumplimiento >= 0.75:
+            fundamentals_puntos = 10.0
+        elif ratio_cumplimiento >= 0.50:
+            fundamentals_puntos = 6.0
+        elif ratio_cumplimiento >= 0.25:
+            fundamentals_puntos = 3.0
+        else:
+            fundamentals_puntos = 1.0
+        fundamentals_detalle = f"{filtros_ok} de {filtros_totales} filtros OK"
+
+    componentes = {
+        "upside": {
+            "puntos": upside_puntos,
+            "peso": 0.40,
+            "detalle": upside_detalle,
+        },
+        "confianza": {
+            "puntos": confianza_puntos,
+            "peso": 0.20,
+            "detalle": confianza_detalle,
+        },
+        "solvencia": {
+            "puntos": solvencia_puntos,
+            "peso": 0.20,
+            "detalle": solvencia_detalle,
+        },
+        "fundamentals": {
+            "puntos": fundamentals_puntos,
+            "peso": 0.20,
+            "detalle": fundamentals_detalle,
+        },
+    }
+
+    raw = (
+        upside_puntos * 0.40
+        + confianza_puntos * 0.20
+        + solvencia_puntos * 0.20
+        + fundamentals_puntos * 0.20
+    )
+    score = round(max(0.0, min(10.0, raw)), 1)
+
+    nota_etapa = None
+    if stage_num in (1, 2):
+        nota_etapa = "Score orientativo — en etapas tempranas la incertidumbre es muy alta"
+    elif stage_num == 6 and altman_disponible and z_score < 1.81:
+        score = min(score, 4.0)
+        nota_etapa = "Empresa en declive con riesgo de insolvencia — score limitado"
+
+    if score >= 6.5:
+        recomendacion = "Comprar"
+    elif score >= 3.5:
+        recomendacion = "Mantener"
+    else:
+        recomendacion = "Vender"
+
+    return {
+        "score": score,
+        "recomendacion": recomendacion,
+        "componentes": componentes,
+        "nota_etapa": nota_etapa,
+        "advertencia": "Score orientativo. No constituye asesoramiento financiero.",
     }

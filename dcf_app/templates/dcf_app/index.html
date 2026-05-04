@@ -485,6 +485,80 @@
         color: var(--table-text);
         border-color: var(--table-border);
     }
+    .investment-score-card {
+        border: 1px solid var(--surface-border);
+        border-radius: 1rem;
+        background: var(--surface-card);
+        padding: 1.15rem;
+        text-align: left;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    }
+    .investment-score-value {
+        font-size: clamp(2rem, 4vw, 2.75rem);
+        font-weight: 800;
+        line-height: 1;
+        color: var(--text-primary);
+    }
+    .investment-score-value span {
+        font-size: 1rem;
+        color: var(--text-muted);
+        font-weight: 700;
+    }
+    .investment-score-bar {
+        position: relative;
+        height: 0.75rem;
+        border-radius: 999px;
+        background: linear-gradient(to right, #dc2626 0%, #dc2626 35%, #f59e0b 35%, #f59e0b 65%, #16a34a 65%, #16a34a 100%);
+        margin: 1rem 0 0.45rem;
+    }
+    .investment-score-marker {
+        position: absolute;
+        top: 50%;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        border: 2px solid var(--surface-card);
+        background: var(--text-primary);
+        transform: translate(-50%, -50%);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
+    }
+    .investment-score-scale {
+        display: flex;
+        justify-content: space-between;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+    }
+    .investment-score-breakdown {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+    .investment-score-component {
+        border: 1px solid var(--surface-border);
+        border-radius: 0.75rem;
+        padding: 0.85rem;
+        background: var(--table-bg);
+        min-width: 0;
+    }
+    .investment-score-component-label {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+    }
+    @media (max-width: 991.98px) {
+        .investment-score-breakdown {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    @media (max-width: 575.98px) {
+        .investment-score-breakdown {
+            grid-template-columns: 1fr;
+        }
+    }
     .analysis-data-toggle {
         width: 100%;
         border: 0;
@@ -1371,7 +1445,7 @@
                         {% endif %}
                         {% endif %}
                     </div>
-                    <div class="row row-cols-1 row-cols-md-3 text-center gy-4 mt-3">
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 text-center gy-4 mt-3">
                         <div class="col">
                             <p class="text-muted text-uppercase small fw-semibold mb-1">Precio actual</p>
                             {% with precio=resultado.precio_actual %}
@@ -1402,7 +1476,74 @@
                             <span class="fs-4 fw-semibold">N/D</span>
                             {% endif %}
                         </div>
+                        {% if multi_model and multi_model.score_final %}
+                        {% with score=multi_model.score_final %}
+                        <div class="col">
+                            <div class="investment-score-card h-100">
+                                <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                                    <div>
+                                        <p class="text-muted text-uppercase small fw-semibold mb-1">Score final</p>
+                                        <div class="investment-score-value">{{ score.score|floatformat:1 }} <span>/ 10</span></div>
+                                    </div>
+                                    {% if score.recomendacion == "Comprar" %}
+                                    <span class="badge bg-success px-3 py-2">Comprar</span>
+                                    {% elif score.recomendacion == "Vender" %}
+                                    <span class="badge bg-danger px-3 py-2">Vender</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark px-3 py-2">Mantener</span>
+                                    {% endif %}
+                                </div>
+                                <div class="investment-score-bar" aria-label="Score final de inversión">
+                                    <span class="investment-score-marker" style="left:{% widthratio score.score 10 100 %}%"></span>
+                                </div>
+                                <div class="investment-score-scale">
+                                    <span>0</span>
+                                    <span>3.5</span>
+                                    <span>6.5</span>
+                                    <span>10</span>
+                                </div>
+                                <button class="btn btn-outline-secondary btn-sm mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#investment-score-breakdown" aria-expanded="false" aria-controls="investment-score-breakdown">Ver desglose</button>
+                            </div>
+                        </div>
+                        {% endwith %}
+                        {% endif %}
                     </div>
+                    {% if multi_model and multi_model.score_final %}
+                    {% with score=multi_model.score_final %}
+                    <div class="collapse" id="investment-score-breakdown">
+                        <div class="investment-score-breakdown">
+                            <div class="investment-score-component">
+                                <span class="investment-score-component-label">Upside</span>
+                                <div class="fw-bold">{{ score.componentes.upside.puntos|floatformat:1 }} pts</div>
+                                <div class="text-muted small">Peso {{ score.componentes.upside.peso|floatformat:2 }}</div>
+                                <div class="small mt-2">{{ score.componentes.upside.detalle }}</div>
+                            </div>
+                            <div class="investment-score-component">
+                                <span class="investment-score-component-label">Confianza</span>
+                                <div class="fw-bold">{{ score.componentes.confianza.puntos|floatformat:1 }} pts</div>
+                                <div class="text-muted small">Peso {{ score.componentes.confianza.peso|floatformat:2 }}</div>
+                                <div class="small mt-2">{{ score.componentes.confianza.detalle }}</div>
+                            </div>
+                            <div class="investment-score-component">
+                                <span class="investment-score-component-label">Solvencia</span>
+                                <div class="fw-bold">{{ score.componentes.solvencia.puntos|floatformat:1 }} pts</div>
+                                <div class="text-muted small">Peso {{ score.componentes.solvencia.peso|floatformat:2 }}</div>
+                                <div class="small mt-2">{{ score.componentes.solvencia.detalle }}</div>
+                            </div>
+                            <div class="investment-score-component">
+                                <span class="investment-score-component-label">Fundamentales</span>
+                                <div class="fw-bold">{{ score.componentes.fundamentals.puntos|floatformat:1 }} pts</div>
+                                <div class="text-muted small">Peso {{ score.componentes.fundamentals.peso|floatformat:2 }}</div>
+                                <div class="small mt-2">{{ score.componentes.fundamentals.detalle }}</div>
+                            </div>
+                        </div>
+                        {% if score.nota_etapa %}
+                        <p class="text-muted small mt-3 mb-0">{{ score.nota_etapa }}</p>
+                        {% endif %}
+                    </div>
+                    <p class="text-muted small mt-3 mb-0">Score orientativo. No constituye asesoramiento financiero. Siempre realizá tu propio análisis.</p>
+                    {% endwith %}
+                    {% endif %}
                     {% if resultado.datos_empresa.descripcion %}
                     <div class="mt-4 pt-3" style="border-top:1px solid var(--surface-border);">
                         <p class="text-muted small mb-2 fw-semibold text-uppercase" style="letter-spacing:.05em;">Sobre la empresa</p>
@@ -3235,6 +3376,7 @@
         <input type="hidden" name="ticker" value="{{ ticker }}">
         <button type="submit" class="btn btn-outline-primary btn-lg px-4">⬇ Descargar PDF</button>
     </form>
+    <a href="{% url 'dcf_executive_report' ticker %}" class="btn btn-primary btn-lg px-4">⬇ Descargar reporte ejecutivo</a>
     <a href="{% url 'dcf_excel' %}?ticker={{ ticker }}" class="btn btn-outline-success btn-lg px-4">⬇ Descargar Excel</a>
     <button type="button" id="watchlist-btn"
         class="btn btn-lg px-4 {% if in_watchlist %}btn-warning{% else %}btn-outline-warning{% endif %}"

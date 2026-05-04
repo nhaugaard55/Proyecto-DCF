@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { size: A4; margin: 18mm 16mm; }
+        body { font-family: DejaVu Sans, sans-serif; color: #1f2937; font-size: 9px; }
+        h1 { font-size: 16px; margin: 0 0 3px; color: #111827; }
+        h2 { font-size: 11px; margin: 12px 0 6px; color: #111827; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        th, td { border: 1px solid #d1d5db; padding: 4px 5px; text-align: left; }
+        th { background: #f3f4f6; font-weight: bold; }
+        .meta { color: #6b7280; font-size: 8px; margin: 0; }
+        .header-table td { border: 0; padding: 0; vertical-align: top; }
+        .score-box { text-align: center; border: 1px solid #d1d5db; padding: 10px; background: #f9fafb; margin-top: 10px; }
+        .score-value { font-size: 34px; font-weight: bold; color: #111827; line-height: 1; }
+        .score-total { font-size: 13px; color: #6b7280; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 10px; margin-top: 4px; }
+        .badge-buy { background: #dcfce7; color: #166534; }
+        .badge-hold { background: #fef3c7; color: #92400e; }
+        .badge-sell { background: #fee2e2; color: #991b1b; }
+        .score-bar { width: 100%; height: 10px; margin: 10px 0 3px; background: #ef4444; }
+        .score-bar-mid { height: 10px; background: #f59e0b; width: 30%; margin-left: 35%; }
+        .score-bar-high { height: 10px; background: #16a34a; width: 35%; margin-left: 65%; margin-top: -10px; }
+        .score-marker { width: 2px; height: 16px; background: #111827; margin-top: -13px; }
+        .scale { width: 100%; color: #6b7280; font-size: 8px; }
+        .scale td { border: 0; padding: 0; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .warning { color: #6b7280; font-size: 8px; border-top: 1px solid #e5e7eb; padding-top: 6px; margin-top: 8px; }
+        .note { color: #6b7280; font-size: 8px; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <table class="header-table">
+        <tr>
+            <td>
+                <h1>{{ resultado.nombre }} ({{ ticker }})</h1>
+                <p class="meta">Reporte ejecutivo generado: {{ generado|date:"d/m/Y H:i" }}</p>
+            </td>
+            <td class="text-right">
+                {% if company_stage %}
+                <p class="meta">Etapa {{ company_stage.stage }} — {{ company_stage.stage_name }}</p>
+                {% endif %}
+                {% if resultado.fuente_datos_descripcion %}
+                <p class="meta">Fuente: {{ resultado.fuente_datos_descripcion }}</p>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+
+    {% with score=score_final %}
+    <div class="score-box">
+        <div class="score-value">{{ score.score|floatformat:1 }} <span class="score-total">/ 10</span></div>
+        {% if score.recomendacion == "Comprar" %}
+        <span class="badge badge-buy">Comprar</span>
+        {% elif score.recomendacion == "Vender" %}
+        <span class="badge badge-sell">Vender</span>
+        {% else %}
+        <span class="badge badge-hold">Mantener</span>
+        {% endif %}
+        <div class="score-bar"><div class="score-bar-mid"></div><div class="score-bar-high"></div></div>
+        <div class="score-marker" style="margin-left:{% widthratio score.score 10 100 %}%;"></div>
+        <table class="scale">
+            <tr><td>0</td><td class="text-center">3.5</td><td class="text-center">6.5</td><td class="text-right">10</td></tr>
+        </table>
+        {% if score.nota_etapa %}<p class="note">{{ score.nota_etapa }}</p>{% endif %}
+    </div>
+    {% endwith %}
+
+    <h2>Componentes del score</h2>
+    <table>
+        <thead>
+            <tr><th>Componente</th><th class="text-center">Puntos</th><th class="text-center">Peso</th><th>Detalle</th></tr>
+        </thead>
+        <tbody>
+            {% for c in componentes_score %}
+            <tr>
+                <td>{{ c.nombre }}</td>
+                <td class="text-center">{% if c.puntos is not None %}{{ c.puntos|floatformat:1 }}{% else %}N/D{% endif %}</td>
+                <td class="text-center">{% if c.peso is not None %}{% widthratio c.peso 1 100 %}%{% else %}N/D{% endif %}</td>
+                <td>{{ c.detalle|default:"N/D" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Resumen de valuación</h2>
+    <table>
+        <tbody>
+            <tr>
+                <th>Precio actual</th>
+                <td>{% if resultado.precio_actual is not None %}${{ resultado.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}</td>
+                <th>Precio consenso</th>
+                <td>{% if multi_model.consenso.precio is not None %}${{ multi_model.consenso.precio|floatformat:2 }}{% else %}N/D{% endif %}</td>
+            </tr>
+            <tr>
+                <th>Bear</th>
+                <td>{% if escenarios.bear.valor is not None %}${{ escenarios.bear.valor|floatformat:2 }}{% else %}N/D{% endif %}</td>
+                <th>Bull</th>
+                <td>{% if escenarios.bull.valor is not None %}${{ escenarios.bull.valor|floatformat:2 }}{% else %}N/D{% endif %}</td>
+            </tr>
+            <tr>
+                <th>Rango consenso</th>
+                <td colspan="3">
+                    {% if multi_model.consenso.rango_min is not None and multi_model.consenso.rango_max is not None %}
+                    ${{ multi_model.consenso.rango_min|floatformat:2 }} a ${{ multi_model.consenso.rango_max|floatformat:2 }}
+                    {% else %}N/D{% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Modelos incluidos en el consenso</h2>
+    <table>
+        <thead>
+            <tr><th>Modelo</th><th class="text-center">Valor</th><th class="text-center">Peso</th></tr>
+        </thead>
+        <tbody>
+            {% for modelo in modelos_consenso %}
+            <tr>
+                <td>{{ modelo.nombre }}</td>
+                <td class="text-center">{% if modelo.valor is not None %}${{ modelo.valor|floatformat:2 }}{% else %}N/D{% endif %}</td>
+                <td class="text-center">{% if modelo.peso_pct is not None %}{{ modelo.peso_pct|floatformat:1 }}%{% else %}N/D{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center">No hay modelos suficientes para consenso.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p class="warning">
+        Score orientativo. No constituye asesoramiento financiero. Siempre realizá tu propio análisis.
+    </p>
+</body>
+</html>
