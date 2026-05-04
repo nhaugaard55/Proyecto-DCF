@@ -380,10 +380,22 @@ def dcf_view(request):
 
     in_watchlist = WatchlistItem.objects.filter(ticker=ticker).exists() if ticker else False
     precio_historico = (resultado or {}).get("precio_historico") if resultado else None
+    datos_empresa_context = resultado.get("datos_empresa") if isinstance(resultado, dict) else {}
+    if not isinstance(datos_empresa_context, dict):
+        datos_empresa_context = {}
+    metricas_context = resultado.get("metricas") if isinstance(resultado, dict) else {}
+    if not isinstance(metricas_context, dict):
+        metricas_context = {}
 
     context = {
         "in_watchlist": in_watchlist,
         "precio_historico": precio_historico,
+        "net_income_ttm_billones": datos_empresa_context.get("net_income_ttm_billones"),
+        "payout_ratio_pct": datos_empresa_context.get("payout_ratio_pct"),
+        "rf_fuente": metricas_context.get("rf_fuente"),
+        "deuda_corriente_billones": datos_empresa_context.get("deuda_corriente_billones"),
+        "total_current_assets_billones": datos_empresa_context.get("total_current_assets_billones"),
+        "total_liabilities_billones": datos_empresa_context.get("total_liabilities_billones"),
         "multi_model": multi_model,
         "resultado": resultado,
         "error": error,

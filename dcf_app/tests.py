@@ -36,15 +36,17 @@ def _sample_financials() -> dict:
 
 
 class MultiModelValuationTests(SimpleTestCase):
-    def test_tam_model_is_useful_in_startup_stage(self) -> None:
+    def test_tam_model_is_scenario_only_in_startup_stage(self) -> None:
         resultado = run_all_models("TEST", _sample_financials(), stage=1, wacc=0.10)
 
         tam = resultado["modelos"]["tam"]
 
-        self.assertEqual(tam["relevancia"], "Útil")
-        self.assertGreater(tam["peso_raw"], 0)
+        self.assertEqual(tam["peso_raw"], 0.0)
+        self.assertEqual(tam["peso"], 0.0)
+        self.assertEqual(tam["modo"], "escenario")
+        self.assertFalse(tam["aplicable"])
         self.assertIsNotNone(tam["valor"])
-        self.assertIn("tam", resultado["consenso"]["modelos_usados_keys"])
+        self.assertNotIn("tam", resultado["consenso"]["modelos_usados_keys"])
 
     def test_tam_model_is_excluded_in_capital_return_stage(self) -> None:
         resultado = run_all_models("TEST", _sample_financials(), stage=5, wacc=0.10)
