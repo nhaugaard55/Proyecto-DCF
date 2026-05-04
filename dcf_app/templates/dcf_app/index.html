@@ -2193,7 +2193,7 @@
                   </span>
                   {% if m.aplicable and m.valor is not None %}
                     <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>
-                    {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">+{{ m.upside_pct|floatformat:1 }}%</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">{{ m.upside_pct|floatformat:1 }}%</span>{% endif %}{% endif %}
+                    {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% endif %}{% endif %}
                   {% endif %}
                 </button>
               </h2>
