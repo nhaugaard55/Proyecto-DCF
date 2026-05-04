@@ -884,6 +884,28 @@ def analizar_empresa(
 
     annual_dividend = to_optional_float(info.get("dividendRate"))
 
+    # Dividend CAGR histórico (para el modelo DDM)
+    _dividend_cagr: Optional[float] = None
+    _dividend_years: int = 0
+    try:
+        _divs = getattr(empresa_yf, "dividends", None)
+        if _divs is not None and not _divs.empty:
+            _annual: dict[int, float] = {}
+            for _dt, _val in zip(_divs.index, _divs.values):
+                try:
+                    _yr = pd.Timestamp(_dt).year
+                except Exception:
+                    continue
+                _annual[_yr] = _annual.get(_yr, 0.0) + float(_val)
+            _annual_vals = [v for _, v in sorted(_annual.items()) if v > 0]
+            if len(_annual_vals) >= 2:
+                _n = len(_annual_vals) - 1
+                if _annual_vals[0] > 0 and _annual_vals[-1] > 0:
+                    _dividend_cagr = (_annual_vals[-1] / _annual_vals[0]) ** (1 / _n) - 1
+                    _dividend_years = len(_annual_vals)
+    except Exception:
+        pass
+
     dividendos = {
         "yield": dividend_yield,
         "yield_pct": dividend_yield * 100 if dividend_yield is not None else None,
@@ -893,6 +915,9 @@ def analizar_empresa(
         "safety_margin": safety_margin,
         "safety_margin_pct": safety_margin * 100 if safety_margin is not None else None,
         "fifty_two_week_low": info.get("fiftyTwoWeekLow"),
+        "dividend_cagr": _dividend_cagr,
+        "dividend_cagr_pct": round(_dividend_cagr * 100, 2) if _dividend_cagr is not None else None,
+        "dividend_years": _dividend_years,
     }
 
     net_margin = to_optional_float(info.get("profitMargins"))

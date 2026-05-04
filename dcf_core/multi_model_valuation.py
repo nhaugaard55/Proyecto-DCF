@@ -1,7 +1,7 @@
 """
 Motor de valuación multi-modelo.
 
-Ejecuta 12 modelos de valuación que producen precio por acción, más
+Ejecuta 13 modelos de valuación que producen precio por acción, más
 1 métrica auxiliar de solvencia (Altman Z-Score) que no entra al consenso.
 Los modelos se ponderan mediante un sistema de pesos adaptativos por etapa (1–6)
 detectada por company_stage.py, y producen un precio consenso final.
@@ -101,7 +101,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.0, "reverse_dcf": 0.0,
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 0.5, "pfcf_trailing": 0.0,
-        "ev_ebitda": 0.0,
+        "ev_ebitda": 0.0, "ddm": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.0,
@@ -111,7 +111,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.0, "reverse_dcf": 0.0,
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
-        "ev_ebitda": 0.0,
+        "ev_ebitda": 0.0, "ddm": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.3,
@@ -121,7 +121,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.5, "reverse_dcf": 0.5,
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
-        "ev_ebitda": 0.3,
+        "ev_ebitda": 0.3, "ddm": 0.0,
         "fwd_earnings": 0.5, "fwd_fcf": 0.5,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.5,
@@ -131,7 +131,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.5, "reverse_dcf": 0.5,
         "pe_trailing": 0.5, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.5,
-        "ev_ebitda": 0.8,
+        "ev_ebitda": 0.8, "ddm": 0.3,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.8,
@@ -141,7 +141,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 1.0, "reverse_dcf": 1.0,
         "pe_trailing": 1.0, "ps": 0.5,
         "pgp": 0.5, "pfcf_trailing": 1.0,
-        "ev_ebitda": 1.0,
+        "ev_ebitda": 1.0, "ddm": 0.8,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.8,
@@ -151,7 +151,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.0, "reverse_dcf": 0.0,
         "pe_trailing": 0.0, "ps": 0.0,
         "pgp": 0.0, "pfcf_trailing": 0.0,
-        "ev_ebitda": 0.4,
+        "ev_ebitda": 0.4, "ddm": 0.4,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 0.70,
         "schwab_iv": 0.0,
@@ -160,7 +160,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
 }
 
 _MODEL_KEYS = ["dcf", "reverse_dcf", "pe_trailing", "ps", "pgp",
-               "tam", "pfcf_trailing", "ev_ebitda", "fwd_earnings", "fwd_fcf",
+               "tam", "pfcf_trailing", "ev_ebitda", "ddm", "fwd_earnings", "fwd_fcf",
                "schwab_iv", "liquidation_value"]
 
 _MODEL_NOMBRES = {
@@ -172,6 +172,7 @@ _MODEL_NOMBRES = {
     "tam":               "TAM asistido",
     "pfcf_trailing":     "P/FCF Trailing",
     "ev_ebitda":         "EV/EBITDA",
+    "ddm":               "DDM (Gordon Growth)",
     "fwd_earnings":      "P/E Forward",
     "fwd_fcf":           "P/FCF Forward",
     "schwab_iv":         "Earnings Growth Model",
@@ -617,6 +618,97 @@ def _modelo_ev_ebitda(financials: dict) -> dict:
     }
 
 
+def _modelo_ddm(financials: dict) -> dict:
+    """
+    Modelo DDM — Gordon Growth Model.
+
+    P = DPS / (Ke - g)
+    Solo aplica cuando la empresa tiene dividendos estables con historial ≥ 2 años.
+    """
+    datos = financials.get("datos_empresa") or {}
+    metricas = financials.get("metricas") or {}
+    dividendos = financials.get("dividendos") or {}
+
+    dps = _sf(dividendos.get("annual_dividend"))
+    dividend_cagr = _sf(dividendos.get("dividend_cagr"))
+    dividend_years = int(dividendos.get("dividend_years") or 0)
+    beta = _sf(datos.get("beta"))
+    tasa_rf = _sf(metricas.get("tasa_rf"))
+
+    if dps is None or dps <= 0:
+        return {"valor": None, "aplicable": False,
+                "detalle": "Empresa no paga dividendos"}
+
+    if dividend_years < 2 or dividend_cagr is None:
+        return {"valor": None, "aplicable": False,
+                "detalle": "Historial de dividendos insuficiente (menos de 2 años)"}
+
+    beta_usado = beta if beta is not None else 1.0
+    rf = tasa_rf if tasa_rf is not None else 0.045
+    ke = rf + beta_usado * (_MARKET_RETURN_FED - rf)
+
+    if ke <= 0:
+        return {"valor": None, "aplicable": False,
+                "detalle": f"Ke ({ke*100:.2f}%) ≤ 0 — modelo no aplicable"}
+
+    g_raw = dividend_cagr
+    g_capped = False
+    cap_msg = ""
+
+    if g_raw < 0:
+        g = 0.0
+    elif g_raw > 0.10:
+        g = 0.10
+        g_capped = True
+        cap_msg = f" | g capeado al 10% (CAGR histórico {g_raw*100:.1f}%)"
+    else:
+        g = g_raw
+
+    if g >= ke:
+        return {
+            "valor": None,
+            "aplicable": False,
+            "detalle": (
+                f"g ({g*100:.2f}%) ≥ Ke ({ke*100:.2f}%): el modelo diverge con estos parámetros"
+            ),
+        }
+
+    spread = ke - g
+    if spread < 0.01:
+        return {
+            "valor": None,
+            "aplicable": False,
+            "detalle": (
+                f"Ke − g = {spread*100:.2f}% < 1%: denominador demasiado pequeño "
+                f"para producir un valor estable"
+            ),
+        }
+
+    valor = dps / spread
+    detalle = (
+        f"DPS ${dps:.4f} ÷ (Ke {ke*100:.2f}% − g {g*100:.2f}%) = "
+        f"${dps:.4f} ÷ {spread*100:.2f}% = ${valor:.2f}"
+        f". Ke = rf {rf*100:.2f}% + β {beta_usado:.2f} × "
+        f"({_MARKET_RETURN_FED*100:.0f}% − {rf*100:.2f}%). "
+        f"g calculada con CAGR de {dividend_years} años de historial"
+        + cap_msg
+        + (" | β=1.0 asumido (dato no disponible)" if beta is None else "")
+    )
+
+    return {
+        "valor": round(valor, 2),
+        "aplicable": True,
+        "dps": dps,
+        "ke_pct": round(ke * 100, 2),
+        "g_pct": round(g * 100, 2),
+        "g_raw_pct": round(g_raw * 100, 2),
+        "g_capped": g_capped,
+        "spread_pct": round(spread * 100, 2),
+        "dividend_years": dividend_years,
+        "detalle": detalle,
+    }
+
+
 def _modelo_fwd_earnings(financials: dict, ratios: dict) -> dict:
     """Modelo 8 — Price to Forward Earnings."""
     datos = financials.get("datos_empresa") or {}
@@ -993,7 +1085,7 @@ def run_all_models(
     wacc: float,
 ) -> dict:
     """
-    Ejecuta los 12 modelos de valuación y calcula el precio consenso ponderado.
+    Ejecuta los 13 modelos de valuación y calcula el precio consenso ponderado.
 
     Parámetros:
         ticker:     Símbolo bursátil (solo para contexto en el retorno).
@@ -1020,6 +1112,7 @@ def run_all_models(
         "tam":               _modelo_tam(financials, ratios, stage, wacc),
         "pfcf_trailing":     _modelo_pfcf_trailing(financials, ratios),
         "ev_ebitda":         _modelo_ev_ebitda(financials),
+        "ddm":               _modelo_ddm(financials),
         "fwd_earnings":      _modelo_fwd_earnings(financials, ratios),
         "fwd_fcf":           _modelo_fwd_fcf(financials, ratios),
         "schwab_iv":         _modelo_schwab_iv(financials, ratios),
@@ -1114,6 +1207,14 @@ def run_all_models(
             entry["pe_sector_ref"] = r.get("pe_sector_ref")
         elif key == "ps":
             entry["ps_sector_ref"] = r.get("ps_sector_ref")
+        elif key == "ddm":
+            entry["dps"] = r.get("dps")
+            entry["ke_pct"] = r.get("ke_pct")
+            entry["g_pct"] = r.get("g_pct")
+            entry["g_raw_pct"] = r.get("g_raw_pct")
+            entry["g_capped"] = r.get("g_capped")
+            entry["spread_pct"] = r.get("spread_pct")
+            entry["dividend_years"] = r.get("dividend_years")
         elif key == "schwab_iv":
             entry["eps_ttm"] = r.get("eps_ttm")
             entry["eps_growth_5y_raw_pct"] = r.get("eps_growth_5y_raw_pct")
