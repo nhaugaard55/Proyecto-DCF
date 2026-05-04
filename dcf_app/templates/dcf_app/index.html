@@ -1299,21 +1299,24 @@
                     <div class="row g-3 text-center">
 
                         <!-- Paso 1: Ratios -->
-                        {% with total=resultado.filtros|length %}
+                        {% with filtros_activos=filtros_etapa|default:resultado.filtros %}
+                        {% with total=filtros_activos|length %}
                         {% with cumplidos=0 %}
-                        {% for f in resultado.filtros %}{% if f.cumple %}{% with cumplidos=cumplidos|add:1 %}{% endwith %}{% endif %}{% endfor %}
+                        {% for f in filtros_activos %}{% if f.cumple %}{% with cumplidos=cumplidos|add:1 %}{% endwith %}{% endif %}{% endfor %}
                         <div class="col-12 col-md-4">
-                            <div class="p-3 rounded-3 h-100 {% if resultado.filtros %}border{% endif %}" style="border-color: var(--bs-border-color)!important;">
+                            <div class="p-3 rounded-3 h-100 {% if filtros_activos %}border{% endif %}" style="border-color: var(--bs-border-color)!important;">
                                 <div class="fs-2 mb-1">📊</div>
                                 <div class="fw-bold mb-1">Paso 1 — Ratios</div>
-                                <div class="text-muted small mb-2">Filtros fundamentales</div>
-                                {% with aprobados=resultado.filtros|length %}
+                                <div class="text-muted small mb-2">Filtros {% if company_stage %}etapa {{ company_stage.stage_name }}{% else %}fundamentales{% endif %}</div>
+                                {% if company_stage.stage == 6 %}
+                                <div class="small text-warning mb-1">⚠️ Empresa en declive</div>
+                                {% endif %}
                                 <div class="fw-semibold">
-                                    {% for f in resultado.filtros %}{% if f.cumple %}<span class="text-success">✓</span>{% else %}<span class="text-danger">✗</span>{% endif %}{% endfor %}
+                                    {% for f in filtros_activos %}{% if f.cumple %}<span class="text-success">✓</span>{% else %}<span class="text-danger">✗</span>{% endif %}{% endfor %}
                                 </div>
-                                {% endwith %}
                             </div>
                         </div>
+                        {% endwith %}
                         {% endwith %}
                         {% endwith %}
 
@@ -1606,6 +1609,12 @@
                     <div class="mt-3 pt-3" style="border-top:1px solid var(--surface-border);">
                       <div class="small text-muted">{{ consenso.modelos_usados }} modelo{{ consenso.modelos_usados|pluralize:"s" }} usados</div>
                       <div class="small text-muted">Confianza: <strong>{{ consenso.confianza }}</strong></div>
+                      {% if consenso.disagreement_ratio is not None %}
+                      <div class="small mt-1">
+                        DR: <strong class="text-{{ consenso.disagreement_color }}">{{ consenso.disagreement_ratio_pct }}%</strong>
+                        <span class="text-muted">— {{ consenso.disagreement_label }}</span>
+                      </div>
+                      {% endif %}
                     </div>
                   </div>
                 </div>
@@ -1700,6 +1709,13 @@
         {# ── Accordions por modelo ── #}
         <div class="col-12">
           <div class="accordion accordion-flush" id="modelos-accordion">
+
+            {# ── GRUPO 1: Valuación ── #}
+            <div class="d-flex align-items-center gap-2 mb-2 mt-1">
+              <span class="badge px-3 py-2 fw-semibold" style="background:var(--bs-primary);font-size:.75rem;letter-spacing:.04em;">Valuación</span>
+              <hr class="flex-grow-1 my-0 opacity-25">
+              <span class="text-muted small">Modelos que producen precio por acción</span>
+            </div>
 
             {# ── 1. DCF (abierto por defecto) ── #}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
@@ -1983,6 +1999,71 @@
                     {% endif %}
 
                   </div>{# /row g-3 p-3 #}
+
+                  {# ── Barra de escenarios DCF ── #}
+                  {% with dcf_m=multi_model.modelos.dcf %}
+                  {% if dcf_m and dcf_m.escenarios %}
+                  {% with esc=dcf_m.escenarios bear=dcf_m.escenarios.bear base=dcf_m.escenarios.base bull=dcf_m.escenarios.bull %}
+                  {% if bear.valor is not None and bull.valor is not None %}
+                  <div class="px-3 pb-3">
+                    <div class="p-3 rounded-3" style="background:var(--surface-card);border:1px solid var(--surface-border);">
+                      <p class="text-muted small fw-semibold text-uppercase mb-3" style="letter-spacing:.05em;">Escenarios DCF</p>
+                      <div id="dcf-scenario-bar"
+                           data-bear="{{ bear.valor }}"
+                           data-base="{{ base.valor|default:0 }}"
+                           data-bull="{{ bull.valor }}"
+                           data-actual="{{ resultado.precio_actual|default:0 }}">
+                        <div class="position-relative mb-4" style="height:8px;background:linear-gradient(to right,#dc3545,#ffc107,#198754);border-radius:4px;">
+                          <span class="position-absolute translate-middle-x" id="dcf-marker-bear" style="top:-18px;font-size:.7rem;color:#dc3545;font-weight:600;">Bear</span>
+                          <span class="position-absolute translate-middle-x" id="dcf-marker-base" style="top:-18px;font-size:.7rem;color:var(--bs-body-color);font-weight:600;">Base</span>
+                          <span class="position-absolute translate-middle-x" id="dcf-marker-bull" style="top:-18px;font-size:.7rem;color:#198754;font-weight:600;">Bull</span>
+                          <span class="position-absolute translate-middle-x" id="dcf-marker-actual" style="top:12px;font-size:.7rem;color:var(--bs-primary);font-weight:700;">▲ Actual</span>
+                          <div id="dcf-tick-bear" class="position-absolute" style="width:2px;height:14px;background:#dc3545;top:-3px;transform:translateX(-50%);"></div>
+                          <div id="dcf-tick-base" class="position-absolute" style="width:2px;height:14px;background:var(--bs-body-color);top:-3px;transform:translateX(-50%);"></div>
+                          <div id="dcf-tick-bull" class="position-absolute" style="width:2px;height:14px;background:#198754;top:-3px;transform:translateX(-50%);"></div>
+                          <div id="dcf-tick-actual" class="position-absolute" style="width:2px;height:14px;background:var(--bs-primary);top:-3px;transform:translateX(-50%);"></div>
+                        </div>
+                      </div>
+                      <div class="row g-2 mt-1 text-center">
+                        <div class="col-4">
+                          <div class="small text-danger fw-semibold">${{ bear.valor|floatformat:2 }}</div>
+                          <div style="font-size:.7rem;" class="text-muted">Bear (CAGR {{ bear.cagr_usado }}% / WACC {{ bear.wacc_usado }}%)</div>
+                        </div>
+                        <div class="col-4">
+                          <div class="small fw-semibold">${{ base.valor|floatformat:2 }}</div>
+                          <div style="font-size:.7rem;" class="text-muted">Base (CAGR {{ base.cagr_usado }}% / WACC {{ base.wacc_usado }}%)</div>
+                        </div>
+                        <div class="col-4">
+                          <div class="small text-success fw-semibold">${{ bull.valor|floatformat:2 }}</div>
+                          <div style="font-size:.7rem;" class="text-muted">Bull (CAGR {{ bull.cagr_usado }}% / WACC {{ bull.wacc_usado }}%)</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <script>
+                  (function(){
+                    var bar = document.getElementById('dcf-scenario-bar');
+                    if (!bar) return;
+                    var bear = parseFloat(bar.dataset.bear), base = parseFloat(bar.dataset.base),
+                        bull = parseFloat(bar.dataset.bull), actual = parseFloat(bar.dataset.actual);
+                    var min = Math.min(bear, actual) * 0.95, max = Math.max(bull, actual) * 1.05;
+                    var range = max - min;
+                    function pct(v){ return Math.min(Math.max((v - min) / range * 100, 0), 100) + '%'; }
+                    document.getElementById('dcf-tick-bear').style.left = pct(bear);
+                    document.getElementById('dcf-tick-base').style.left = pct(base);
+                    document.getElementById('dcf-tick-bull').style.left = pct(bull);
+                    document.getElementById('dcf-tick-actual').style.left = pct(actual);
+                    document.getElementById('dcf-marker-bear').style.left = pct(bear);
+                    document.getElementById('dcf-marker-base').style.left = pct(base);
+                    document.getElementById('dcf-marker-bull').style.left = pct(bull);
+                    document.getElementById('dcf-marker-actual').style.left = pct(actual);
+                  })();
+                  </script>
+                  {% endif %}
+                  {% endwith %}
+                  {% endif %}
+                  {% endwith %}
+
                 </div>{# /accordion-body #}
               </div>{# /acc-dcf collapse #}
             </div>{# /acc-dcf item #}
@@ -2070,47 +2151,6 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 6. TAM asistido ── #}
-            {% if multi_model %}{% with m=multi_model.modelos.tam %}{% if m %}
-            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-tam" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="acc-left">
-                    <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
-                  </span>
-                  {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
-                  {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% endif %}{% endif %}
-                </button>
-              </h2>
-              <div id="acc-tam" class="accordion-collapse collapse">
-                <div class="accordion-body">
-                  <p class="text-muted small mb-3">Estima el tamaño del mercado direccionable a partir de los ingresos actuales, supuestos de penetración por etapa y un múltiplo P/S capturado del sector.</p>
-                  <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">Ingresos TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">TAM estimado</span>{% with v=m.tam_estimado_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Ingreso objetivo</span>{% with v=m.revenue_objetivo_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Penetración actual</span>{% with v=m.penetracion_actual_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Penetración objetivo</span>{% with v=m.penetracion_objetivo_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Descuento ejecución</span>{% with v=m.execution_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:0 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
-                  </div>
-                  <div class="row g-3 mt-1">
-                    <div class="col-md-3"><span class="text-muted small d-block">Factor sectorial</span>{% with v=m.sector_scale %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:2 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">P/S objetivo</span>{% with v=m.ps_objetivo %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:2 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Factor de descuento</span>{% with v=m.discount_factor_pct %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                    <div class="col-md-3"><span class="text-muted small d-block">Ingreso desc.</span>{% with v=m.revenue_objetivo_desc_billones %}<span class="fw-semibold">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
-                  </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
-                  <p class="small mt-2 mb-0" style="color:var(--text-muted);background:rgba(234,179,8,0.08);border-left:3px solid #ca8a04;padding:.45rem .75rem;border-radius:0 .375rem .375rem 0;">
-                    Modelo orientativo — el TAM se estima a partir del revenue actual de la empresa, no de datos de mercado externos. Usar como referencia aproximada.
-                  </p>
-                </div>
-              </div>
-            </div>
-            {% endif %}{% endwith %}{% endif %}
-
             {# ── 7. P/FCF Trailing ── #}
             {% if multi_model %}{% with m=multi_model.modelos.pfcf_trailing %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
@@ -2138,7 +2178,91 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 8. Forward Earnings ── #}
+            {# ── 8. EV/EBITDA ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.ev_ebitda %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-ev-ebitda" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    {% if m.aplicable %}
+                      <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                    {% else %}
+                      <span class="badge bg-secondary-subtle text-secondary-emphasis small">No aplicable</span>
+                    {% endif %}
+                  </span>
+                  {% if m.aplicable and m.valor is not None %}
+                    <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>
+                    {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% endif %}{% endif %}
+                  {% endif %}
+                </button>
+              </h2>
+              <div id="acc-ev-ebitda" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Estima el valor de la empresa multiplicando el EBITDA TTM por el múltiplo EV/EBITDA de referencia del sector, luego resta la deuda neta para obtener el equity por acción.</p>
+                  {% if m.aplicable %}
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">EBITDA TTM</span>{% with v=resultado.datos_empresa.ebitda_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Deuda neta</span>{% with v=resultado.datos_empresa.deuda_neta_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  {% else %}
+                  <p class="text-muted small mb-0">{{ m.detalle }}</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 9. DDM (Gordon Growth) ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.ddm %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-ddm" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="acc-left">
+                    <span class="fw-semibold">DDM — Dividend Discount Model</span>
+                    {% if m.aplicable %}
+                      <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ m.relevancia }}</span>
+                    {% else %}
+                      <span class="badge bg-secondary-subtle text-secondary-emphasis small">No aplicable</span>
+                    {% endif %}
+                  </span>
+                  {% if m.aplicable and m.valor is not None %}
+                    <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>
+                    {% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% endif %}{% endif %}
+                  {% endif %}
+                </button>
+              </h2>
+              <div id="acc-ddm" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  {% if m.aplicable %}
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">DPS TTM</span><span class="fw-semibold fs-5">{% if m.dps is not None %}${{ m.dps|floatformat:4 }}{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Ke (costo equity)</span><span class="fw-semibold fs-5">{% if m.ke_pct is not None %}{{ m.ke_pct|floatformat:2 }}%{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">g (crec. dividendo){% if m.g_capped %} <span class="badge bg-warning-subtle text-warning-emphasis" style="font-size:.65rem;">capeado</span>{% endif %}</span>
+                      <span class="fw-semibold fs-5">{% if m.g_pct is not None %}{{ m.g_pct|floatformat:2 }}%{% else %}N/D{% endif %}{% if m.g_capped and m.g_raw_pct is not None %} <span class="text-muted small">(hist. {{ m.g_raw_pct|floatformat:1 }}%)</span>{% endif %}</span>
+                    </div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Spread (Ke − g)</span><span class="fw-semibold fs-5">{% if m.spread_pct is not None %}{{ m.spread_pct|floatformat:2 }}%{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Historial dividendos</span><span class="fw-semibold fs-5">{% if m.dividend_years %}{{ m.dividend_years }} años{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-2">{{ m.detalle }}</p>{% endif %}
+                  {% else %}
+                  <p class="text-muted small mb-2">{{ m.detalle }}</p>
+                  {% endif %}
+                  <p class="small mb-0" style="color:var(--text-muted);background:rgba(108,117,125,0.07);border-left:3px solid #6c757d;padding:.45rem .75rem;border-radius:0 .375rem .375rem 0;">
+                    El DDM es más confiable en empresas con dividendos estables y predecibles: utilities, bancos, consumer staples y dividend aristocrats. Para empresas de crecimiento que no distribuyen caja, este modelo no aplica.
+                  </p>
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
+
+            {# ── 10. Forward Earnings ── #}
             {% if multi_model %}{% with m=multi_model.modelos.fwd_earnings %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2166,7 +2290,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 9. Forward FCF ── #}
+            {# ── 11. Forward FCF ── #}
             {% if multi_model %}{% with m=multi_model.modelos.fwd_fcf %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2194,7 +2318,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 10. Schwab Intrinsic Value (PEG-CAPM Hybrid) ── #}
+            {# ── 12. Earnings Growth Model (PEG-CAPM Hybrid) ── #}
             {% if multi_model %}{% with m=multi_model.modelos.schwab_iv %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2235,7 +2359,7 @@
                     <thead><tr>
                       <th class="text-muted small">Parámetro</th>
                       <th class="text-muted small text-end">Valor original</th>
-                      <th class="text-muted small text-end">Reducción Schwab</th>
+                      <th class="text-muted small text-end">Reducción EGM</th>
                       <th class="text-muted small text-end">Valor ajustado</th>
                     </tr></thead>
                     <tbody>
@@ -2274,7 +2398,7 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── 11. Valor de Liquidación — visible desde etapa 4 ── #}
+            {# ── 13. Valor de Liquidación — visible desde etapa 4 ── #}
             {% if multi_model and multi_model.stage_context.stage >= 4 %}{% with m=multi_model.modelos.liquidation_value %}{% if m %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
@@ -2324,6 +2448,13 @@
               </div>
             </div>
             {% endif %}{% endwith %}{% endif %}
+
+            {# ── GRUPO 2: Diagnóstico ── #}
+            <div class="d-flex align-items-center gap-2 mb-2 mt-3">
+              <span class="badge px-3 py-2 fw-semibold" style="background:#495057;font-size:.75rem;letter-spacing:.04em;">Diagnóstico</span>
+              <hr class="flex-grow-1 my-0 opacity-25">
+              <span class="text-muted small">No producen precio — explican riesgo o expectativas</span>
+            </div>
 
             {# ── Informativo: Reverse DCF ── #}
             {% if multi_model %}{% with rdcf=multi_model.modelos.reverse_dcf consenso_mm=multi_model.consenso %}{% if rdcf %}
@@ -2421,6 +2552,53 @@
               </div>
             </div>
             {% endwith %}{% endif %}
+
+            {# ── GRUPO 3: Escenario orientativo ── #}
+            <div class="d-flex align-items-center gap-2 mb-2 mt-3">
+              <span class="badge px-3 py-2 fw-semibold" style="background:#ca8a04;font-size:.75rem;letter-spacing:.04em;">Escenario orientativo</span>
+              <hr class="flex-grow-1 my-0 opacity-25">
+              <span class="text-muted small">TAM estimado — no entra al consenso</span>
+            </div>
+
+            {# ── TAM asistido (Escenario orientativo) ── #}
+            {% if multi_model %}{% with m=multi_model.modelos.tam %}{% if m %}
+            <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-tam" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
+                  <span class="acc-left">
+                    <span class="fw-semibold">{{ m.nombre }}</span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis small">Escenario orientativo</span>
+                  </span>
+                  {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                </button>
+              </h2>
+              <div id="acc-tam" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <p class="text-muted small mb-3">Estima el tamaño del mercado direccionable a partir de los ingresos actuales, supuestos de penetración por etapa y un múltiplo P/S capturado del sector.</p>
+                  <div class="row g-3">
+                    <div class="col-md-3"><span class="text-muted small d-block">Ingresos TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">TAM estimado</span>{% with v=m.tam_estimado_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Ingreso objetivo</span>{% with v=m.revenue_objetivo_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Penetración actual</span>{% with v=m.penetracion_actual_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Penetración objetivo</span>{% with v=m.penetracion_objetivo_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Descuento ejecución</span>{% with v=m.execution_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:0 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
+                  </div>
+                  <div class="row g-3 mt-1">
+                    <div class="col-md-3"><span class="text-muted small d-block">Factor sectorial</span>{% with v=m.sector_scale %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:2 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">P/S objetivo</span>{% with v=m.ps_objetivo %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:2 }}x{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Factor de descuento</span>{% with v=m.discount_factor_pct %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Ingreso desc.</span>{% with v=m.revenue_objetivo_desc_billones %}<span class="fw-semibold">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                  </div>
+                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  <p class="small mt-2 mb-0" style="color:var(--text-muted);background:rgba(234,179,8,0.08);border-left:3px solid #ca8a04;padding:.45rem .75rem;border-radius:0 .375rem .375rem 0;">
+                    Modelo orientativo — el TAM se estima a partir del revenue actual de la empresa, no de datos de mercado externos. Usar como referencia aproximada.
+                  </p>
+                </div>
+              </div>
+            </div>
+            {% endif %}{% endwith %}{% endif %}
 
           </div>{# /accordion #}
         </div>{# /col-12 accordions #}

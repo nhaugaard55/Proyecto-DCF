@@ -3,102 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #222; }
-        h1, h2, h3 { color: #1a1a1a; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-        th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
-        th { background-color: #f1f1f1; }
-        .section { margin-bottom: 18px; }
-        .meta { font-size: 11px; margin-top: 4px; color: #555; }
-        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #222; }
+        h1 { font-size: 16px; color: #1a1a1a; margin-bottom: 4px; }
+        h2 { font-size: 13px; color: #1a1a1a; border-bottom: 1px solid #ccc;
+             padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; }
+        h3 { font-size: 11px; color: #333; margin-bottom: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        th, td { border: 1px solid #ccc; padding: 5px 7px; text-align: left; font-size: 10px; }
+        th { background-color: #f1f1f1; font-weight: bold; }
+        .section { margin-bottom: 14px; }
+        .meta { font-size: 10px; margin-top: 2px; color: #555; }
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-weight: bold; font-size: 9px; }
         .badge-success { background-color: #d4edda; color: #155724; }
         .badge-warning { background-color: #fff3cd; color: #856404; }
-        .badge-danger { background-color: #f8d7da; color: #721c24; }
+        .badge-danger  { background-color: #f8d7da; color: #721c24; }
+        .badge-gray    { background-color: #e2e3e5; color: #383d41; }
+        .badge-info    { background-color: #d1ecf1; color: #0c5460; }
+        .no-aplica { color: #999; font-style: italic; }
+        .row-na    { color: #aaa; }
+        .row-bear  { background-color: #fde8e8; }
+        .row-base  { background-color: #fffbe6; }
+        .row-bull  { background-color: #e6f4ea; }
+        .page-break { page-break-before: always; }
+        .text-center { text-align: center; }
+        .small { font-size: 9px; color: #555; }
+        .nota { background-color: #f8f9fa; border-left: 3px solid #6c757d;
+                padding: 5px 8px; font-size: 10px; color: #555; margin-top: 6px; }
     </style>
 </head>
 <body>
-    <h1>Valuación DCF - {{ resultado.nombre }} ({{ ticker }})</h1>
-    <p class="meta">Fecha de generación: {{ generado|date:"d/m/Y H:i" }}</p>
-    {% if resultado.fuente_datos_descripcion %}
-    <p class="meta">Fuente de datos: {{ resultado.fuente_datos_descripcion }}</p>
-    {% endif %}
-    {% if resultado.mensaje_fuente %}
-    <p class="meta">Nota: {{ resultado.mensaje_fuente }}</p>
-    {% endif %}
 
+    <h1>Valuación — {{ resultado.nombre }} ({{ ticker }})</h1>
+    <p class="meta">Generado: {{ generado|date:"d/m/Y H:i" }}</p>
+    {% if resultado.fuente_datos_descripcion %}<p class="meta">Fuente: {{ resultado.fuente_datos_descripcion }}</p>{% endif %}
+    {% if resultado.mensaje_fuente %}<p class="meta">Nota: {{ resultado.mensaje_fuente }}</p>{% endif %}
+
+    <!-- ═══ RESUMEN ═══════════════════════════════════════════════════════════ -->
     <div class="section">
         <h2>Resumen</h2>
         <table>
             <tbody>
                 <tr>
-                    <th>Valor intrínseco</th>
-                    <td>
-                        {% if resultado.valor_intrinseco is not None %}
-                            ${{ resultado.valor_intrinseco|floatformat:2 }}
-                        {% else %}N/D{% endif %}
-                    </td>
-                </tr>
-                <tr>
+                    <th>Valor intrínseco (DCF)</th>
+                    <td>{% if resultado.valor_intrinseco is not None %}${{ resultado.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</td>
                     <th>Precio actual</th>
-                    <td>
-                        {% if resultado.precio_actual is not None %}
-                            ${{ resultado.precio_actual|floatformat:2 }}
-                        {% else %}N/D{% endif %}
-                    </td>
+                    <td>{% if resultado.precio_actual is not None %}${{ resultado.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}</td>
                 </tr>
                 <tr>
-                    <th>Diferencia%</th>
-                    <td>
-                        {% if resultado.diferencia_pct is not None %}
-                            {{ resultado.diferencia_pct|floatformat:2 }}%
-                        {% else %}N/D{% endif %}
-                    </td>
-                </tr>
-                <tr>
+                    <th>Diferencia %</th>
+                    <td>{% if resultado.diferencia_pct is not None %}{{ resultado.diferencia_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td>
                     <th>Estado</th>
                     <td>
-                        {% if resultado.estado == "SUBVALUADA" %}
-                            <span class="badge badge-success">{{ resultado.estado }}</span>
-                        {% elif resultado.estado == "SOBREVALUADA" %}
-                            <span class="badge badge-danger">{{ resultado.estado }}</span>
-                        {% else %}
-                            <span class="badge badge-warning">{{ resultado.estado|default:"N/D" }}</span>
-                        {% endif %}
+                        {% if resultado.estado == "SUBVALUADA" %}<span class="badge badge-success">{{ resultado.estado }}</span>
+                        {% elif resultado.estado == "SOBREVALUADA" %}<span class="badge badge-danger">{{ resultado.estado }}</span>
+                        {% else %}<span class="badge badge-warning">{{ resultado.estado|default:"N/D" }}</span>{% endif %}
                     </td>
                 </tr>
+                {% if multi_model and multi_model.consenso.disponible %}
+                <tr>
+                    <th>Precio consenso (multi-modelo)</th>
+                    <td><strong>${{ multi_model.consenso.precio|floatformat:2 }}</strong></td>
+                    <th>Confianza consenso</th>
+                    <td>{{ multi_model.consenso.confianza }} ({{ multi_model.consenso.modelos_usados }} modelos)</td>
+                </tr>
+                {% endif %}
+                {% if multi_model and multi_model.stage_context %}
+                <tr>
+                    <th>Etapa del ciclo de vida</th>
+                    <td colspan="3">Etapa {{ multi_model.stage_context.stage }} — {{ multi_model.stage_context.stage_name }}</td>
+                </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
 
+    <!-- ═══ ESCENARIOS DCF ════════════════════════════════════════════════════ -->
+    {% if multi_model and multi_model.modelos.dcf.escenarios %}
+    {% with esc=multi_model.modelos.dcf.escenarios %}
+    {% if esc.bear.valor or esc.base.valor or esc.bull.valor %}
+    <div class="section">
+        <h2>Escenarios DCF (Bear / Base / Bull)</h2>
+        <table>
+            <thead>
+                <tr><th>Escenario</th><th>CAGR usado</th><th>WACC usado</th><th>Valor por acción</th><th>vs Precio actual</th></tr>
+            </thead>
+            <tbody>
+                <tr class="row-bear">
+                    <td><strong>Bear</strong></td>
+                    <td>{% if esc.bear.cagr_usado is not None %}{{ esc.bear.cagr_usado|floatformat:1 }}%{% else %}N/D{% endif %}</td>
+                    <td>{% if esc.bear.wacc_usado is not None %}{{ esc.bear.wacc_usado|floatformat:1 }}%{% else %}N/D{% endif %}</td>
+                    <td>{% if esc.bear.valor is not None %}${{ esc.bear.valor|floatformat:2 }}{% else %}N/D{% endif %}</td>
+                    <td>{% if esc.bear.valor is not None and resultado.precio_actual %}{% widthratio esc.bear.valor resultado.precio_actual 100 as bear_ratio %}{{ bear_ratio|add:"-100" }}%{% else %}—{% endif %}</td>
+                </tr>
+                <tr class="row-base">
+                    <td><strong>Base</strong></td>
+                    <td>{% if esc.base.cagr_usado is not None %}{{ esc.base.cagr_usado|floatformat:1 }}%{% else %}N/D{% endif %}</td>
+                    <td>{% if esc.base.wacc_usado is not None %}{{ esc.base.wacc_usado|floatformat:1 }}%{% else %}N/D{% endif %}</td>
+                    <td>{% if esc.base.valor is not None %}${{ esc.base.valor|floatformat:2 }}{% else %}N/D{% endif %}</td>
+                    <td>{% if resultado.diferencia_pct is not None %}{{ resultado.diferencia_pct|floatformat:1 }}%{% else %}—{% endif %}</td>
+                </tr>
+                <tr class="row-bull">
+                    <td><strong>Bull</strong></td>
+                    <td>{% if esc.bull.cagr_usado is not None %}{{ esc.bull.cagr_usado|floatformat:1 }}%{% else %}N/D{% endif %}</td>
+                    <td>{% if esc.bull.wacc_usado is not None %}{{ esc.bull.wacc_usado|floatformat:1 }}%{% else %}N/D{% endif %}</td>
+                    <td>{% if esc.bull.valor is not None %}${{ esc.bull.valor|floatformat:2 }}{% else %}N/D{% endif %}</td>
+                    <td>{% if esc.bull.valor is not None and resultado.precio_actual %}{% widthratio esc.bull.valor resultado.precio_actual 100 as bull_ratio %}{{ bull_ratio|add:"-100" }}%{% else %}—{% endif %}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    {% endwith %}
+    {% endif %}
+
+    <!-- ═══ DATOS GENERALES ═══════════════════════════════════════════════════ -->
     <div class="section">
         <h2>Datos generales</h2>
         <table>
             <tbody>
-                <tr><th>Sector</th><td>{{ resultado.sector }}</td></tr>
-                <tr><th>Método crecimiento</th><td>{{ resultado.datos_empresa.metodo_crecimiento }}</td></tr>
-                <tr><th>Market Cap</th><td>{% if resultado.datos_empresa.market_cap_billones is not None %}${{ resultado.datos_empresa.market_cap_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td></tr>
-                <tr><th>Deuda</th><td>{% if resultado.datos_empresa.deuda_billones is not None %}${{ resultado.datos_empresa.deuda_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td></tr>
-                <tr><th>Beta</th><td>{% if resultado.datos_empresa.beta is not None %}{{ resultado.datos_empresa.beta|floatformat:2 }}{% else %}N/D{% endif %}</td></tr>
-                <tr><th>Tasa impositiva</th><td>{% if resultado.datos_empresa.tasa_impositiva_pct is not None %}{{ resultado.datos_empresa.tasa_impositiva_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td></tr>
-                {% if resultado.datos_empresa.tasa_impositiva_fuente %}
-                <tr><th>Fuente tasa</th><td>{{ resultado.datos_empresa.tasa_impositiva_fuente }}{% if resultado.datos_empresa.tasa_impositiva_anios %} ({{ resultado.datos_empresa.tasa_impositiva_anios }} años){% endif %}</td></tr>
-                {% endif %}
-                <tr><th>Cost of Debt</th><td>{% if resultado.datos_empresa.cost_of_debt_pct is not None %}{{ resultado.datos_empresa.cost_of_debt_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td></tr>
-                {% if resultado.datos_empresa.cost_of_debt_fuente %}
-                <tr><th>Fuente costo deuda</th><td>{{ resultado.datos_empresa.cost_of_debt_fuente }}{% if resultado.datos_empresa.cost_of_debt_anios %} ({{ resultado.datos_empresa.cost_of_debt_anios }} años){% endif %}</td></tr>
-                {% endif %}
-                <tr><th>WACC</th><td>{% if resultado.metricas.wacc_pct is not None %}{{ resultado.metricas.wacc_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td></tr>
-                <tr><th>Valor terminal</th><td>{% if resultado.metricas.valor_terminal is not None %}${{ resultado.metricas.valor_terminal|floatformat:2 }}B{% else %}N/D{% endif %}</td></tr>
+                <tr>
+                    <th>Sector</th><td>{{ resultado.sector }}</td>
+                    <th>Método crecimiento</th><td>{{ resultado.datos_empresa.metodo_crecimiento }}</td>
+                </tr>
+                <tr>
+                    <th>Market Cap</th>
+                    <td>{% if resultado.datos_empresa.market_cap_billones is not None %}${{ resultado.datos_empresa.market_cap_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+                    <th>Deuda total</th>
+                    <td>{% if resultado.datos_empresa.deuda_total_billones is not None %}${{ resultado.datos_empresa.deuda_total_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+                </tr>
+                <tr>
+                    <th>Beta</th>
+                    <td>{% if resultado.datos_empresa.beta is not None %}{{ resultado.datos_empresa.beta|floatformat:2 }}{% else %}N/D{% endif %}</td>
+                    <th>WACC</th>
+                    <td>{% if resultado.metricas.wacc_pct is not None %}{{ resultado.metricas.wacc_pct|floatformat:2 }}%{% else %}N/D{% endif %}</td>
+                </tr>
+                <tr>
+                    <th>Tasa impositiva</th>
+                    <td>{% if resultado.datos_empresa.tasa_impositiva_pct is not None %}{{ resultado.datos_empresa.tasa_impositiva_pct|floatformat:2 }}%{% if resultado.datos_empresa.tasa_impositiva_fuente %} ({{ resultado.datos_empresa.tasa_impositiva_fuente }}){% endif %}{% else %}N/D{% endif %}</td>
+                    <th>Costo de deuda</th>
+                    <td>{% if resultado.datos_empresa.cost_of_debt_pct is not None %}{{ resultado.datos_empresa.cost_of_debt_pct|floatformat:2 }}%{% if resultado.datos_empresa.cost_of_debt_fuente %} ({{ resultado.datos_empresa.cost_of_debt_fuente }}){% endif %}{% else %}N/D{% endif %}</td>
+                </tr>
+                <tr>
+                    <th>FCF TTM</th>
+                    <td>{% if resultado.datos_empresa.fcf_ttm_billones is not None %}${{ resultado.datos_empresa.fcf_ttm_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+                    <th>Valor terminal</th>
+                    <td>{% if resultado.metricas.valor_terminal is not None %}${{ resultado.metricas.valor_terminal|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+                </tr>
             </tbody>
         </table>
     </div>
 
+    <!-- ═══ FILTROS FUNDAMENTALES ═════════════════════════════════════════════ -->
     <div class="section">
         <h2>Filtros fundamentales</h2>
         <table>
-            <thead>
-                <tr><th>Indicador</th><th>Valor</th><th>Criterio</th><th>Resultado</th></tr>
-            </thead>
+            <thead><tr><th>Indicador</th><th>Valor</th><th>Criterio</th><th>Resultado</th></tr></thead>
             <tbody>
                 {% for filtro in resultado.filtros %}
                 <tr>
@@ -112,34 +171,215 @@
         </table>
     </div>
 
+    <!-- ═══ FCF HISTÓRICO / PROYECTADO ════════════════════════════════════════ -->
     <div class="section">
-        <h2>FCF histórico (Billones)</h2>
+        <h2>FCF histórico y proyectado (Billones)</h2>
         <table>
-            <thead><tr><th>Año</th><th>FCF</th></tr></thead>
+            <thead><tr><th>Año</th><th>FCF histórico</th><th>Año</th><th>FCF proyectado</th></tr></thead>
             <tbody>
-                {% for item in resultado.fcf_historico %}
+                {% for i in resultado.fcf_historico %}
                 <tr>
-                    <td>{{ item.anio }}</td>
-                    <td>{% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+                    <td>{{ i.anio }}</td>
+                    <td>{% if i.valor is not None %}${{ i.valor|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+                    <td></td><td></td>
+                </tr>
+                {% endfor %}
+                {% for i in resultado.fcf_proyectado %}
+                <tr>
+                    <td></td><td></td>
+                    <td>{{ i.anio }}</td>
+                    <td>{% if i.valor is not None %}${{ i.valor|floatformat:2 }}B{% else %}N/D{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
-    <div class="section">
-        <h2>FCF proyectado (Billones)</h2>
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIONES MULTI-MODELO                                                  -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    {% if multi_model %}
+
+    <!-- ── Etapa del ciclo de vida ─────────────────────────────────────────── -->
+    <div class="section page-break">
+        <h2>Etapa del ciclo de vida</h2>
+        {% with sc=multi_model.stage_context %}
         <table>
-            <thead><tr><th>Año</th><th>FCF proyectado</th></tr></thead>
             <tbody>
-                {% for item in resultado.fcf_proyectado %}
                 <tr>
-                    <td>{{ item.anio }}</td>
-                    <td>{% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+                    <th>Etapa detectada</th>
+                    <td><strong>Etapa {{ sc.stage }} — {{ sc.stage_name }}</strong></td>
+                    <th>FCF TTM</th>
+                    <td>{% if resultado.datos_empresa.fcf_ttm_billones is not None %}${{ resultado.datos_empresa.fcf_ttm_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+                </tr>
+                <tr>
+                    <th>Revenue growth</th>
+                    <td>{% if resultado.revenue_growth_raw is not None %}{{ resultado.revenue_growth_raw|floatformat:1 }}%{% else %}N/D{% endif %}</td>
+                    <th>Margen neto</th>
+                    <td>{% if resultado.net_margin is not None %}{{ resultado.net_margin|floatformat:1 }}%{% else %}N/D{% endif %}</td>
+                </tr>
+                <tr>
+                    <th>Paga dividendos</th>
+                    <td>{% if resultado.has_dividends %}Sí{% else %}No{% endif %}</td>
+                    <th>EBITDA TTM</th>
+                    <td>{% if resultado.datos_empresa.ebitda_ttm_billones is not None %}${{ resultado.datos_empresa.ebitda_ttm_billones|floatformat:2 }}B{% else %}N/D{% endif %}</td>
+                </tr>
+            </tbody>
+        </table>
+        {% if sc.modelos_utiles %}
+        <p class="small"><strong>Modelos útiles en esta etapa:</strong> {{ sc.modelos_utiles|join:", " }}</p>
+        {% endif %}
+        {% if sc.modelos_algo_utiles %}
+        <p class="small"><strong>Modelos algo útiles:</strong> {{ sc.modelos_algo_utiles|join:", " }}</p>
+        {% endif %}
+        {% if sc.nota_especial %}
+        <p class="nota">{{ sc.nota_especial }}</p>
+        {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- ── Tabla multi-modelo ──────────────────────────────────────────────── -->
+    <div class="section">
+        <h2>Valuación multi-modelo</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Modelo</th>
+                    <th class="text-center">Valor estimado</th>
+                    <th class="text-center">vs Precio actual</th>
+                    <th class="text-center">Relevancia</th>
+                    <th class="text-center">Peso en consenso</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key, m in multi_model.modelos.items %}
+                <tr {% if not m.aplicable %}class="row-na"{% endif %}>
+                    <td>{{ m.nombre }}</td>
+                    <td class="text-center">
+                        {% if m.valor is not None %}${{ m.valor|floatformat:2 }}
+                        {% else %}<span class="no-aplica">N/A</span>{% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if m.upside_pct is not None %}
+                            {% if m.upside_pct > 0 %}+{% endif %}{{ m.upside_pct|floatformat:1 }}%
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if m.aplicable %}{{ m.relevancia }}{% else %}<span class="no-aplica">No aplica</span>{% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if m.peso_pct > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+
+        <!-- Pie del consenso -->
+        {% if multi_model.consenso.disponible %}
+        <table>
+            <tbody>
+                <tr>
+                    <th>Precio consenso ponderado</th>
+                    <td><strong>${{ multi_model.consenso.precio|floatformat:2 }}</strong></td>
+                    <th>Rango</th>
+                    <td>${{ multi_model.consenso.rango_min|floatformat:2 }} — ${{ multi_model.consenso.rango_max|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <th>Modelos en consenso</th>
+                    <td>{{ multi_model.consenso.modelos_usados }} de {{ multi_model.modelos|length }}</td>
+                    <th>Confianza</th>
+                    <td>{{ multi_model.consenso.confianza }}</td>
+                </tr>
+                {% if multi_model.consenso.disagreement_ratio_pct is not None %}
+                <tr>
+                    <th>Disagreement Ratio (DR)</th>
+                    <td>{{ multi_model.consenso.disagreement_ratio_pct|floatformat:1 }}%</td>
+                    <th>Interpretación</th>
+                    <td>{{ multi_model.consenso.disagreement_label|default:"—" }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <th>Veredicto consenso</th>
+                    <td colspan="3">
+                        {% if multi_model.consenso.veredicto == "Subvaluada" %}<span class="badge badge-success">{{ multi_model.consenso.veredicto }}</span>
+                        {% elif multi_model.consenso.veredicto == "Sobrevaluada" %}<span class="badge badge-danger">{{ multi_model.consenso.veredicto }}</span>
+                        {% elif multi_model.consenso.veredicto %}<span class="badge badge-warning">{{ multi_model.consenso.veredicto }}</span>
+                        {% else %}—{% endif %}
+                        {% if multi_model.consenso.upside_pct is not None %}
+                            ({{ multi_model.consenso.upside_pct|floatformat:1 }}% vs precio actual)
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        {% else %}
+        <p class="small">{{ multi_model.consenso.razon_no_calculable|default:"No hay suficientes modelos aplicables para calcular un consenso." }}</p>
+        {% endif %}
     </div>
+
+    <!-- ── Altman Z-Score ──────────────────────────────────────────────────── -->
+    {% if multi_model.altman and multi_model.altman.disponible %}
+    <div class="section">
+        <h2>Altman Z-Score — Solvencia</h2>
+        <table>
+            <tbody>
+                <tr>
+                    <th>Z-Score</th>
+                    <td><strong>{{ multi_model.altman.z_score }}</strong></td>
+                    <th>Zona</th>
+                    <td>
+                        {% if multi_model.altman.zona_code == "safe" %}<span class="badge badge-success">{{ multi_model.altman.zona }}</span>
+                        {% elif multi_model.altman.zona_code == "grey" %}<span class="badge badge-warning">{{ multi_model.altman.zona }}</span>
+                        {% else %}<span class="badge badge-danger">{{ multi_model.altman.zona }}</span>{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th colspan="2">Interpretación</th>
+                    <td colspan="2">{{ multi_model.altman.interpretacion }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <table>
+            <thead><tr><th>Factor</th><th>Definición</th><th class="text-center">Valor</th><th class="text-center">Peso</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>X1</td>
+                    <td>Capital de trabajo / Activos totales</td>
+                    <td class="text-center">{{ multi_model.altman.componentes.x1_pct|floatformat:1 }}%</td>
+                    <td class="text-center">1.2</td>
+                </tr>
+                <tr>
+                    <td>X2</td>
+                    <td>Ganancias retenidas / Activos totales</td>
+                    <td class="text-center">{{ multi_model.altman.componentes.x2_pct|floatformat:1 }}%</td>
+                    <td class="text-center">1.4</td>
+                </tr>
+                <tr>
+                    <td>X3</td>
+                    <td>EBIT / Activos totales</td>
+                    <td class="text-center">{{ multi_model.altman.componentes.x3_pct|floatformat:1 }}%</td>
+                    <td class="text-center">3.3</td>
+                </tr>
+                <tr>
+                    <td>X4</td>
+                    <td>Market Cap / Pasivos totales</td>
+                    <td class="text-center">{{ multi_model.altman.componentes.x4|floatformat:2 }}x</td>
+                    <td class="text-center">0.6</td>
+                </tr>
+                <tr>
+                    <td>X5</td>
+                    <td>Ingresos / Activos totales</td>
+                    <td class="text-center">{{ multi_model.altman.componentes.x5|floatformat:2 }}x</td>
+                    <td class="text-center">1.0</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="small">{{ multi_model.altman.detalle }}</p>
+    </div>
+    {% endif %}
+
+    {% endif %}{# /multi_model #}
+
 </body>
 </html>

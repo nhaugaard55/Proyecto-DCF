@@ -1,9 +1,10 @@
 """
 Motor de valuación multi-modelo.
 
-Calcula el valor intrínseco de una empresa usando 9 modelos distintos,
-los pondera según la etapa del ciclo de vida detectada por company_stage.py,
-y produce un precio consenso final.
+Ejecuta 13 modelos de valuación que producen precio por acción, más
+1 métrica auxiliar de solvencia (Altman Z-Score) que no entra al consenso.
+Los modelos se ponderan mediante un sistema de pesos adaptativos por etapa (1–6)
+detectada por company_stage.py, y producen un precio consenso final.
 
 No realiza llamadas adicionales a APIs — usa exclusivamente los datos
 ya presentes en el dict `financials` (resultado de analizar_empresa()).
@@ -14,7 +15,7 @@ from __future__ import annotations
 import math
 from typing import Optional
 
-from .finanzas import G_TERMINAL
+from .finanzas import G_TERMINAL, calcular_valor_intrinseco, proyectar_fcf
 
 # scipy se importa de forma diferida para que el módulo sea importable
 # incluso si scipy no está instalado (en ese caso reverse_dcf = None).
@@ -48,6 +49,21 @@ _DEFAULT_RATIOS: dict[str, float] = {
 _MARKET_RETURN_FED = 0.08   # long-term equity market return assumption
 _YEARS_FED = 5
 _MAX_GROWTH_RAW_FED = 0.75  # cap extreme values before reduction table
+
+_SECTOR_EBITDA_MULTIPLES: dict[str, float] = {
+    "Technology":             18.0,
+    "Healthcare":             14.0,
+    "Consumer Cyclical":      12.0,
+    "Consumer Defensive":     13.0,
+    "Energy":                  7.0,
+    "Industrials":            11.0,
+    "Financial Services":      9.0,
+    "Utilities":              10.0,
+    "Real Estate":            16.0,
+    "Basic Materials":         9.0,
+    "Communication Services": 12.0,
+}
+_DEFAULT_EBITDA_MULTIPLE = 12.0
 
 _SECTOR_TAM_SCALE: dict[str, float] = {
     "Technology": 1.25,
@@ -85,8 +101,9 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.0, "reverse_dcf": 0.0,
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 0.5, "pfcf_trailing": 0.0,
+        "ev_ebitda": 0.0, "ddm": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 0.3, "liquidation_value": 0.0,  # reducido de 1.0: TAM es orientativo
+        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.0,
         "tam_note": True, "asset_note": False,
     },
@@ -94,8 +111,9 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.0, "reverse_dcf": 0.0,
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
+        "ev_ebitda": 0.0, "ddm": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 0.2, "liquidation_value": 0.0,  # reducido de 1.0
+        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.3,
         "tam_note": True, "asset_note": False,
     },
@@ -103,8 +121,9 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.5, "reverse_dcf": 0.5,
         "pe_trailing": 0.0, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.0,
+        "ev_ebitda": 0.3, "ddm": 0.0,
         "fwd_earnings": 0.5, "fwd_fcf": 0.5,
-        "tam": 0.1, "liquidation_value": 0.0,  # reducido de 0.5
+        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.5,
         "tam_note": False, "asset_note": False,
     },
@@ -112,33 +131,36 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "dcf": 0.5, "reverse_dcf": 0.5,
         "pe_trailing": 0.5, "ps": 1.0,
         "pgp": 1.0, "pfcf_trailing": 0.5,
+        "ev_ebitda": 0.8, "ddm": 0.3,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
-        "tam": 0.25, "liquidation_value": 0.0,  # reducido de 0.5
-        "schwab_iv": 1.2,
+        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
+        "schwab_iv": 0.8,
         "tam_note": False, "asset_note": False,
     },
     5: {  # Capital Return
         "dcf": 1.0, "reverse_dcf": 1.0,
         "pe_trailing": 1.0, "ps": 0.5,
         "pgp": 0.5, "pfcf_trailing": 1.0,
+        "ev_ebitda": 1.0, "ddm": 0.8,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,
-        "schwab_iv": 1.5,
+        "schwab_iv": 0.8,
         "tam_note": False, "asset_note": False,
     },
     6: {  # Decline — los modelos de crecimiento pierden relevancia
         "dcf": 0.0, "reverse_dcf": 0.0,
         "pe_trailing": 0.0, "ps": 0.0,
         "pgp": 0.0, "pfcf_trailing": 0.0,
+        "ev_ebitda": 0.4, "ddm": 0.4,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 0.70,
-        "schwab_iv": 0.3,
+        "schwab_iv": 0.0,
         "tam_note": False, "asset_note": True,
     },
 }
 
 _MODEL_KEYS = ["dcf", "reverse_dcf", "pe_trailing", "ps", "pgp",
-               "tam", "pfcf_trailing", "fwd_earnings", "fwd_fcf",
+               "tam", "pfcf_trailing", "ev_ebitda", "ddm", "fwd_earnings", "fwd_fcf",
                "schwab_iv", "liquidation_value"]
 
 _MODEL_NOMBRES = {
@@ -149,9 +171,11 @@ _MODEL_NOMBRES = {
     "pgp":               "Price to Gross Profit",
     "tam":               "TAM asistido",
     "pfcf_trailing":     "P/FCF Trailing",
+    "ev_ebitda":         "EV/EBITDA",
+    "ddm":               "DDM (Gordon Growth)",
     "fwd_earnings":      "P/E Forward",
     "fwd_fcf":           "P/FCF Forward",
-    "schwab_iv":         "Forward Earnings Discounted",
+    "schwab_iv":         "Earnings Growth Model",
     "liquidation_value": "Valor de Liquidación",
 }
 
@@ -221,11 +245,32 @@ def _relevancia_desde_peso(peso_raw: float) -> str:
 # Modelos individuales
 # ---------------------------------------------------------------------------
 
+def _dcf_escenario(fcf_ttm: float, cagr: float, wacc: float, deuda_neta: float, acciones: float) -> Optional[float]:
+    """Calcula valor por acción para un escenario DCF con los parámetros dados."""
+    if fcf_ttm <= 0 or wacc is None or wacc <= 0 or not acciones:
+        return None
+    proyectado = proyectar_fcf(fcf_ttm, cagr)
+    valor_total = calcular_valor_intrinseco(proyectado, wacc)
+    if valor_total is None:
+        return None
+    equity = valor_total - deuda_neta
+    valor_por_accion = equity / acciones
+    return round(valor_por_accion, 2)
+
+
 def _modelo_dcf(financials: dict) -> dict:
     """Modelo 1 — Reutiliza el DCF ya calculado por la app."""
     valor = _sf(financials.get("valor_intrinseco"))
-    crecimiento_pct = _sf((financials.get("metricas") or {}).get("crecimiento_pct"))
-    wacc_pct = _sf((financials.get("metricas") or {}).get("wacc_pct"))
+    metricas = financials.get("metricas") or {}
+    crecimiento_pct = _sf(metricas.get("crecimiento_pct"))
+    wacc_pct = _sf(metricas.get("wacc_pct"))
+    cagr = _sf(metricas.get("crecimiento_cagr")) or 0.05
+    wacc = _sf(metricas.get("wacc")) or 0.08
+
+    datos = financials.get("datos_empresa") or {}
+    fcf_ttm = _sf(datos.get("fcf_ttm")) or 0.0
+    deuda_neta = _sf(datos.get("deuda_neta")) or 0.0
+    acciones = _sf(datos.get("acciones")) or 0.0
 
     detalle = "Proyección DCF ya calculada"
     if crecimiento_pct is not None and wacc_pct is not None:
@@ -234,10 +279,29 @@ def _modelo_dcf(financials: dict) -> dict:
             f"y WACC {wacc_pct:.2f}%"
         )
 
+    escenarios = {
+        "bear": {
+            "valor": _dcf_escenario(fcf_ttm, cagr * 0.6, wacc * 1.1, deuda_neta, acciones),
+            "cagr_usado": round(cagr * 0.6 * 100, 2),
+            "wacc_usado": round(wacc * 1.1 * 100, 2),
+        },
+        "base": {
+            "valor": valor,
+            "cagr_usado": round(cagr * 100, 2),
+            "wacc_usado": round(wacc * 100, 2),
+        },
+        "bull": {
+            "valor": _dcf_escenario(fcf_ttm, cagr * 1.4, wacc * 0.9, deuda_neta, acciones),
+            "cagr_usado": round(cagr * 1.4 * 100, 2),
+            "wacc_usado": round(wacc * 0.9 * 100, 2),
+        },
+    }
+
     return {
         "valor": valor,
         "aplicable": valor is not None,
         "detalle": detalle,
+        "escenarios": escenarios,
     }
 
 
@@ -468,7 +532,8 @@ def _modelo_tam(financials: dict, ratios: dict, stage: int, wacc: float) -> dict
 
     return {
         "valor": round(valor, 2),
-        "aplicable": True,
+        "aplicable": False,
+        "modo": "escenario",
         "detalle": detalle,
         "tam_estimado_billones": _to_billions(tam_estimado),
         "revenue_objetivo_billones": _to_billions(revenue_objetivo),
@@ -499,6 +564,173 @@ def _modelo_pfcf_trailing(financials: dict, ratios: dict) -> dict:
         "valor": round(valor, 2),
         "aplicable": True,
         "detalle": f"FCF/acción ${fcfps:.2f} × P/FCF sector {pfcf_sector:.1f}x",
+    }
+
+
+def _ebitda_multiple(sector: Optional[str]) -> tuple[float, str]:
+    """Devuelve (múltiplo EV/EBITDA, nombre_sector) para el sector dado."""
+    if sector:
+        for key, mult in _SECTOR_EBITDA_MULTIPLES.items():
+            if key.lower() in sector.lower():
+                return mult, key
+    return _DEFAULT_EBITDA_MULTIPLE, "Default"
+
+
+def _modelo_ev_ebitda(financials: dict) -> dict:
+    """Modelo EV/EBITDA — Enterprise Value implícito dividido por EBITDA TTM sectorial."""
+    datos = financials.get("datos_empresa") or {}
+    ebitda = _sf(datos.get("ebitda_ttm"))
+    acciones = _sf(datos.get("acciones"))
+    deuda_neta = _sf(datos.get("deuda_neta")) or 0.0
+    sector = datos.get("sector")
+
+    if ebitda is None or ebitda <= 0:
+        return {"valor": None, "aplicable": False,
+                "detalle": "EBITDA TTM negativo o no disponible — EV/EBITDA no aplicable"}
+    if acciones is None or not acciones:
+        return {"valor": None, "aplicable": False,
+                "detalle": "Acciones no disponibles"}
+
+    mult, sector_key = _ebitda_multiple(sector)
+    ev_estimado = ebitda * mult
+    equity_value = ev_estimado - deuda_neta
+
+    if equity_value <= 0:
+        return {
+            "valor": None,
+            "aplicable": False,
+            "detalle": (
+                f"EBITDA TTM ${_to_billions(ebitda):.2f}B × {mult:.0f}x ({sector_key}) = "
+                f"EV ${_to_billions(ev_estimado):.2f}B — Deuda neta ${_to_billions(deuda_neta):.2f}B → "
+                f"Equity negativo (deuda excede el EV estimado)"
+            ),
+        }
+
+    valor = equity_value / acciones
+    return {
+        "valor": round(valor, 2),
+        "aplicable": True,
+        "detalle": (
+            f"EBITDA TTM ${_to_billions(ebitda):.2f}B × {mult:.0f}x ({sector_key}) = "
+            f"EV ${_to_billions(ev_estimado):.2f}B — Deuda neta ${_to_billions(deuda_neta):.2f}B = "
+            f"Equity ${_to_billions(equity_value):.2f}B ÷ {acciones / 1e9:.2f}B acciones"
+        ),
+    }
+
+
+def _modelo_ddm(financials: dict) -> dict:
+    """
+    Modelo DDM — Gordon Growth Model.
+
+    P = DPS / (Ke - g)
+    Solo aplica cuando la empresa tiene dividendos estables con historial ≥ 2 años.
+    """
+    datos = financials.get("datos_empresa") or {}
+    metricas = financials.get("metricas") or {}
+    dividendos = financials.get("dividendos") or {}
+
+    dps = _sf(dividendos.get("annual_dividend"))
+    dividend_cagr = _sf(dividendos.get("dividend_cagr"))
+    dividend_years = int(dividendos.get("dividend_years") or 0)
+    beta = _sf(datos.get("beta"))
+    tasa_rf = _sf(metricas.get("tasa_rf"))
+
+    if dps is None or dps <= 0:
+        return {"valor": None, "aplicable": False,
+                "detalle": "Empresa no paga dividendos"}
+
+    if dividend_years < 2 or dividend_cagr is None:
+        return {"valor": None, "aplicable": False,
+                "detalle": "Historial de dividendos insuficiente (menos de 2 años)"}
+
+    beta_usado = beta if beta is not None else 1.0
+    rf = tasa_rf if tasa_rf is not None else 0.045
+    ke = rf + beta_usado * (_MARKET_RETURN_FED - rf)
+
+    if ke <= 0:
+        return {"valor": None, "aplicable": False,
+                "detalle": f"Ke ({ke*100:.2f}%) ≤ 0 — modelo no aplicable"}
+
+    g_raw = dividend_cagr
+    g_capped = False
+    cap_msg = ""
+
+    # Paso 1: floor en 0 para dividendos estancados
+    if g_raw < 0:
+        g = 0.0
+    else:
+        g = g_raw
+
+    # Paso 2: cap absoluto al 10% (dividendo no puede crecer en perpetuidad
+    # más que la economía nominal)
+    if g > 0.10:
+        g = 0.10
+        g_capped = True
+        cap_msg = f"g capeado al 10% (CAGR histórico {g_raw*100:.1f}%)"
+
+    # Paso 3: cap relativo al 60% de Ke — previene divergencia en empresas
+    # defensivas con beta bajo y CAGR de dividendo alto (KO, JNJ, PG, T)
+    ke_60pct = ke * 0.60
+    if g >= ke_60pct:
+        g_capeado_ke = ke * 0.55
+        if not g_capped:
+            cap_msg = (
+                f"g capeado al 55% de Ke para evitar divergencia "
+                f"(CAGR histórico era {g_raw*100:.1f}%)"
+            )
+        else:
+            cap_msg = (
+                f"g capeado al 55% de Ke (CAGR histórico {g_raw*100:.1f}% → "
+                f"10% absoluto → {g_capeado_ke*100:.2f}% relativo)"
+            )
+        g = g_capeado_ke
+        g_capped = True
+
+    if g >= ke:
+        return {
+            "valor": None,
+            "aplicable": False,
+            "detalle": (
+                f"g ({g*100:.2f}%) ≥ Ke ({ke*100:.2f}%): el modelo diverge con estos parámetros"
+            ),
+        }
+
+    spread = ke - g
+    if spread < 0.01:
+        return {
+            "valor": None,
+            "aplicable": False,
+            "detalle": (
+                f"Ke − g = {spread*100:.2f}% < 1%: denominador demasiado pequeño "
+                f"para producir un valor estable"
+            ),
+        }
+
+    valor = dps / spread
+    g_detalle = (
+        f"g calculada con CAGR de {dividend_years} años: {g_raw*100:.2f}%"
+        + (f" → capeado a {g*100:.2f}% ({cap_msg})" if g_capped else "")
+    )
+    detalle = (
+        f"DPS ${dps:.4f} ÷ (Ke {ke*100:.2f}% − g {g*100:.2f}%) = "
+        f"${dps:.4f} ÷ {spread*100:.2f}% = ${valor:.2f}. "
+        f"Ke = rf {rf*100:.2f}% + β {beta_usado:.2f} × "
+        f"({_MARKET_RETURN_FED*100:.0f}% − {rf*100:.2f}%). "
+        + g_detalle
+        + (" | β=1.0 asumido (dato no disponible)" if beta is None else "")
+    )
+
+    return {
+        "valor": round(valor, 2),
+        "aplicable": True,
+        "dps": dps,
+        "ke_pct": round(ke * 100, 2),
+        "g_pct": round(g * 100, 2),
+        "g_raw_pct": round(g_raw * 100, 2),
+        "g_capped": g_capped,
+        "spread_pct": round(spread * 100, 2),
+        "dividend_years": dividend_years,
+        "detalle": detalle,
     }
 
 
@@ -539,15 +771,19 @@ def _modelo_fwd_fcf(financials: dict, ratios: dict) -> dict:
     fcf_ttm = _sf(datos.get("fcf_ttm"))
     acciones = _sf(datos.get("acciones"))
     pfcf_sector = ratios["pfcf"]
-    net_margin = _sf(financials.get("net_margin")) or 0.10
+    net_margin = _sf(financials.get("net_margin"))
     rev_growth = _sf((financials.get("metricas") or {}).get("crecimiento_cagr")) or 0.05
 
     if fcf_ttm is None or acciones is None or not acciones or fcf_ttm <= 0:
         return {"valor": None, "aplicable": False,
                 "detalle": "FCF TTM negativo o no disponible — Forward P/FCF no aplicable"}
 
+    if net_margin is None or net_margin <= 0:
+        return {"valor": None, "aplicable": False,
+                "detalle": "Margen neto negativo — Forward P/FCF no estimable con pérdidas"}
+
     # FCF forward estimado con ajuste de margen
-    margen_fcf = abs(net_margin)
+    margen_fcf = net_margin
     ajuste = 1 + (rev_growth * margen_fcf)
     fcf_fwd = fcf_ttm * ajuste
     fcfps_fwd = fcf_fwd / acciones
@@ -565,7 +801,7 @@ def _modelo_fwd_fcf(financials: dict, ratios: dict) -> dict:
 
 def _fed_reduction(value: float) -> float:
     """
-    Tabla de reducción del Forward Earnings Discounted model.
+    Tabla de reducción del Earnings Growth Model.
     Para growth: value es el porcentaje (ej. 25.0 para 25%).
     Para sector P/E: value es el múltiplo directo (ej. 55.35).
     Devuelve la fracción de reducción (0.0 – 0.40).
@@ -587,7 +823,7 @@ def _fed_reduction(value: float) -> float:
 
 def _modelo_schwab_iv(financials: dict, ratios: dict) -> dict:
     """
-    Modelo — Forward Earnings Discounted (PEG-CAPM Hybrid).
+    Modelo — Earnings Growth Model (PEG-CAPM Hybrid).
 
     Fórmula: IV = (EPS_ttm × (1+g_adj)^N × PE_adj) / (1+r_capm)^N
     Penaliza crecimientos y múltiplos altos con una tabla de reducción progresiva.
@@ -874,7 +1110,7 @@ def run_all_models(
     wacc: float,
 ) -> dict:
     """
-    Ejecuta los 9 modelos de valuación y calcula el precio consenso ponderado.
+    Ejecuta los 13 modelos de valuación y calcula el precio consenso ponderado.
 
     Parámetros:
         ticker:     Símbolo bursátil (solo para contexto en el retorno).
@@ -900,6 +1136,8 @@ def run_all_models(
         "pgp":               _modelo_pgp(financials, ratios),
         "tam":               _modelo_tam(financials, ratios, stage, wacc),
         "pfcf_trailing":     _modelo_pfcf_trailing(financials, ratios),
+        "ev_ebitda":         _modelo_ev_ebitda(financials),
+        "ddm":               _modelo_ddm(financials),
         "fwd_earnings":      _modelo_fwd_earnings(financials, ratios),
         "fwd_fcf":           _modelo_fwd_fcf(financials, ratios),
         "schwab_iv":         _modelo_schwab_iv(financials, ratios),
@@ -972,12 +1210,15 @@ def run_all_models(
             "detalle": r.get("detalle", ""),
         }
 
-        if key == "reverse_dcf":
+        if key == "dcf":
+            entry["escenarios"] = r.get("escenarios")
+        elif key == "reverse_dcf":
             entry["g_implicita"] = r.get("g_implicita")
             entry["g_implicita_pct"] = r.get("g_implicita_pct")
             entry["cagr_historico_pct"] = r.get("cagr_historico_pct")
             entry["veredicto"] = r.get("veredicto")
         elif key == "tam":
+            entry["modo"] = r.get("modo")
             entry["tam_estimado_billones"] = r.get("tam_estimado_billones")
             entry["revenue_objetivo_billones"] = r.get("revenue_objetivo_billones")
             entry["revenue_objetivo_desc_billones"] = r.get("revenue_objetivo_desc_billones")
@@ -991,6 +1232,14 @@ def run_all_models(
             entry["pe_sector_ref"] = r.get("pe_sector_ref")
         elif key == "ps":
             entry["ps_sector_ref"] = r.get("ps_sector_ref")
+        elif key == "ddm":
+            entry["dps"] = r.get("dps")
+            entry["ke_pct"] = r.get("ke_pct")
+            entry["g_pct"] = r.get("g_pct")
+            entry["g_raw_pct"] = r.get("g_raw_pct")
+            entry["g_capped"] = r.get("g_capped")
+            entry["spread_pct"] = r.get("spread_pct")
+            entry["dividend_years"] = r.get("dividend_years")
         elif key == "schwab_iv":
             entry["eps_ttm"] = r.get("eps_ttm")
             entry["eps_growth_5y_raw_pct"] = r.get("eps_growth_5y_raw_pct")
@@ -1051,6 +1300,20 @@ def run_all_models(
         modelos_usados = [k for k in _MODEL_KEYS if modelos[k]["valor"] is not None and modelos[k]["peso"] > 0]
         modelos_excluidos = [k for k in _MODEL_KEYS if modelos[k]["peso"] == 0 or not modelos[k]["aplicable"]]
 
+        variance = sum(
+            modelos[k]["peso"] * (modelos[k]["valor"] - precio_consenso) ** 2
+            for k in modelos_usados
+        )
+        dr = math.sqrt(variance) / precio_consenso if precio_consenso else None
+        if dr is None:
+            dr_label, dr_color = None, None
+        elif dr < 0.10:
+            dr_label, dr_color = "Alta consistencia entre modelos", "success"
+        elif dr <= 0.25:
+            dr_label, dr_color = "Consistencia moderada", "warning"
+        else:
+            dr_label, dr_color = "Alta dispersión — consenso poco confiable", "danger"
+
         consenso = {
             "precio": precio_consenso,
             "precio_actual": precio_actual,
@@ -1060,8 +1323,13 @@ def run_all_models(
             "veredicto": veredicto_final,
             "modelos_usados": len(modelos_usados),
             "modelos_usados_keys": modelos_usados,
+            "modelos_en_consenso": modelos_usados,
             "modelos_excluidos": modelos_excluidos,
             "confianza": _confianza(len(modelos_usados)),
+            "disagreement_ratio": round(dr, 4) if dr is not None else None,
+            "disagreement_ratio_pct": round(dr * 100, 1) if dr is not None else None,
+            "disagreement_label": dr_label,
+            "disagreement_color": dr_color,
             "disponible": True,
             "razon_no_calculable": None,
         }
