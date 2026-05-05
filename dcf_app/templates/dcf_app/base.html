@@ -86,12 +86,18 @@
             color: #f8fafc;
             background: transparent;
             border-radius: 999px;
-            padding: 0.35rem 0.85rem;
-            font-size: 0.9rem;
+            padding: 0.3rem 0.6rem;
+            font-size: 1rem;
             display: inline-flex;
             align-items: center;
-            gap: 0.35rem;
+            justify-content: center;
+            gap: 0;
             transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+            min-width: 2.2rem;
+        }
+
+        #theme-toggle-text {
+            display: none;
         }
 
         .theme-toggle-btn:hover,
@@ -155,6 +161,13 @@
             --mobile-nav-panel-bg: #111827;
             --mobile-nav-panel-border: rgba(148, 163, 184, 0.34);
             --mobile-nav-button-bg: rgba(255, 255, 255, 0.07);
+            /* Bootstrap bg-subtle vars usados en inline styles (no se reasignan sin data-bs-theme) */
+            --bs-success-bg-subtle: rgba(34, 197, 94, 0.12);
+            --bs-danger-bg-subtle: rgba(239, 68, 68, 0.12);
+            --bs-warning-bg-subtle: rgba(234, 179, 8, 0.12);
+            --bs-info-bg-subtle: rgba(6, 182, 212, 0.12);
+            --bs-primary-bg-subtle: rgba(37, 99, 235, 0.12);
+            --bs-secondary-bg-subtle: rgba(148, 163, 184, 0.12);
         }
 
         main {
@@ -193,6 +206,80 @@
         .theme-dark .bg-primary-subtle {
             background-color: rgba(37, 99, 235, 0.22) !important;
             color: var(--text-primary) !important;
+        }
+
+        /* ── Dark mode: Bootstrap utility classes que no se adaptan automáticamente ── */
+
+        /* Bootstrap subtle badges (Bootstrap 5.3 requiere data-bs-theme para adaptarlos;
+           con .theme-dark los sobreescribimos manualmente) */
+        .theme-dark .bg-success-subtle { background-color: rgba(34, 197, 94, 0.2) !important; }
+        .theme-dark .text-success-emphasis { color: #86efac !important; }
+        .theme-dark .bg-danger-subtle { background-color: rgba(248, 113, 113, 0.2) !important; }
+        .theme-dark .text-danger-emphasis { color: #fca5a5 !important; }
+        .theme-dark .bg-warning-subtle { background-color: rgba(234, 179, 8, 0.22) !important; }
+        .theme-dark .text-warning-emphasis { color: #fde047 !important; }
+        .theme-dark .bg-secondary-subtle { background-color: rgba(148, 163, 184, 0.18) !important; }
+        .theme-dark .text-secondary-emphasis { color: #94a3b8 !important; }
+        .theme-dark .bg-info-subtle { background-color: rgba(6, 182, 212, 0.18) !important; }
+        .theme-dark .text-info-emphasis { color: #67e8f9 !important; }
+
+        /* alert-light → fondo blanco jarring en dark */
+        .theme-dark .alert-light {
+            background-color: rgba(30, 41, 59, 0.6) !important;
+            border-color: var(--surface-border) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* bg-light y bg-white → blancos en dark */
+        .theme-dark .bg-light {
+            background-color: rgba(30, 41, 59, 0.7) !important;
+            color: var(--text-secondary) !important;
+        }
+        .theme-dark .bg-white {
+            background-color: var(--surface-card) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* Accordion: Bootstrap usa --bs-accordion-bg = blanco por defecto */
+        .theme-dark .accordion-item {
+            background-color: var(--surface-card);
+            border-color: var(--surface-border);
+            color: var(--text-primary);
+        }
+        .theme-dark .accordion-body {
+            background-color: var(--surface-card);
+            color: var(--text-primary);
+        }
+
+        /* bg-warning + text-dark: el amarillo BS5 en dark puede perder contraste */
+        .theme-dark .bg-warning {
+            background-color: rgba(234, 179, 8, 0.9) !important;
+        }
+        .theme-dark .text-dark {
+            color: #1e293b !important;
+        }
+        /* text-success/warning/danger: Bootstrap light mode usa valores oscuros que no se ven en fondo oscuro */
+        .theme-dark .text-success { color: #4ade80 !important; }
+        .theme-dark .text-warning { color: #facc15 !important; }
+        .theme-dark .text-danger  { color: #f87171 !important; }
+        .theme-dark .text-info    { color: #38bdf8 !important; }
+        /* Badges con bg-opacity-10 (Algo útil): fondo semi-transparente + texto claro en dark mode */
+        .theme-dark .badge.bg-warning.bg-opacity-10 {
+            background-color: rgba(234, 179, 8, 0.22) !important;
+        }
+        .theme-dark .badge.text-warning {
+            color: #fef9c3 !important;
+        }
+        /* Badge sólido bg-warning (ej. "Mantener"): mantener amarillo vibrante, aclarar texto */
+        .theme-dark .badge.bg-warning:not(.bg-opacity-10) {
+            background-color: #ca8a04 !important;
+            color: #fefce8 !important;
+        }
+        .theme-dark .badge.border-warning { border-color: rgba(250, 204, 21, 0.45) !important; }
+        .theme-dark .badge.border-success { border-color: rgba(74, 222, 128, 0.45) !important; }
+        .theme-dark .badge.border-danger  { border-color: rgba(248, 113, 113, 0.45) !important; }
+        .theme-dark .acc-price {
+            color: rgba(226, 232, 240, 0.85) !important;
         }
 
         .form-control,
@@ -328,7 +415,7 @@
             <div class="collapse nav-actions-panel ms-sm-auto d-sm-flex justify-content-sm-end align-items-sm-center flex-sm-row flex-wrap" id="main-nav-actions">
                 {% block nav_actions %}{% endblock %}
             </div>
-            <div class="nav-controls d-flex align-items-center">
+            <div class="nav-controls d-flex align-items-center ms-2">
                 <button type="button" class="theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema">
                     <span id="theme-toggle-icon" aria-hidden="true">🌙</span>
                     <span id="theme-toggle-text">Modo oscuro</span>
@@ -371,6 +458,7 @@
                 if (textElement) {
                     textElement.textContent = isDark ? "Modo claro" : "Modo oscuro";
                 }
+                window.dispatchEvent(new CustomEvent("dcf-theme-changed", { detail: { dark: isDark } }));
             }
 
             function detectPreferredTheme() {
