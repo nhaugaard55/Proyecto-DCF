@@ -342,6 +342,27 @@ def obtener_noticias_empresa(ticker: str, limite: int = 6) -> List[FMPNewsItem]:
     return cliente.get_company_news(ticker, limit=limite)
 
 
+def obtener_shares_diluidas_fmp(ticker: str) -> Optional[float]:
+    """
+    Intenta obtener las acciones diluidas totales desde el income statement de FMP.
+    Usa weightedAverageShsOutDil, que incluye todas las clases de acciones.
+    Retorna None si no disponible o ante cualquier error.
+    """
+    try:
+        cliente = FMPClient()
+        statements = cliente.get_income_statements(ticker, limit=1)
+        if not statements:
+            return None
+        latest = statements[0]
+        raw = latest.get("weightedAverageShsOutDil")
+        if raw in (None, "", 0):
+            return None
+        val = float(raw)
+        return val if val > 0 else None
+    except Exception:
+        return None
+
+
 def _extraer_año(data: dict) -> Optional[int]:
     """Obtiene el año numérico desde la respuesta de FMP."""
     raw_year = data.get("calendarYear")

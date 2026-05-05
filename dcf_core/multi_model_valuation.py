@@ -1311,8 +1311,10 @@ def run_all_models(
             dr_label, dr_color = "Alta consistencia entre modelos", "success"
         elif dr <= 0.25:
             dr_label, dr_color = "Consistencia moderada", "warning"
-        else:
+        elif dr <= 0.60:
             dr_label, dr_color = "Alta dispersión — consenso poco confiable", "danger"
+        else:
+            dr_label, dr_color = "Dispersión extrema — verificar datos antes de usar este consenso", "danger"
 
         consenso = {
             "precio": precio_consenso,

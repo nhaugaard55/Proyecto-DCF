@@ -2361,6 +2361,11 @@
                         DR: <strong class="text-{{ consenso.disagreement_color }}">{{ consenso.disagreement_ratio_pct }}%</strong>
                         <span class="text-muted">— {{ consenso.disagreement_label }}</span>
                       </div>
+                      {% if consenso.disagreement_ratio > 0.60 %}
+                      <div class="alert alert-danger py-2 px-3 mt-2 mb-0 small" role="alert" style="font-size:0.78rem;">
+                        ⚠️ <strong>Dispersión muy alta.</strong> Verificar los datos antes de usar este consenso. Posibles causas: estructura de acciones compleja, datos de fuente incompletos, o empresa en situación atípica.
+                      </div>
+                      {% endif %}
                       {% endif %}
                     </div>
                   </div>
