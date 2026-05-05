@@ -4,10 +4,30 @@
   .bc-muted  { fill: #6b7280; }
   .bc-curve  { stroke: #1e40af; }
   .bc-dot    { fill: #1e40af; }
-  [data-bs-theme="dark"] .bc-label { fill: #e5e7eb; }
-  [data-bs-theme="dark"] .bc-muted { fill: #9ca3af; }
-  [data-bs-theme="dark"] .bc-curve { stroke: #60a5fa; }
-  [data-bs-theme="dark"] .bc-dot   { fill: #60a5fa; }
+  .theme-dark .bc-label { fill: #e5e7eb; }
+  .theme-dark .bc-muted { fill: #9ca3af; }
+  .theme-dark .bc-curve { stroke: #60a5fa; }
+  .theme-dark .bc-dot   { fill: #60a5fa; }
+  .theme-dark #business-cycle-card {
+    background-color: rgba(19, 27, 45, 0.92);
+    border-color: rgba(59, 130, 246, 0.2);
+    color: #e2e8f0;
+  }
+  .theme-dark #business-cycle-card .card-header {
+    background-color: rgba(21, 30, 50, 0.95);
+    border-color: rgba(59, 130, 246, 0.2);
+    color: #e2e8f0;
+  }
+  .theme-dark #business-cycle-card .card-body {
+    background-color: rgba(19, 27, 45, 0.92);
+  }
+  .theme-dark #business-cycle-card .table {
+    color: #e2e8f0;
+    --bs-table-bg: transparent;
+  }
+  .theme-dark #business-cycle-card .border-top {
+    border-color: rgba(59, 130, 246, 0.2) !important;
+  }
 </style>
 
 <div class="card shadow-sm mb-4" id="business-cycle-card">

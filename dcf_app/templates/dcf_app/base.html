@@ -251,6 +251,9 @@
         .theme-dark .text-dark {
             color: #1e293b !important;
         }
+        .theme-dark .acc-price {
+            color: rgba(226, 232, 240, 0.85) !important;
+        }
 
         .form-control,
         .form-select {
@@ -428,6 +431,7 @@
                 if (textElement) {
                     textElement.textContent = isDark ? "Modo claro" : "Modo oscuro";
                 }
+                window.dispatchEvent(new CustomEvent("dcf-theme-changed", { detail: { dark: isDark } }));
             }
 
             function detectPreferredTheme() {

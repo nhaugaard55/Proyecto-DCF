@@ -3444,28 +3444,45 @@
                     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
                     <script type="text/javascript">
                     (function() {
-                        var isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark'
-                                  || document.body.classList.contains('theme-dark');
-                        new TradingView.widget({
-                            "autosize": true,
-                            "symbol": "{{ tradingview_symbol }}",
-                            "interval": "D",
-                            "timezone": "America/New_York",
-                            "theme": isDark ? "dark" : "light",
-                            "style": "1",
-                            "locale": "es",
-                            "enable_publishing": false,
-                            "allow_symbol_change": false,
-                            "hide_top_toolbar": false,
-                            "hide_legend": false,
-                            "save_image": false,
-                            "studies": [
-                                "RSI@tv-basicstudies",
-                                { "id": "MASimple@tv-basicstudies", "inputs": { "length": 20 } },
-                                { "id": "MASimple@tv-basicstudies", "inputs": { "length": 50 } },
-                                { "id": "MASimple@tv-basicstudies", "inputs": { "length": 200 } }
-                            ],
-                            "container_id": "tradingview_chart_{{ ticker }}"
+                        var TV_CONTAINER_ID = "tradingview_chart_{{ ticker }}";
+                        var TV_SYMBOL = "{{ tradingview_symbol }}";
+
+                        function getIsDark() {
+                            var stored = (function() { try { return localStorage.getItem('dcf-ui-theme'); } catch(e) { return null; } })();
+                            return stored === 'dark' || (!stored && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                        }
+
+                        function initTradingView(isDark) {
+                            var container = document.getElementById(TV_CONTAINER_ID);
+                            if (!container) return;
+                            container.innerHTML = '';
+                            new TradingView.widget({
+                                "autosize": true,
+                                "symbol": TV_SYMBOL,
+                                "interval": "D",
+                                "timezone": "America/New_York",
+                                "theme": isDark ? "dark" : "light",
+                                "style": "1",
+                                "locale": "es",
+                                "enable_publishing": false,
+                                "allow_symbol_change": false,
+                                "hide_top_toolbar": false,
+                                "hide_legend": false,
+                                "save_image": false,
+                                "studies": [
+                                    "RSI@tv-basicstudies",
+                                    { "id": "MASimple@tv-basicstudies", "inputs": { "length": 20 } },
+                                    { "id": "MASimple@tv-basicstudies", "inputs": { "length": 50 } },
+                                    { "id": "MASimple@tv-basicstudies", "inputs": { "length": 200 } }
+                                ],
+                                "container_id": TV_CONTAINER_ID
+                            });
+                        }
+
+                        initTradingView(getIsDark());
+
+                        window.addEventListener('dcf-theme-changed', function(e) {
+                            initTradingView(e.detail.dark);
                         });
                     })();
                     </script>
@@ -4100,7 +4117,8 @@ document.addEventListener("DOMContentLoaded", function () {
             const precioData = JSON.parse(precioDataEl.textContent);
             const valorIntrinseco = {% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None %}{{ multi_model.consenso.precio }}{% else %}null{% endif %};
             const labelIntrinseco = "Valor consenso";
-            const isDark = document.body.classList.contains("theme-dark");
+            const _storedTheme = (() => { try { return localStorage.getItem("dcf-ui-theme"); } catch(e) { return null; } })();
+            const isDark = _storedTheme === "dark" || (!_storedTheme && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
             const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
             const textColor = isDark ? "#e2e8f0" : "#0b1d35";
             const isMobileChart = window.matchMedia("(max-width: 575.98px)").matches;
