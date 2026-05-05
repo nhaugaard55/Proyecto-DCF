@@ -234,6 +234,13 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     metricas = financials.get("metricas") or {}
     cagr_raw = _safe_float(metricas.get("crecimiento_cagr"))
 
+    # FCF TTM en dólares (para exclusiones por escala)
+    fcf_ttm_raw = _safe_float(datos_empresa.get("fcf_ttm"))
+
+    # Sector y EBITDA (para exclusiones sectoriales y de tamaño)
+    sector      = (datos_empresa.get("sector") or "").strip()
+    ebitda_raw  = _safe_float(datos_empresa.get("ebitda_ttm"))
+
     # ── SEÑAL 1: Free Cash Flow ──────────────────────────────────────────────
     fcf_cagr_display = "N/A"
     if not fcf_vals:
@@ -317,11 +324,18 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         scores[2] += 0.5
         fcf_cagr_display = "N/A (FCF negativo)"
     elif cagr_raw is not None:
-        fcf_cagr_display = f"{cagr_raw:.1%}"
-        if cagr_raw > 0.50:
+        # Cap at 80%: a higher CAGR almost always signals a base-year anomaly,
+        # not sustained hyper growth — cap only for scoring, not for display/DCF.
+        cagr_for_scoring = min(cagr_raw, 0.80)
+        fcf_cagr_display = f"{cagr_raw:.1%}" + (" (cap 80% para scoring)" if cagr_raw > 0.80 else "")
+        if cagr_for_scoring > 0.50:
             scores[2] += 2.0
-        elif cagr_raw > 0.15:
-            scores[4] += 2.0
+        elif cagr_for_scoring > 0.15:
+            # Empresa que crece FCF Y paga dividendos → Capital Return, no Operating Leverage
+            if has_dividends:
+                scores[5] += 2.0
+            else:
+                scores[4] += 2.0
         else:
             scores[5] += 1.0
             scores[6] += 1.0
@@ -365,6 +379,37 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     if revenue_growth is None and net_margin is None and consec_neg >= 3 and n_fcf >= 4:
         scores[6] += 1.5
         scores[1] = max(0.0, scores[1] - 1.0)
+
+    # ── Exclusiones sectoriales ──────────────────────────────────────────────────
+    # Energy/Utilities/Consumer Staples: crecimiento de revenue atado a precios de
+    # commodities y tipo de cambio, no a expansión real del negocio.
+    _SECTORES_COMMODITY = {"Energy", "Utilities", "Consumer Staples"}
+    if sector in _SECTORES_COMMODITY:
+        scores[1] = 0.0
+        scores[2] = scores[2] * 0.30
+
+    # ── Exclusión por EBITDA: empresa con $2B+ de EBITDA no es Startup/Hyper Growth ──
+    if ebitda_raw is not None and ebitda_raw > 2_000_000_000:
+        scores[1] = 0.0
+        scores[2] = scores[2] * 0.5
+
+    # ── Exclusiones por escala: empresas grandes no pueden ser Startup/Hyper Growth ──
+    # FCF > $3B: incompatible con etapas tempranas; si además crece, señal positiva
+    if fcf_ttm_raw is not None and fcf_ttm_raw > 3_000_000_000:
+        scores[1] = 0.0
+        scores[2] = scores[2] * 0.5
+        if _is_growing(fcf_vals, 3):
+            if has_dividends:
+                scores[5] += 2.0  # FCF masivo + creciente + dividendos → Capital Return
+            else:
+                scores[4] += 2.0  # FCF masivo + creciente sin dividendos → Operating Leverage
+    # Revenue grande + dividendos: descarta Hyper Growth
+    if revenue_ttm is not None and has_dividends and revenue_ttm >= 20_000_000_000:
+        scores[2] = 0.0
+    # Escala de $50B+: descarta etapas tempranas
+    if revenue_ttm is not None and revenue_ttm >= 50_000_000_000:
+        scores[1] = 0.0
+        scores[2] = 0.0
 
     # ── Determinar etapa ganadora ────────────────────────────────────────────
     sorted_stages = sorted(scores.items(), key=lambda x: x[1], reverse=True)

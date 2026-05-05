@@ -2346,6 +2346,9 @@
                             {% with valor=resultado.datos_empresa.acciones_billones %}
                                 <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
                             {% endwith %}
+                            {% if resultado.datos_empresa.acciones_ajuste_aviso %}
+                            <small class="text-warning d-block mt-1">⚠ {{ resultado.datos_empresa.acciones_ajuste_aviso }}</small>
+                            {% endif %}
                         </div>
                         <div class="col-6">
                             <span class="text-muted small d-block">Market Cap — Capitalización de mercado</span>
@@ -2364,6 +2367,9 @@
                             {% with valor=resultado.datos_empresa.beta %}
                                 <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
                             {% endwith %}
+                            {% if resultado.datos_empresa.beta_aviso %}
+                            <small class="text-warning d-block mt-1">⚠ {{ resultado.datos_empresa.beta_aviso }}</small>
+                            {% endif %}
                         </div>
                         <div class="col-6">
                             <span class="text-muted small d-block">Tasa impositiva efectiva</span>
@@ -2430,6 +2436,12 @@
                             <span>{% with valor=resultado.metricas.crecimiento_promedio_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
                         </li>
                     </ul>
+                    {% if resultado.metricas.cagr_cap_aviso %}
+                    <div class="alert alert-warning d-flex gap-2 mt-3 mb-0 py-2 px-3 small" role="alert">
+                        <span class="flex-shrink-0">⚠️</span>
+                        <span>{{ resultado.metricas.cagr_cap_aviso }}</span>
+                    </div>
+                    {% endif %}
                     {% if resultado.metricas.valor_terminal %}
                     <div class="pt-3 small text-muted">Valor terminal estimado: ${{ resultado.metricas.valor_terminal|floatformat:2 }}B</div>
                     {% endif %}
@@ -2707,6 +2719,12 @@
               <div id="acc-ps" class="accordion-collapse collapse">
                 <div class="accordion-body">
                   <p class="text-muted small mb-3">Multiplica los ingresos por acción por el P/S de referencia del sector.</p>
+                  {% if resultado.datos_empresa.escala_aviso %}
+                  <div class="alert alert-warning d-flex gap-2 py-2 px-3 small mb-3" role="alert">
+                    <span class="flex-shrink-0">⚠️</span>
+                    <span>{{ resultado.datos_empresa.escala_aviso }}</span>
+                  </div>
+                  {% endif %}
                   <div class="row g-3">
                     <div class="col-md-3"><span class="text-muted small d-block">Ingresos TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">P/S sector (ref.)</span><span class="fw-semibold fs-5">{% if m.ps_sector_ref is not None %}{{ m.ps_sector_ref|floatformat:1 }}x{% else %}N/D{% endif %}</span></div>

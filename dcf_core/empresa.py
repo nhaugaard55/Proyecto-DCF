@@ -475,6 +475,13 @@ def analizar_empresa(
     if not sector:
         sector = "Desconocido"
     beta = to_float(info.get("beta"), 1.0)
+    beta_aviso = None
+    if beta <= 0:
+        beta_aviso = (
+            f"Beta negativo o cero detectado ({beta:.2f}) — usando 0.5 "
+            "como valor mínimo para el cálculo del CAPM"
+        )
+        beta = 0.5
     tax_rate_info = to_float(info.get("effectiveTaxRate"), 0.25)
     cost_of_debt_info = to_float(info.get("yield"), 0.05)
 
@@ -487,6 +494,23 @@ def analizar_empresa(
         precio = to_float(history["Close"].iloc[-1], 0)
     else:
         precio = to_float(info.get("currentPrice") or info.get("previousClose"), 0)
+
+    # Consistencia de shares: si yfinance devuelve un valor muy distinto al implicado
+    # por market_cap / precio, usar el implicado (ocurre en estructuras de capital complejas)
+    acciones_ajuste_aviso = None
+    market_cap_yf = to_float(info.get("marketCap"), 0)
+    if acciones and precio and market_cap_yf:
+        shares_implicitas = market_cap_yf / precio
+        if shares_implicitas > 0:
+            ratio_diff = abs(acciones - shares_implicitas) / shares_implicitas
+            if ratio_diff > 0.40:
+                orig_m = round(acciones / 1e6, 1)
+                impl_m = round(shares_implicitas / 1e6, 1)
+                acciones_ajuste_aviso = (
+                    f"Shares ajustadas por inconsistencia: yfinance devolvió {orig_m}M, "
+                    f"market cap implica {impl_m}M. Usando {impl_m}M."
+                )
+                acciones = shares_implicitas
 
     equity = acciones * precio
 
@@ -508,6 +532,9 @@ def analizar_empresa(
                 if not cash_series.empty:
                     cash = to_float(cash_series.iloc[0], 0)
                     break
+    # Chequeo de escala de caja: mismo problema que revenue en ADRs de moneda local
+    if cash and equity > 0 and cash > equity * 5:
+        cash = cash / 1000
     net_debt = debt - cash  # LT-only, mantenido por compatibilidad
 
     # Deuda total (LP + corriente) para cálculo correcto del equity value
@@ -678,6 +705,15 @@ def analizar_empresa(
     tasa_crecimiento = tasa_auto
     metodo_utilizado = metodo_nombre
 
+    # Cap del CAGR usado en el DCF: valores >50% casi siempre reflejan un año base
+    # anómalo (FCF muy bajo), no crecimiento real sostenible a 5 años.
+    _CAGR_CAP_DCF = 0.50
+    cagr_cap_applied = False
+    cagr_antes_cap = tasa_crecimiento
+    if tasa_crecimiento is not None and tasa_crecimiento > _CAGR_CAP_DCF:
+        tasa_crecimiento = _CAGR_CAP_DCF
+        cagr_cap_applied = True
+
     capm = tasa_rf + beta * (market_return - tasa_rf)
     wacc = calcular_wacc(beta, debt, equity, cost_of_debt, tax_rate, tasa_rf)
 
@@ -805,6 +841,27 @@ def analizar_empresa(
         if wacc > 0 and crecimiento_largo_plazo < wacc:
             valor_terminal = (fcf_final * (1 + crecimiento_largo_plazo)) / (wacc - crecimiento_largo_plazo)
 
+    # Chequeo de escala: yfinance a veces devuelve revenue/GP/EBITDA en moneda local
+    # sin conversión (p.ej. YPF en ARS), produciendo valores 1000x demasiado altos.
+    # Umbral de 100x para no afectar empresas con P/S bajo pero legítimo.
+    revenue_raw = to_optional_float(info.get("totalRevenue"))
+    gross_profit_raw = to_optional_float(info.get("grossProfits"))
+    escala_ajustada = False
+    escala_aviso = None
+    if revenue_raw is not None and equity > 0 and revenue_raw > equity * 100:
+        _rev_b_antes = revenue_raw / 1e9
+        _mcap_b = equity / 1e9
+        revenue_raw = revenue_raw / 1000
+        if gross_profit_raw is not None:
+            gross_profit_raw = gross_profit_raw / 1000
+        if ebitda_val is not None:
+            ebitda_val = ebitda_val / 1000
+        escala_ajustada = True
+        escala_aviso = (
+            f"Escala ajustada (÷1000): revenue reportado ${_rev_b_antes:,.0f}B vs "
+            f"market cap ${_mcap_b:.1f}B — posible conversión de moneda local sin ajustar."
+        )
+
     annual_dividend = to_optional_float(info.get("dividendRate"))
     detalles_metricas = metricas_fuente or {}
     eps_ttm = to_optional_float(info.get("trailingEps"))
@@ -830,10 +887,12 @@ def analizar_empresa(
         # Datos adicionales para valuación multi-modelo
         "eps_ttm": eps_ttm,
         "eps_forward": to_optional_float(info.get("forwardEps")),
-        "revenue_ttm": to_optional_float(info.get("totalRevenue")),
-        "revenue_ttm_billones": to_billions(info.get("totalRevenue")),
-        "gross_profit_ttm": to_optional_float(info.get("grossProfits")),
-        "gross_profit_ttm_billones": to_billions(info.get("grossProfits")),
+        "revenue_ttm": revenue_raw,
+        "revenue_ttm_billones": to_billions(revenue_raw),
+        "gross_profit_ttm": gross_profit_raw,
+        "gross_profit_ttm_billones": to_billions(gross_profit_raw),
+        "escala_ajustada": escala_ajustada,
+        "escala_aviso": escala_aviso,
         "net_income_ttm": net_income_ttm,
         "net_income_ttm_billones": to_billions(net_income_ttm),
         "pe_ratio_raw": pe_ratio,
@@ -843,6 +902,7 @@ def analizar_empresa(
         "precio_actual": precio,
         "acciones": acciones,
         "acciones_billones": to_billions(acciones),
+        "acciones_ajuste_aviso": acciones_ajuste_aviso,
         "market_cap": equity,
         "market_cap_billones": to_billions(equity),
         "deuda": debt,
@@ -870,6 +930,7 @@ def analizar_empresa(
         "eps_growth_5y": eps_growth_5y,
         "eps_growth_5y_fuente": eps_growth_5y_fuente,
         "beta": beta,
+        "beta_aviso": beta_aviso,
         "tasa_impositiva": tax_rate,
         "tasa_impositiva_pct": tax_rate * 100 if tax_rate is not None else None,
         "cost_of_debt": cost_of_debt,
@@ -899,6 +960,13 @@ def analizar_empresa(
         "crecimiento_pct": tasa_crecimiento * 100 if tasa_crecimiento is not None else None,
         "crecimiento_cagr": crecimiento,
         "crecimiento_cagr_pct": crecimiento * 100 if crecimiento is not None else None,
+        "cagr_cap_applied": cagr_cap_applied,
+        "cagr_cap_aviso": (
+            f"CAGR histórico {cagr_antes_cap:.1%} — capeado al {_CAGR_CAP_DCF:.0%} por "
+            "año base anómalo. Considerar usar el Reverse DCF para evaluar qué "
+            "crecimiento implica el precio actual."
+            if cagr_cap_applied else None
+        ),
         "crecimiento_promedio": avg_growth_rate,
         "crecimiento_promedio_pct": avg_growth_rate * 100 if avg_growth_rate is not None else None,
         "valor_terminal": to_billions(valor_terminal),
