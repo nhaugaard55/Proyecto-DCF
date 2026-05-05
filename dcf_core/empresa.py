@@ -19,7 +19,7 @@ from .finanzas import (
 
 from .marketaux import MarketauxError, obtener_noticias_marketaux
 from .finnhub import FinnhubError, obtener_noticias_finnhub
-from .fmp import FCFEntry, obtener_sector_empresa
+from .fmp import FCFEntry, obtener_sector_empresa, obtener_shares_diluidas_fmp
 from .utils import parse_datetime_epoch
 
 MAX_NEWS_ITEMS = 18
@@ -495,20 +495,45 @@ def analizar_empresa(
     else:
         precio = to_float(info.get("currentPrice") or info.get("previousClose"), 0)
 
-    # Consistencia de shares: si yfinance devuelve un valor muy distinto al implicado
-    # por market_cap / precio, usar el implicado (ocurre en estructuras de capital complejas)
     acciones_ajuste_aviso = None
+
+    # CORRECCIÓN 2 — Intentar shares diluidas totales desde FMP (incluye todas las clases)
+    if acciones and ticker:
+        try:
+            shares_fmp = obtener_shares_diluidas_fmp(ticker)
+            if shares_fmp and shares_fmp > acciones * 1.20:
+                fmp_m = round(shares_fmp / 1e6, 1)
+                yf_m = round(acciones / 1e6, 1)
+                acciones_ajuste_aviso = (
+                    f"Acciones ajustadas — FMP reporta {fmp_m}M acciones diluidas "
+                    f"vs {yf_m}M de yfinance. Posible estructura multi-clase (ej: LILAK, GOOGL, BRK). "
+                    f"Usando {fmp_m}M."
+                )
+                acciones = shares_fmp
+        except Exception:
+            pass
+
+    # CORRECCIÓN 1 — Chequeo de consistencia mejorado: market_cap / precio como referencia
     market_cap_yf = to_float(info.get("marketCap"), 0)
     if acciones and precio and market_cap_yf:
         shares_implicitas = market_cap_yf / precio
         if shares_implicitas > 0:
-            ratio_diff = abs(acciones - shares_implicitas) / shares_implicitas
-            if ratio_diff > 0.40:
+            if acciones < shares_implicitas * 0.60:
+                # Subestimación significativa (>40%): probable estructura multi-clase
                 orig_m = round(acciones / 1e6, 1)
                 impl_m = round(shares_implicitas / 1e6, 1)
                 acciones_ajuste_aviso = (
-                    f"Shares ajustadas por inconsistencia: yfinance devolvió {orig_m}M, "
-                    f"market cap implica {impl_m}M. Usando {impl_m}M."
+                    f"Acciones ajustadas — posible estructura multi-clase (ej: LILAK, GOOGL, BRK): "
+                    f"se reportaban {orig_m}M, market cap implica {impl_m}M. Usando {impl_m}M."
+                )
+                acciones = shares_implicitas
+            elif acciones > shares_implicitas * 1.40:
+                # Sobreestimación (raro): posible dato erróneo de yfinance
+                orig_m = round(acciones / 1e6, 1)
+                impl_m = round(shares_implicitas / 1e6, 1)
+                acciones_ajuste_aviso = (
+                    f"Acciones ajustadas — dato yfinance ({orig_m}M) excede en >40% "
+                    f"lo implicado por market cap ({impl_m}M). Usando {impl_m}M."
                 )
                 acciones = shares_implicitas
 
