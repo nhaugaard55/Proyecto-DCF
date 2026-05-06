@@ -1062,6 +1062,8 @@
             overflow: hidden;
         }
         .acc-left .fw-semibold {
+            flex: 1;
+            min-width: 0;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1086,6 +1088,25 @@
             right: 3rem;
             white-space: nowrap;
             pointer-events: none;
+        }
+
+        @media (min-width: 768px) {
+            .acc-left {
+                display: inline-flex;
+                align-items: center;
+                flex-wrap: nowrap;
+                gap: 0.4rem;
+                width: 45%;
+                overflow: hidden;
+            }
+            .acc-left .fw-semibold {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .acc-left .badge { flex-shrink: 0; }
         }
 
         @media (max-width: 767px) {
@@ -3371,9 +3392,8 @@
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-tam" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
-                    <span class="acc-title-m">TAM</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge bg-warning-subtle text-warning-emphasis small">Escenario orientativo</span>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis small">Informativo</span>
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   <span class="acc-verdict"></span>
