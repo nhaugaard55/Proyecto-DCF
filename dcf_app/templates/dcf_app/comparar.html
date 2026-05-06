@@ -198,8 +198,6 @@
     </table>
   </div>
   <div class="compare-actions d-flex flex-wrap gap-3 mt-3">
-    <a href="{% url 'dcf_excel' %}?ticker={{ ticker_a }}" class="btn btn-sm btn-outline-success">⬇ Excel {{ ticker_a }}</a>
-    <a href="{% url 'dcf_excel' %}?ticker={{ ticker_b }}" class="btn btn-sm btn-outline-success">⬇ Excel {{ ticker_b }}</a>
     <a href="{% url 'dcf_executive_report' ticker_a %}" class="btn btn-sm btn-outline-primary">⬇ PDF {{ ticker_a }}</a>
     <a href="{% url 'dcf_executive_report' ticker_b %}" class="btn btn-sm btn-outline-primary">⬇ PDF {{ ticker_b }}</a>
   </div>

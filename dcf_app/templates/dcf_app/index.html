@@ -3586,7 +3586,6 @@
 {# ---- Botones de acción ---- #}
 <div class="results-actions d-flex flex-wrap justify-content-center gap-3 mt-5 mb-4">
     <a href="{% url 'dcf_executive_report' ticker %}" class="btn btn-outline-primary btn-lg px-4">⬇ Descargar PDF</a>
-    <a href="{% url 'dcf_excel' %}?ticker={{ ticker }}" class="btn btn-outline-success btn-lg px-4">⬇ Descargar Excel</a>
     <button type="button" id="watchlist-btn"
         class="btn btn-lg px-4 {% if in_watchlist %}btn-warning{% else %}btn-outline-warning{% endif %}"
         data-ticker="{{ ticker }}"

@@ -4,8 +4,7 @@ from . import views
 urlpatterns = [
     path('', views.dcf_view, name='home'),
     path('reporte-ejecutivo/<str:ticker>/', views.dcf_executive_report_view, name='dcf_executive_report'),
-    path('dcf/excel/', views.dcf_excel_view, name='dcf_excel'),
-    path('watchlist/', views.watchlist_view, name='watchlist'),
+path('watchlist/', views.watchlist_view, name='watchlist'),
     path('watchlist/toggle/', views.watchlist_toggle, name='watchlist_toggle'),
     path('watchlist/status/', views.watchlist_status, name='watchlist_status'),
     path('comparar/', views.comparar_view, name='comparar'),
