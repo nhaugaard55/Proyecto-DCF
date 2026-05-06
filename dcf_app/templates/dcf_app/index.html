@@ -1089,10 +1089,14 @@
         }
 
         @media (max-width: 767px) {
-            .accordion-button { flex-wrap: wrap; gap: 0.3rem; padding: 0.75rem 2.5rem 0.75rem 0.85rem; }
-            .acc-left  { max-width: 100%; }
-            .acc-price { position: static; left: auto; right: auto; text-align: left; }
-            .acc-verdict { position: static; right: auto; }
+            .accordion-button { flex-wrap: nowrap; gap: 0; padding: 0.75rem 2.5rem 0.75rem 0.85rem; align-items: center; }
+            .acc-left  { flex: 1; min-width: 0; overflow: hidden; }
+            .acc-price {
+                position: static !important; left: auto !important; right: auto !important;
+                text-align: right !important; min-width: 5.5rem; flex-shrink: 0;
+                padding-right: 0.5rem;
+            }
+            .acc-verdict { position: static !important; right: auto !important; min-width: 7rem; text-align: center; flex-shrink: 0; }
         }
 
         /* Elementos exclusivos de mobile — ocultos en desktop */
