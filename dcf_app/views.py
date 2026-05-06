@@ -519,9 +519,14 @@ def dcf_executive_report_view(request, ticker: str):
         "az_zona_text": az_zona_text,
     }
 
-    html_string = render_to_string("dcf_app/executive_report.html", context)
-    from weasyprint import HTML as WeasyHTML  # lazy: evita fallo de startup en macOS
-    pdf_bytes = WeasyHTML(string=html_string).write_pdf()
+    try:
+        html_string = render_to_string("dcf_app/executive_report.html", context)
+        from weasyprint import HTML as WeasyHTML  # lazy: evita fallo de startup en macOS/Railway
+        pdf_bytes = WeasyHTML(string=html_string).write_pdf()
+    except (ImportError, OSError):
+        pdf_bytes = _render_pdf("dcf_app/executive_report.html", context)
+        if pdf_bytes is None:
+            return HttpResponse("No se pudo generar el reporte ejecutivo en PDF", status=500)
 
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="Reporte_{ticker}.pdf"'
