@@ -16,6 +16,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from xhtml2pdf import pisa
+from weasyprint import HTML as WeasyHTML
 
 from .models import AnalysisRecord, WatchlistItem
 
@@ -438,48 +439,6 @@ def _render_pdf(template_name: str, context: dict) -> bytes | None:
     return output.getvalue()
 
 
-def dcf_pdf_view(request):
-    ticker = request.GET.get("ticker", "").strip().upper()
-
-    if not ticker:
-        return HttpResponse("Ticker inválido", status=400)
-
-    try:
-        resultado = _cached_ejecutar_dcf(ticker)
-    except Exception as exc:
-        return HttpResponse(f"No se pudo generar el informe: {exc}", status=500)
-
-    if not resultado:
-        return HttpResponse("No hay datos suficientes para generar el informe", status=404)
-
-    try:
-        _cs = detect_company_stage(ticker, resultado)
-    except Exception:
-        _cs = None
-    try:
-        _stage_num = (_cs or {}).get("stage", 4)
-        _wacc_val = (resultado.get("metricas") or {}).get("wacc")
-        _multi_model = run_all_models(ticker, resultado, _stage_num, _wacc_val)
-    except Exception:
-        _multi_model = None
-
-    context = {
-        "resultado": resultado,
-        "ticker": ticker,
-        "generado": timezone.now(),
-        "multi_model": _multi_model,
-        "company_stage": _cs,
-    }
-
-    pdf_bytes = _render_pdf("dcf_app/pdf_report.html", context)
-    if pdf_bytes is None:
-        return HttpResponse("Error generando PDF", status=500)
-
-    response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="DCF_{ticker}.pdf"'
-    return response
-
-
 def dcf_executive_report_view(request, ticker: str):
     ticker = (ticker or "").strip().upper()
 
@@ -512,13 +471,14 @@ def dcf_executive_report_view(request, ticker: str):
         {
             "nombre": modelos[key].get("nombre"),
             "valor": modelos[key].get("valor"),
-            "peso_pct": modelos[key].get("peso_pct"),
+            "peso_pct": modelos[key].get("peso_pct") or 0,
         }
         for key in consenso.get("modelos_usados_keys", [])
         if key in modelos
     ]
+    modelos_consenso.sort(key=lambda m: m["peso_pct"], reverse=True)
+    modelos_consenso = modelos_consenso[:8]
 
-    componentes = []
     score_final = (multi_model or {}).get("score_final") or {}
     componentes_score = score_final.get("componentes") or {}
     etiquetas_componentes = {
@@ -527,6 +487,7 @@ def dcf_executive_report_view(request, ticker: str):
         "solvencia": "Solvencia / Altman",
         "fundamentals": "Filtros fundamentales",
     }
+    componentes = []
     for key in ("upside", "confianza", "solvencia", "fundamentals"):
         item = componentes_score.get(key) or {}
         componentes.append({
@@ -536,8 +497,14 @@ def dcf_executive_report_view(request, ticker: str):
             "detalle": item.get("detalle"),
         })
 
-    dcf_model = modelos.get("dcf") or {}
-    escenarios = dcf_model.get("escenarios") or {}
+    altman_z = modelos.get("altman_z") or {}
+    az_zona_code = altman_z.get("zona_code") or ""
+    az_zona_textos = {
+        "safe": "Alta probabilidad de solvencia a largo plazo.",
+        "grey": "Zona de incertidumbre — monitorear indicadores de deuda.",
+        "distress": "Alta probabilidad de insolvencia en los próximos años.",
+    }
+    az_zona_text = az_zona_textos.get(az_zona_code, "Sin datos disponibles.")
 
     context = {
         "resultado": resultado,
@@ -548,15 +515,15 @@ def dcf_executive_report_view(request, ticker: str):
         "score_final": score_final,
         "componentes_score": componentes,
         "modelos_consenso": modelos_consenso,
-        "escenarios": escenarios,
+        "altman_z": altman_z,
+        "az_zona_text": az_zona_text,
     }
 
-    pdf_bytes = _render_pdf("dcf_app/executive_report.html", context)
-    if pdf_bytes is None:
-        return HttpResponse("Error generando PDF", status=500)
+    html_string = render_to_string("dcf_app/executive_report.html", context)
+    pdf_bytes = WeasyHTML(string=html_string).write_pdf()
 
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="Reporte_Ejecutivo_{ticker}.pdf"'
+    response["Content-Disposition"] = f'attachment; filename="Reporte_{ticker}.pdf"'
     return response
 
 
