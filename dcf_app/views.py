@@ -16,7 +16,6 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from xhtml2pdf import pisa
-from weasyprint import HTML as WeasyHTML
 
 from .models import AnalysisRecord, WatchlistItem
 
@@ -520,6 +519,7 @@ def dcf_executive_report_view(request, ticker: str):
     }
 
     html_string = render_to_string("dcf_app/executive_report.html", context)
+    from weasyprint import HTML as WeasyHTML  # lazy: evita fallo de startup en macOS
     pdf_bytes = WeasyHTML(string=html_string).write_pdf()
 
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
