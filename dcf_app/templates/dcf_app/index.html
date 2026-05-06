@@ -1090,25 +1090,6 @@
             pointer-events: none;
         }
 
-        @media (min-width: 768px) {
-            .acc-left {
-                display: inline-flex;
-                align-items: center;
-                flex-wrap: nowrap;
-                gap: 0.4rem;
-                width: 45%;
-                overflow: hidden;
-            }
-            .acc-left .fw-semibold {
-                flex: 1;
-                min-width: 0;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-            .acc-left .badge { flex-shrink: 0; }
-        }
-
         @media (max-width: 767px) {
             .accordion-button { flex-wrap: nowrap; gap: 0; padding: 0.75rem 2.5rem 0.75rem 0.85rem; align-items: center; }
             .acc-left  { flex: 1; min-width: 0; overflow: hidden; }
@@ -1118,6 +1099,31 @@
                 padding-right: 0.5rem;
             }
             .acc-verdict { position: static !important; right: auto !important; min-width: 7rem; flex-shrink: 0; display: flex !important; justify-content: center !important; align-items: center !important; }
+        }
+
+        @media (min-width: 576px) {
+            .accordion-button > .acc-left {
+                display: grid !important;
+                grid-template-columns: minmax(0, 24rem) 6.5rem;
+                align-items: center;
+                gap: 0.5rem;
+                flex: 0 0 31rem !important;
+                width: 31rem !important;
+                max-width: 31rem !important;
+                min-width: 0;
+                overflow: visible !important;
+            }
+            .accordion-button > .acc-left > .fw-semibold {
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .accordion-button > .acc-left > .acc-relevance-badge {
+                justify-self: start;
+                width: max-content;
+                max-width: 6.5rem;
+            }
         }
 
         /* Elementos exclusivos de mobile — ocultos en desktop */
@@ -1155,6 +1161,14 @@
             /* Ocultar título largo y badges de relevancia */
             .acc-left .fw-semibold { display: none; }
             .acc-left .badge { display: none; }
+            .acc-left.acc-single-title .fw-semibold {
+                display: block;
+                font-size: 0.875rem;
+                max-width: 90px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
             /* Mostrar título corto */
             .acc-title-m {
                 display: block;
@@ -2566,7 +2580,7 @@
                   <span class="acc-left">
                     <span class="acc-title-m">DCF</span>
                     <span class="fw-semibold">Flujo de Caja Descontado (DCF)</span>
-                    {% if multi_model %}{% with dcf_m=multi_model.modelos.dcf %}{% if dcf_m %}<span class="badge {% if dcf_m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif dcf_m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ dcf_m.relevancia }}</span>{% endif %}{% endwith %}{% endif %}
+                    {% if multi_model %}{% with dcf_m=multi_model.modelos.dcf %}{% if dcf_m %}<span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if dcf_m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif dcf_m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ dcf_m.relevancia }}</span>{% endif %}{% endwith %}{% endif %}
                   </span>
                   {% if resultado.valor_intrinseco is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ resultado.valor_intrinseco|floatformat:2 }}</span>{% endif %}
                   {% if resultado.estado == "SUBVALUADA" %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>
@@ -2824,7 +2838,7 @@
                   <span class="acc-left">
                     <span class="acc-title-m">P/E</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
+                    <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   {% if m.upside_pct is not None and m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct is not None and m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% else %}<span class="acc-verdict"></span>{% endif %}
@@ -2854,7 +2868,7 @@
                   <span class="acc-left">
                     <span class="acc-title-m">P/S</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
+                    <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   {% if m.upside_pct is not None and m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct is not None and m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% else %}<span class="acc-verdict"></span>{% endif %}
@@ -2890,7 +2904,7 @@
                   <span class="acc-left">
                     <span class="acc-title-m">P/GP</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
+                    <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   {% if m.upside_pct is not None and m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct is not None and m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% else %}<span class="acc-verdict"></span>{% endif %}
@@ -2919,7 +2933,7 @@
                   <span class="acc-left">
                     <span class="acc-title-m">P/FCF</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
+                    <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   {% if m.upside_pct is not None and m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct is not None and m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% else %}<span class="acc-verdict"></span>{% endif %}
@@ -2949,7 +2963,7 @@
                     <span class="acc-title-m">EV/EBITDA</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
                     {% if m.aplicable %}
-                      <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
+                      <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
                     {% else %}
                       <span class="badge bg-secondary-subtle text-secondary-emphasis small"><span class="d-none d-sm-inline">No aplicable</span><span class="d-sm-none">N/A</span></span>
                     {% endif %}
@@ -2989,7 +3003,7 @@
                     <span class="acc-title-m">DDM</span>
                     <span class="fw-semibold">DDM — Dividend Discount Model</span>
                     {% if m.aplicable %}
-                      <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
+                      <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
                     {% else %}
                       <span class="badge bg-secondary-subtle text-secondary-emphasis small"><span class="d-none d-sm-inline">No aplicable</span><span class="d-sm-none">N/A</span></span>
                     {% endif %}
@@ -3036,7 +3050,7 @@
                   <span class="acc-left">
                     <span class="acc-title-m">P/E Fwd</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
+                    <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   {% if m.upside_pct is not None and m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct is not None and m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% else %}<span class="acc-verdict"></span>{% endif %}
@@ -3066,7 +3080,7 @@
                   <span class="acc-left">
                     <span class="acc-title-m">P/FCF Fwd</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
+                    <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   {% if m.upside_pct is not None and m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct is not None and m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% else %}<span class="acc-verdict"></span>{% endif %}
@@ -3096,7 +3110,7 @@
                   <span class="acc-left">
                     <span class="acc-title-m">EGM</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
+                    <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   {% if m.upside_pct is not None and m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct is not None and m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% else %}<span class="acc-verdict"></span>{% endif %}
@@ -3178,7 +3192,7 @@
                   <span class="acc-left">
                     <span class="acc-title-m">Liquidación</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
+                    <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif m.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small"><span class="d-none d-sm-inline">{{ m.relevancia }}</span><span class="d-sm-none">{% if m.relevancia == 'Algo útil' %}Parcial{% elif m.relevancia == 'No aplicable' or m.relevancia == 'No útil' %}N/A{% else %}{{ m.relevancia }}{% endif %}</span></span>
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   {# NCAV solo como veredicto en stage 6 #}
@@ -3235,11 +3249,9 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-rdcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="acc-left">
-                    <span class="acc-title-m">Rev. DCF</span>
+                  <span class="acc-left acc-single-title">
                     <span class="fw-semibold">Reverse DCF</span>
-                    <span class="badge {% if rdcf.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif rdcf.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ rdcf.relevancia }}</span>
-                    <span class="badge bg-secondary-subtle text-secondary-emphasis small">Informativo</span>
+                    <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if rdcf.relevancia == 'Útil' %}bg-success-subtle text-success-emphasis{% elif rdcf.relevancia == 'Algo útil' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %} small">{{ rdcf.relevancia }}</span>
                   </span>
                   {% if rdcf.g_implicita_pct is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;"><span class="d-none d-sm-inline">Crecimiento implícito: {{ rdcf.g_implicita_pct|floatformat:1 }}%</span><span class="d-sm-none">g = {{ rdcf.g_implicita_pct|floatformat:1 }}%</span></span>{% endif %}
                   <span class="acc-verdict"></span>
@@ -3271,17 +3283,15 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-altman" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="acc-left">
-                    <span class="acc-title-m">Altman Z</span>
+                  <span class="acc-left acc-single-title">
                     <span class="fw-semibold">Altman Z-Score</span>
                     {% if az.disponible %}
-                      <span class="badge small {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis{% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis{% else %}bg-danger-subtle text-danger-emphasis{% endif %}">{{ az.zona }}</span>
+                      <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge small {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis{% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis{% else %}bg-danger-subtle text-danger-emphasis{% endif %}">{{ az.zona }}</span>
                     {% else %}
-                      <span class="badge bg-secondary-subtle text-secondary-emphasis small">N/D</span>
+                      <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge bg-secondary-subtle text-secondary-emphasis small">N/D</span>
                     {% endif %}
-                    <span class="badge bg-secondary-subtle text-secondary-emphasis small">Informativo</span>
                   </span>
-                  {% if az.disponible %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;pointer-events:none;"><span class="badge {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis{% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis{% else %}bg-danger-subtle text-danger-emphasis{% endif %}">Z = {{ az.z_score }}</span></span>{% endif %}
+                  {% if az.disponible %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;pointer-events:none;">Z = {{ az.z_score }}</span>{% endif %}
                   <span class="acc-verdict"></span>
                 {% if not az.disponible %}<span class="acc-na-mobile badge bg-secondary-subtle text-secondary-emphasis">N/A</span>{% endif %}
                 </button>
@@ -3345,10 +3355,8 @@
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-tam" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
-                  <span class="acc-left">
-                    <span class="acc-title-m">TAM asistido</span>
+                  <span class="acc-left acc-single-title">
                     <span class="fw-semibold">{{ m.nombre }}</span>
-                    <span class="badge bg-secondary-subtle text-secondary-emphasis small">Informativo</span>
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   <span class="acc-verdict"></span>
