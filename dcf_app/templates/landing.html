@@ -97,11 +97,10 @@
       color: #f8fafc;
       background: transparent;
       border-radius: 999px;
-      padding: 0.35rem 0.85rem;
-      font-size: 0.875rem;
+      padding: 0.35rem 0.6rem;
+      font-size: 1rem;
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
       cursor: pointer;
       transition: background 0.2s ease, border-color 0.2s ease;
     }
@@ -418,6 +417,9 @@
       border: 1px solid var(--surface-border);
       border-radius: 1rem;
       overflow: hidden;
+    }
+    .models-grid .model-item:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
     }
     .model-item {
       background: var(--surface-card);
@@ -746,7 +748,6 @@
       <a href="/app/" class="btn btn-sm" style="background:var(--accent);color:#fff;font-weight:600;border-radius:999px;padding:0.35rem 1rem;">Empezar gratis</a>
       <button class="theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema">
         <span id="theme-icon">🌙</span>
-        <span id="theme-text" class="d-none d-sm-inline">Modo oscuro</span>
       </button>
     </div>
   </div>
@@ -772,7 +773,7 @@
         El valor <span>real</span><br>de cualquier acción
       </h1>
       <p class="hero-subtitle">
-        8 modelos de valuación. Ciclo económico en tiempo real. Etapa del ciclo de vida de la empresa. Todo en un análisis.
+        13 modelos de valuación. Ciclo económico en tiempo real. Etapa del ciclo de vida de la empresa. Todo en un análisis.
       </p>
       <div class="hero-input-group">
         <div class="hero-search-wrapper">
@@ -794,7 +795,7 @@
     <div class="col-lg-6">
       <ul class="hero-checklist">
         <li><span class="hero-check">✓</span> Flujo de caja descontado (DCF) completo</li>
-        <li><span class="hero-check">✓</span> Consensus ponderado de 8 modelos</li>
+        <li><span class="hero-check">✓</span> Consensus ponderado de 13 modelos</li>
         <li><span class="hero-check">✓</span> Ciclo económico y etapa de la empresa</li>
         <li><span class="hero-check">✓</span> Reverse DCF: la tasa implícita del mercado</li>
         <li><span class="hero-check">✓</span> Noticias recientes con resumen IA</li>
@@ -929,7 +930,7 @@
       <div class="feature-card">
         <span class="feature-icon">⚖️</span>
         <div class="feature-title">Valuación multi-modelo</div>
-        <div class="feature-desc">8 modelos con pesos adaptativos según la etapa. DCF, P/E, P/S, P/FCF, Forward Earnings y más. Un precio consenso ponderado y objetivo.</div>
+        <div class="feature-desc">13 modelos con pesos adaptativos según la etapa. DCF, P/E, EV/EBITDA, DDM, Earnings Growth, Liquidación y más. Un precio consenso ponderado y objetivo.</div>
       </div>
     </div>
     <div class="col-md-6 col-lg-4">
@@ -962,7 +963,7 @@
 <section class="py-5" id="modelos">
   <div class="text-center mb-4">
     <div class="section-label">Modelos</div>
-    <h2 class="section-title">8 ángulos del mismo activo</h2>
+    <h2 class="section-title">13 ángulos del mismo activo</h2>
     <p class="section-sub mx-auto">Cada modelo tiene sus fortalezas. El consenso pondera todas.</p>
   </div>
 
@@ -1012,15 +1013,50 @@
     <div class="model-item">
       <span class="model-num">07</span>
       <div>
-        <div class="model-name">P/Forward Earnings</div>
+        <div class="model-name">P/E Forward</div>
         <div class="model-desc">Usa el EPS estimado del próximo año y el P/E forward de referencia del sector.</div>
       </div>
     </div>
     <div class="model-item">
       <span class="model-num">08</span>
       <div>
-        <div class="model-name">P/Forward FCF</div>
+        <div class="model-name">P/FCF Forward</div>
         <div class="model-desc">Proyecta el FCF del próximo ejercicio y aplica el múltiplo P/FCF sectorial.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">09</span>
+      <div>
+        <div class="model-name">EV/EBITDA</div>
+        <div class="model-desc">Aplica el múltiplo EV/EBITDA sectorial al EBITDA de los últimos 12 meses. Útil para comparar empresas con distinta estructura de capital.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">10</span>
+      <div>
+        <div class="model-name">DDM — Gordon Growth</div>
+        <div class="model-desc">Descuenta los dividendos futuros asumiendo crecimiento constante. Solo aplica para empresas con política de dividendos establecida.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">11</span>
+      <div>
+        <div class="model-name">Earnings Growth Model</div>
+        <div class="model-desc">Valúa en función del crecimiento proyectado de ganancias y el P/E de largo plazo. Enfocado en empresas con expansión de EPS sostenida.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">12</span>
+      <div>
+        <div class="model-name">TAM Asistido</div>
+        <div class="model-desc">Estima el valor capturando un porcentaje del mercado total disponible. Especialmente útil en etapas de crecimiento temprano.</div>
+      </div>
+    </div>
+    <div class="model-item">
+      <span class="model-num">13</span>
+      <div>
+        <div class="model-name">Valor de Liquidación</div>
+        <div class="model-desc">Calcula el valor neto de los activos tangibles menos pasivos. Piso de valuación para empresas en etapa madura o de reestructuración.</div>
       </div>
     </div>
   </div>
@@ -1060,7 +1096,7 @@
         <div class="pricing-per">/ mes, facturación mensual</div>
         <ul class="pricing-features">
           <li>Análisis ilimitados</li>
-          <li>8 modelos de valuación</li>
+          <li>13 modelos de valuación</li>
           <li>Ciclo económico en vivo</li>
           <li>Etapa del ciclo de vida</li>
           <li>Precio consenso ponderado</li>
@@ -1126,14 +1162,12 @@
     const body = document.body;
     const btn = document.getElementById("theme-toggle");
     const icon = document.getElementById("theme-icon");
-    const text = document.getElementById("theme-text");
 
     function applyTheme(theme, persist = true) {
       const dark = theme === "dark";
       body.classList.toggle("theme-dark", dark);
       if (persist) { try { localStorage.setItem(storageKey, theme); } catch(e){} }
       if (icon) icon.textContent = dark ? "☀️" : "🌙";
-      if (text) text.textContent = dark ? "Modo claro" : "Modo oscuro";
     }
 
     function detect() {
