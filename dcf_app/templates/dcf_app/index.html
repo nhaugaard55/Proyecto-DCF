@@ -1255,6 +1255,68 @@
                 font-size: 0.5625rem !important;
                 white-space: normal !important;
             }
+
+            .scenario-note {
+                flex-basis: 100%;
+                margin-top: 0.25rem;
+            }
+
+            .egm-params-table {
+                display: block;
+            }
+            .egm-params-table thead {
+                display: none;
+            }
+            .egm-params-table tbody,
+            .egm-params-table tr,
+            .egm-params-table td {
+                display: block;
+                width: 100%;
+            }
+            .egm-params-table tr {
+                padding: 0.75rem;
+                border-radius: 0.6rem;
+                background: rgba(15, 23, 42, 0.22);
+                border: 1px solid rgba(148, 163, 184, 0.14);
+                overflow: hidden;
+            }
+            .egm-params-table tr + tr {
+                margin-top: 0.65rem;
+            }
+            .egm-params-table td {
+                padding: 0;
+                text-align: left !important;
+                background-color: transparent !important;
+                overflow-wrap: anywhere;
+                word-break: normal;
+            }
+            .egm-params-table td:first-child {
+                margin-bottom: 0.55rem;
+            }
+            .egm-params-table td:not(:first-child) {
+                display: grid;
+                grid-template-columns: minmax(5.25rem, 28%) minmax(0, 1fr);
+                gap: 0.5rem;
+                align-items: baseline;
+                padding-top: 0.4rem;
+                border-top: 1px solid rgba(148, 163, 184, 0.14);
+            }
+            .egm-params-table td:not(:first-child)::before {
+                content: attr(data-label);
+                color: var(--text-muted);
+                font-weight: 600;
+            }
+            .egm-param-value {
+                min-width: 0;
+                justify-self: start;
+                text-align: left;
+                overflow-wrap: anywhere;
+            }
+            .egm-param-formula {
+                font-size: 0.9em;
+                line-height: 1.35;
+                word-break: break-word;
+            }
         }
 
         .accordion-body {
@@ -3173,7 +3235,7 @@
                     </div>
                   </div>
 
-                  <table class="table table-sm table-borderless mb-3">
+                  <table class="table table-sm table-borderless mb-3 egm-params-table">
                     <thead><tr>
                       <th class="text-muted small">Parámetro</th>
                       <th class="text-muted small text-end">Valor original</th>
@@ -3183,21 +3245,21 @@
                     <tbody>
                       <tr>
                         <td class="small fw-semibold">Crecimiento EPS{% if m.eps_growth_fuente %} <span class="text-muted fw-normal">({{ m.eps_growth_fuente }})</span>{% endif %}</td>
-                        <td class="small text-end">{{ m.eps_growth_5y_raw_pct|floatformat:2 }}%</td>
-                        <td class="small text-end">−{{ m.g_reduction_pct|floatformat:1 }}%</td>
-                        <td class="small text-end fw-semibold">{{ m.g_adj_pct|floatformat:2 }}%</td>
+                        <td class="small text-end" data-label="Original"><span class="egm-param-value">{{ m.eps_growth_5y_raw_pct|floatformat:2 }}%</span></td>
+                        <td class="small text-end" data-label="Reducción"><span class="egm-param-value">−{{ m.g_reduction_pct|floatformat:1 }}%</span></td>
+                        <td class="small text-end fw-semibold" data-label="Ajustado"><span class="egm-param-value">{{ m.g_adj_pct|floatformat:2 }}%</span></td>
                       </tr>
                       <tr>
                         <td class="small fw-semibold">P/E sectorial</td>
-                        <td class="small text-end">{{ m.sector_pe_raw|floatformat:1 }}x</td>
-                        <td class="small text-end">−{{ m.pe_reduction_pct|floatformat:1 }}%</td>
-                        <td class="small text-end fw-semibold">{{ m.pe_adj|floatformat:2 }}x</td>
+                        <td class="small text-end" data-label="Original"><span class="egm-param-value">{{ m.sector_pe_raw|floatformat:1 }}x</span></td>
+                        <td class="small text-end" data-label="Reducción"><span class="egm-param-value">−{{ m.pe_reduction_pct|floatformat:1 }}%</span></td>
+                        <td class="small text-end fw-semibold" data-label="Ajustado"><span class="egm-param-value">{{ m.pe_adj|floatformat:2 }}x</span></td>
                       </tr>
                       <tr>
                         <td class="small fw-semibold">Tasa CAPM{% if m.beta_warning %} <span class="badge bg-warning-subtle text-warning-emphasis">β=1.0 est.</span>{% endif %}</td>
-                        <td class="small text-end">Rf {{ m.r_capm_rf_pct|floatformat:2 }}% + β {{ m.r_capm_beta|floatformat:2 }} × (8% − Rf)</td>
-                        <td class="small text-end">—</td>
-                        <td class="small text-end fw-semibold">{{ m.r_capm_pct|floatformat:2 }}%</td>
+                        <td class="small text-end" data-label="Original"><span class="egm-param-value egm-param-formula">Rf {{ m.r_capm_rf_pct|floatformat:2 }}% + β {{ m.r_capm_beta|floatformat:2 }} × (8% − Rf)</span></td>
+                        <td class="small text-end" data-label="Reducción"><span class="egm-param-value">—</span></td>
+                        <td class="small text-end fw-semibold" data-label="Ajustado"><span class="egm-param-value">{{ m.r_capm_pct|floatformat:2 }}%</span></td>
                       </tr>
                     </tbody>
                   </table>
@@ -3380,10 +3442,10 @@
             {% endwith %}{% endif %}
 
             {# ── GRUPO 3: Escenario orientativo ── #}
-            <div class="d-flex align-items-center gap-2 mb-2 mt-3">
+            <div class="d-flex align-items-center gap-2 mb-2 mt-3 flex-wrap">
               <span class="badge px-3 py-2 fw-semibold" style="background:#ca8a04;font-size:.75rem;letter-spacing:.04em;">Escenario orientativo</span>
               <hr class="flex-grow-1 my-0 opacity-25">
-              <span class="text-muted small">TAM estimado — no entra al consenso</span>
+              <span class="text-muted small scenario-note">TAM asistido — no entra al consenso</span>
             </div>
 
             {# ── TAM asistido (Escenario orientativo) ── #}
@@ -3392,6 +3454,7 @@
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-tam" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
+                    <span class="acc-title-m">TAM asistido</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
                     <span class="badge bg-secondary-subtle text-secondary-emphasis small">Informativo</span>
                   </span>
