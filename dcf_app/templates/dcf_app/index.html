@@ -1096,7 +1096,7 @@
                 text-align: right !important; min-width: 5.5rem; flex-shrink: 0;
                 padding-right: 0.5rem;
             }
-            .acc-verdict { position: static !important; right: auto !important; min-width: 7rem; text-align: center; flex-shrink: 0; }
+            .acc-verdict { position: static !important; right: auto !important; min-width: 7rem; flex-shrink: 0; display: flex !important; justify-content: center !important; align-items: center !important; }
         }
 
         /* Elementos exclusivos de mobile — ocultos en desktop */
@@ -1165,6 +1165,9 @@
                 font-size: 0.6875rem;
                 white-space: nowrap;
                 padding: 2px 6px !important;
+                display: flex !important;
+                justify-content: center !important;
+                align-items: center !important;
             }
             /* Badge N/A cuando no hay valor ni veredicto */
             .acc-na-mobile {
@@ -3204,7 +3207,7 @@
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
                   {# NCAV solo como veredicto en stage 6 #}
-                  {% if multi_model.stage_context.stage >= 6 %}{% if m.upside_pct is not None %}{% if m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% endif %}{% endif %}{% endif %}
+                  {% if multi_model.stage_context.stage >= 6 and m.upside_pct is not None and m.upside_pct > 0 %}<span class="badge bg-success-subtle text-success-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Subvaluada</span>{% elif multi_model.stage_context.stage >= 6 and m.upside_pct is not None and m.upside_pct < 0 %}<span class="badge bg-danger-subtle text-danger-emphasis acc-verdict small" style="position:absolute;right:3rem;pointer-events:none;">Sobrevaluada</span>{% else %}<span class="acc-verdict"></span>{% endif %}
                 {% if m.valor is None %}<span class="acc-na-mobile badge bg-secondary-subtle text-secondary-emphasis">N/A</span>{% endif %}
                 </button>
               </h2>
@@ -3264,6 +3267,7 @@
                     <span class="badge bg-secondary-subtle text-secondary-emphasis small">Informativo</span>
                   </span>
                   {% if rdcf.g_implicita_pct is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;"><span class="d-none d-sm-inline">Crecimiento implícito: {{ rdcf.g_implicita_pct|floatformat:1 }}%</span><span class="d-sm-none">g = {{ rdcf.g_implicita_pct|floatformat:1 }}%</span></span>{% endif %}
+                  <span class="acc-verdict"></span>
                 {% if rdcf.g_implicita_pct is None %}<span class="acc-na-mobile badge bg-secondary-subtle text-secondary-emphasis">N/A</span>{% endif %}
                 </button>
               </h2>
@@ -3303,6 +3307,7 @@
                     <span class="badge bg-secondary-subtle text-secondary-emphasis small">Informativo</span>
                   </span>
                   {% if az.disponible %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;pointer-events:none;"><span class="badge {% if az.zona_code == 'safe' %}bg-success-subtle text-success-emphasis{% elif az.zona_code == 'grey' %}bg-warning-subtle text-warning-emphasis{% else %}bg-danger-subtle text-danger-emphasis{% endif %}">Z = {{ az.z_score }}</span></span>{% endif %}
+                  <span class="acc-verdict"></span>
                 {% if not az.disponible %}<span class="acc-na-mobile badge bg-secondary-subtle text-secondary-emphasis">N/A</span>{% endif %}
                 </button>
               </h2>
@@ -3366,10 +3371,13 @@
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-tam" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
+                    <span class="acc-title-m">TAM</span>
                     <span class="fw-semibold">{{ m.nombre }}</span>
                     <span class="badge bg-warning-subtle text-warning-emphasis small">Escenario orientativo</span>
                   </span>
                   {% if m.valor is not None %}<span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">${{ m.valor|floatformat:2 }}</span>{% endif %}
+                  <span class="acc-verdict"></span>
+                  {% if m.valor is None %}<span class="acc-na-mobile badge bg-secondary-subtle text-secondary-emphasis">N/A</span>{% endif %}
                 </button>
               </h2>
               <div id="acc-tam" class="accordion-collapse collapse">
