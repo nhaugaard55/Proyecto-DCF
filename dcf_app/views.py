@@ -330,6 +330,7 @@ def dcf_view(request):
 
     company_stage = None
     multi_model = None
+    filtros_etapa = []
     if resultado and isinstance(resultado, dict):
         try:
             company_stage = detect_company_stage(ticker, resultado)
