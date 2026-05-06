@@ -2792,50 +2792,6 @@
             </div>
         </div>
 
-                    {# ── Escenarios DCF ── #}
-                    {% if resultado.escenarios %}
-                    <div class="col-12 mt-2">
-                      <h5 class="fw-bold mb-3">Escenarios de valuación DCF</h5>
-                      <div class="row g-3">
-                        {% with bear=resultado.escenarios.bear base=resultado.escenarios.base bull=resultado.escenarios.bull %}
-                        <div class="col-md-4">
-                          <div class="p-4 rounded-3 border h-100" style="background:var(--surface-card); border-color:var(--surface-border)!important;">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                              <span class="fw-semibold">🐻 Pesimista</span>
-                              {% if bear.estado %}<span class="badge {% if bear.estado == 'SUBVALUADA' %}bg-success{% elif bear.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %} small">{{ bear.estado }}</span>{% endif %}
-                            </div>
-                            <div class="small text-muted mb-1">Crecimiento: <strong>{{ bear.tasa_crecimiento_pct|floatformat:1 }}%</strong></div>
-                            <div class="fs-4 fw-bold mt-1">{% if bear.valor_intrinseco is not None %}${{ bear.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</div>
-                            {% if bear.diferencia_pct is not None %}<div class="small mt-1 {% if bear.diferencia_pct >= 0 %}text-success{% else %}text-danger{% endif %}">{{ bear.diferencia_pct|floatformat:1 }}% vs precio actual</div>{% endif %}
-                          </div>
-                        </div>
-                        <div class="col-md-4">
-                          <div class="p-4 rounded-3 border h-100" style="background:var(--surface-card); border-color:var(--surface-border)!important;">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                              <span class="fw-semibold">📊 Base</span>
-                              {% if base.estado %}<span class="badge {% if base.estado == 'SUBVALUADA' %}bg-success{% elif base.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %} small">{{ base.estado }}</span>{% endif %}
-                            </div>
-                            <div class="small text-muted mb-1">Crecimiento: <strong>{{ base.tasa_crecimiento_pct|floatformat:1 }}%</strong></div>
-                            <div class="fs-4 fw-bold mt-1">{% if base.valor_intrinseco is not None %}${{ base.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</div>
-                            {% if base.diferencia_pct is not None %}<div class="small mt-1 {% if base.diferencia_pct >= 0 %}text-success{% else %}text-danger{% endif %}">{{ base.diferencia_pct|floatformat:1 }}% vs precio actual</div>{% endif %}
-                          </div>
-                        </div>
-                        <div class="col-md-4">
-                          <div class="p-4 rounded-3 border h-100" style="background:var(--surface-card); border-color:var(--surface-border)!important;">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                              <span class="fw-semibold">🐂 Optimista</span>
-                              {% if bull.estado %}<span class="badge {% if bull.estado == 'SUBVALUADA' %}bg-success{% elif bull.estado == 'SOBREVALUADA' %}bg-danger{% else %}bg-secondary{% endif %} small">{{ bull.estado }}</span>{% endif %}
-                            </div>
-                            <div class="small text-muted mb-1">Crecimiento: <strong>{{ bull.tasa_crecimiento_pct|floatformat:1 }}%</strong></div>
-                            <div class="fs-4 fw-bold mt-1">{% if bull.valor_intrinseco is not None %}${{ bull.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</div>
-                            {% if bull.diferencia_pct is not None %}<div class="small mt-1 {% if bull.diferencia_pct >= 0 %}text-success{% else %}text-danger{% endif %}">{{ bull.diferencia_pct|floatformat:1 }}% vs precio actual</div>{% endif %}
-                          </div>
-                        </div>
-                        {% endwith %}
-                      </div>
-                    </div>
-                    {% endif %}
-
                     {# ── Tabla de sensibilidad ── #}
                     {% if resultado.tabla_sensibilidad %}
                     <div class="col-12 mt-2">
@@ -2855,70 +2811,6 @@
                     {% endif %}
 
                   </div>{# /row g-3 p-3 #}
-
-                  {# ── Barra de escenarios DCF ── #}
-                  {% with dcf_m=multi_model.modelos.dcf %}
-                  {% if dcf_m and dcf_m.escenarios %}
-                  {% with esc=dcf_m.escenarios bear=dcf_m.escenarios.bear base=dcf_m.escenarios.base bull=dcf_m.escenarios.bull %}
-                  {% if bear.valor is not None and bull.valor is not None %}
-                  <div class="px-3 pb-3">
-                    <div class="p-3 rounded-3" style="background:var(--surface-card);border:1px solid var(--surface-border);">
-                      <p class="text-muted small fw-semibold text-uppercase mb-3" style="letter-spacing:.05em;">Escenarios DCF</p>
-                      <div id="dcf-scenario-bar"
-                           data-bear="{{ bear.valor }}"
-                           data-base="{{ base.valor|default:0 }}"
-                           data-bull="{{ bull.valor }}"
-                           data-actual="{{ resultado.precio_actual|default:0 }}">
-                        <div class="position-relative mb-4" style="height:8px;background:linear-gradient(to right,#dc3545,#ffc107,#198754);border-radius:4px;">
-                          <span class="position-absolute translate-middle-x" id="dcf-marker-bear" style="top:-18px;font-size:.7rem;color:#dc3545;font-weight:600;">Bear</span>
-                          <span class="position-absolute translate-middle-x" id="dcf-marker-base" style="top:-18px;font-size:.7rem;color:var(--bs-body-color);font-weight:600;">Base</span>
-                          <span class="position-absolute translate-middle-x" id="dcf-marker-bull" style="top:-18px;font-size:.7rem;color:#198754;font-weight:600;">Bull</span>
-                          <span class="position-absolute translate-middle-x" id="dcf-marker-actual" style="top:12px;font-size:.7rem;color:var(--bs-primary);font-weight:700;">▲ Actual</span>
-                          <div id="dcf-tick-bear" class="position-absolute" style="width:2px;height:14px;background:#dc3545;top:-3px;transform:translateX(-50%);"></div>
-                          <div id="dcf-tick-base" class="position-absolute" style="width:2px;height:14px;background:var(--bs-body-color);top:-3px;transform:translateX(-50%);"></div>
-                          <div id="dcf-tick-bull" class="position-absolute" style="width:2px;height:14px;background:#198754;top:-3px;transform:translateX(-50%);"></div>
-                          <div id="dcf-tick-actual" class="position-absolute" style="width:2px;height:14px;background:var(--bs-primary);top:-3px;transform:translateX(-50%);"></div>
-                        </div>
-                      </div>
-                      <div class="row g-2 mt-1 text-center">
-                        <div class="col-4">
-                          <div class="small text-danger fw-semibold">${{ bear.valor|floatformat:2 }}</div>
-                          <div style="font-size:.7rem;" class="text-muted">Bear (CAGR {{ bear.cagr_usado }}% / WACC {{ bear.wacc_usado }}%)</div>
-                        </div>
-                        <div class="col-4">
-                          <div class="small fw-semibold">${{ base.valor|floatformat:2 }}</div>
-                          <div style="font-size:.7rem;" class="text-muted">Base (CAGR {{ base.cagr_usado }}% / WACC {{ base.wacc_usado }}%)</div>
-                        </div>
-                        <div class="col-4">
-                          <div class="small text-success fw-semibold">${{ bull.valor|floatformat:2 }}</div>
-                          <div style="font-size:.7rem;" class="text-muted">Bull (CAGR {{ bull.cagr_usado }}% / WACC {{ bull.wacc_usado }}%)</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <script>
-                  (function(){
-                    var bar = document.getElementById('dcf-scenario-bar');
-                    if (!bar) return;
-                    var bear = parseFloat(bar.dataset.bear), base = parseFloat(bar.dataset.base),
-                        bull = parseFloat(bar.dataset.bull), actual = parseFloat(bar.dataset.actual);
-                    var min = Math.min(bear, actual) * 0.95, max = Math.max(bull, actual) * 1.05;
-                    var range = max - min;
-                    function pct(v){ return Math.min(Math.max((v - min) / range * 100, 0), 100) + '%'; }
-                    document.getElementById('dcf-tick-bear').style.left = pct(bear);
-                    document.getElementById('dcf-tick-base').style.left = pct(base);
-                    document.getElementById('dcf-tick-bull').style.left = pct(bull);
-                    document.getElementById('dcf-tick-actual').style.left = pct(actual);
-                    document.getElementById('dcf-marker-bear').style.left = pct(bear);
-                    document.getElementById('dcf-marker-base').style.left = pct(base);
-                    document.getElementById('dcf-marker-bull').style.left = pct(bull);
-                    document.getElementById('dcf-marker-actual').style.left = pct(actual);
-                  })();
-                  </script>
-                  {% endif %}
-                  {% endwith %}
-                  {% endif %}
-                  {% endwith %}
 
                 </div>{# /accordion-body #}
               </div>{# /acc-dcf collapse #}
