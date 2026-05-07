@@ -197,6 +197,45 @@
         <span class="ms-auto small text-muted fst-italic">Macro 60% · Sectorial 40% · Caché 10 min</span>
       </div>
 
+      <!-- ── Warning de concentración sectorial (MEJORA 3) ── -->
+      <div id="bc-warning-concentration" class="alert alert-warning d-flex align-items-start gap-2 mt-3 mb-0" style="display:none !important;">
+        <span style="font-size:1.1em;flex-shrink:0;">⚠️</span>
+        <div>
+          <strong>Concentración sectorial detectada</strong>
+          <div class="small mt-1" id="bc-warning-text"></div>
+        </div>
+      </div>
+
+      <!-- ── Detalle técnico del scoring (MEJORA 2) ── -->
+      <div class="mt-3">
+        <button class="btn btn-sm btn-outline-secondary" type="button"
+                data-bs-toggle="collapse" data-bs-target="#bc-scoring-detail"
+                aria-expanded="false">
+          Ver detalle técnico ▾
+        </button>
+        <div class="collapse mt-3" id="bc-scoring-detail">
+          <p class="small fw-semibold text-muted text-uppercase mb-2" style="letter-spacing:.05em;">
+            Scoring de indicadores macro <span class="fw-normal text-muted fst-italic">(nivel 70% + tendencia 30%)</span>
+          </p>
+          <div class="table-responsive">
+            <table class="table table-sm mb-2">
+              <thead>
+                <tr class="table-light">
+                  <th class="small">Indicador</th>
+                  <th class="small text-end">Valor</th>
+                  <th class="small text-end">Delta</th>
+                  <th class="small text-end">Score nivel</th>
+                  <th class="small text-end">Score delta</th>
+                  <th class="small text-end fw-semibold">Score final</th>
+                </tr>
+              </thead>
+              <tbody id="bc-scoring-table-body"></tbody>
+            </table>
+          </div>
+          <div id="bc-scoring-summary" class="small text-muted mt-1 d-flex flex-wrap gap-3"></div>
+        </div>
+      </div>
+
     </div><!-- /bc-content -->
   </div><!-- /card-body -->
 </div>
@@ -322,6 +361,68 @@
       // Score y confianza
       document.getElementById('bc-confidence').textContent = d.confidence;
       document.getElementById('bc-score').textContent = d.score;
+
+      // ── Warning de concentración (MEJORA 3) ──────────────────────────────
+      var warnEl = document.getElementById('bc-warning-concentration');
+      if (d.warning_concentracion && d.warning_concentracion.activo) {
+        var xlkPct = d.warning_concentracion.xlk_vs_spy;
+        var nNeg   = d.warning_concentracion.etfs_negativos;
+        document.getElementById('bc-warning-text').textContent =
+          'El liderazgo tecnológico puede reflejar concentración en mega caps relacionadas con IA ' +
+          'más que una rotación broad-based del mercado. ' +
+          'XLK supera a SPY en ' + xlkPct + '% mientras ' + nNeg + ' de los 9 ETFs restantes ' +
+          'tienen retorno negativo vs SPY. El score sectorial puede estar sobreestimando la fase de expansión temprana.';
+        warnEl.style.removeProperty('display');
+        warnEl.style.display = 'flex';
+      }
+
+      // ── Detalle de scoring (MEJORA 2) ────────────────────────────────────
+      var sd = d.scoring_detalle;
+      if (sd && sd.macro) {
+        var tbody = document.getElementById('bc-scoring-table-body');
+        var indicators = [
+          { key: 'curva_rendimiento', nombre: 'Curva (T10Y2Y)', unit: '%' },
+          { key: 'cfnai',             nombre: 'CFNAI',           unit: ''  },
+          { key: 'desempleo',         nombre: 'Desempleo',        unit: '%' },
+          { key: 'inflacion',         nombre: 'Inflación YoY',    unit: '%' },
+          { key: 'lei',               nombre: 'Índice Líder',     unit: ''  },
+        ];
+
+        function fmtNum(v, unit, forcePlus) {
+          if (v === null || v === undefined) return '<span class="text-muted">N/D</span>';
+          var n = parseFloat(v);
+          var prefix = (forcePlus && n >= 0) ? '+' : '';
+          return prefix + n.toFixed(2) + unit;
+        }
+        function scoreClass(v) {
+          if (v > 0)  return 'text-success';
+          if (v < 0)  return 'text-danger';
+          return 'text-secondary';
+        }
+
+        indicators.forEach(function (ind) {
+          var m = sd.macro[ind.key];
+          if (!m) return;
+          var tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td class="small">' + ind.nombre + '</td>' +
+            '<td class="small text-end">' + fmtNum(m.valor, ind.unit, false) + '</td>' +
+            '<td class="small text-end">' + fmtNum(m.delta, ind.unit, true)  + '</td>' +
+            '<td class="small text-end ' + scoreClass(m.nivel_score) + '">' + fmtNum(m.nivel_score, '', true) + '</td>' +
+            '<td class="small text-end ' + scoreClass(m.delta_score) + '">' + fmtNum(m.delta_score, '', true) + '</td>' +
+            '<td class="small text-end fw-semibold ' + scoreClass(m.score_final) + '">' + fmtNum(m.score_final, '', true) + '</td>';
+          tbody.appendChild(tr);
+        });
+
+        var summaryEl = document.getElementById('bc-scoring-summary');
+        var macroMax  = sd.macro.macro_score_maximo_posible || 10;
+        var secScore  = sd.sectorial ? sd.sectorial.sector_score : null;
+        var combScore = sd.combinado  ? sd.combinado.score_final  : null;
+        summaryEl.innerHTML =
+          '<span><strong>Score macro:</strong> ' + sd.macro.macro_score_total + ' / ' + macroMax + '</span>' +
+          (secScore  !== null ? '<span><strong>Score sectorial:</strong> ' + secScore  + ' / 2</span>' : '') +
+          (combScore !== null ? '<span><strong>Score combinado:</strong> ' + combScore + '</span>' : '');
+      }
 
       // Mostrar contenido
       document.getElementById('bc-loading').style.display = 'none';
