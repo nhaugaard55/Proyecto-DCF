@@ -47,6 +47,20 @@ def to_billions(value) -> Optional[float]:
         return None
 
 
+def smart_format_billions(value) -> Optional[str]:
+    """Formats monetary value as $X.XXM when < $10M, else $X.XXB. Returns None when no data."""
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    abs_v = abs(v)
+    if abs_v < 10_000_000:
+        return f"${v / 1_000_000:.2f}M"
+    return f"${v / 1_000_000_000:.2f}B"
+
+
 def to_optional_float(value) -> Optional[float]:
     try:
         if isinstance(value, complex):
@@ -900,6 +914,19 @@ def analizar_empresa(
     if payout_ratio is None and eps_ttm is not None and eps_ttm > 0 and annual_dividend is not None:
         payout_ratio = annual_dividend / eps_ttm
 
+    # Revenue history for coefficient of variation (used by company_stage.py to detect irregular revenue)
+    revenue_historico_raw: list[float] = []
+    try:
+        if income_stmt is not None and not income_stmt.empty:
+            for _rev_label in ("Total Revenue", "Revenue"):
+                if _rev_label in income_stmt.index:
+                    _rev_s = income_stmt.loc[_rev_label].dropna().head(5)
+                    _rev_list = [to_optional_float(v) for v in _rev_s.tolist()]
+                    revenue_historico_raw = [v for v in _rev_list if v is not None]
+                    break
+    except Exception:
+        revenue_historico_raw = []
+
     datos_empresa = {
         "nombre": nombre,
         "sector": sector,
@@ -914,16 +941,20 @@ def analizar_empresa(
         "eps_forward": to_optional_float(info.get("forwardEps")),
         "revenue_ttm": revenue_raw,
         "revenue_ttm_billones": to_billions(revenue_raw),
+        "revenue_ttm_display": smart_format_billions(revenue_raw),
         "gross_profit_ttm": gross_profit_raw,
         "gross_profit_ttm_billones": to_billions(gross_profit_raw),
+        "gross_profit_ttm_display": smart_format_billions(gross_profit_raw),
         "escala_ajustada": escala_ajustada,
         "escala_aviso": escala_aviso,
         "net_income_ttm": net_income_ttm,
         "net_income_ttm_billones": to_billions(net_income_ttm),
+        "net_income_ttm_display": smart_format_billions(net_income_ttm),
         "pe_ratio_raw": pe_ratio,
         "ps_ratio_raw": ps_ratio,
         "fcf_ttm": fcf[0] if fcf else None,
         "fcf_ttm_billones": to_billions(fcf[0]) if fcf else None,
+        "fcf_ttm_display": smart_format_billions(fcf[0]) if fcf else None,
         "precio_actual": precio,
         "acciones": acciones,
         "acciones_billones": to_billions(acciones),
@@ -951,9 +982,11 @@ def analizar_empresa(
         "ebit": ebit_val,
         "ebitda_ttm": ebitda_val,
         "ebitda_ttm_billones": to_billions(ebitda_val),
+        "ebitda_ttm_display": smart_format_billions(ebitda_val),
         "working_capital": working_capital_val,
         "eps_growth_5y": eps_growth_5y,
         "eps_growth_5y_fuente": eps_growth_5y_fuente,
+        "revenue_historico": revenue_historico_raw,
         "beta": beta,
         "beta_aviso": beta_aviso,
         "tasa_impositiva": tax_rate,
@@ -985,6 +1018,7 @@ def analizar_empresa(
         "crecimiento_pct": tasa_crecimiento * 100 if tasa_crecimiento is not None else None,
         "crecimiento_cagr": crecimiento,
         "crecimiento_cagr_pct": crecimiento * 100 if crecimiento is not None else None,
+        "cagr_fcf_todos_negativos": crecimiento is None and avg_growth_rate is None,
         "cagr_cap_applied": cagr_cap_applied,
         "cagr_cap_aviso": (
             f"CAGR histórico {cagr_antes_cap:.1%} — capeado al {_CAGR_CAP_DCF:.0%} por "

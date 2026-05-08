@@ -1864,9 +1864,9 @@
                                 <div class="analysis-data-cards">
                                     <div class="analysis-data-metric">
                                         <span class="analysis-data-label">FCF TTM</span>
-                                        {% with valor=resultado.datos_empresa.fcf_ttm_billones %}
+                                        {% with valor=resultado.datos_empresa.fcf_ttm_display %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
-                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                            {% if valor is not None %}{{ valor }}{% else %}N/D{% endif %}
                                         </span>
                                         {% endwith %}
                                     </div>
@@ -1906,15 +1906,15 @@
                                         <span class="analysis-data-label">CAGR FCF calculado</span>
                                         {% with valor=resultado.metricas.crecimiento_cagr_pct %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
-                                            {% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}
+                                            {% if valor is not None %}{{ valor|floatformat:2 }}%{% elif resultado.metricas.cagr_fcf_todos_negativos %}N/A{% else %}N/D{% endif %}
                                         </span>
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
                                         <span class="analysis-data-label">EBITDA TTM</span>
-                                        {% with valor=resultado.datos_empresa.ebitda_ttm_billones %}
+                                        {% with valor=resultado.datos_empresa.ebitda_ttm_display %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
-                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                            {% if valor is not None %}{{ valor }}{% else %}N/D{% endif %}
                                         </span>
                                         {% endwith %}
                                     </div>
@@ -1926,25 +1926,25 @@
                                 <div class="analysis-data-cards">
                                     <div class="analysis-data-metric">
                                         <span class="analysis-data-label">Revenue TTM</span>
-                                        {% with valor=resultado.datos_empresa.revenue_ttm_billones %}
+                                        {% with valor=resultado.datos_empresa.revenue_ttm_display %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
-                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                            {% if valor is not None %}{{ valor }}{% else %}N/D{% endif %}
                                         </span>
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
                                         <span class="analysis-data-label">Gross Profit TTM</span>
-                                        {% with valor=resultado.datos_empresa.gross_profit_ttm_billones %}
+                                        {% with valor=resultado.datos_empresa.gross_profit_ttm_display %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
-                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                            {% if valor is not None %}{{ valor }}{% else %}N/D{% endif %}
                                         </span>
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
                                         <span class="analysis-data-label">Net Income TTM</span>
-                                        {% with valor=net_income_ttm_billones %}
+                                        {% with valor=resultado.datos_empresa.net_income_ttm_display %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
-                                            {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
+                                            {% if valor is not None %}{{ valor }}{% else %}N/D{% endif %}
                                         </span>
                                         {% endwith %}
                                     </div>
@@ -2283,6 +2283,12 @@
                     </span>
                     <span class="text-muted small">Confianza: {{ company_stage.confidence }}</span>
                   </div>
+                  {% if company_stage.revenue_irregular %}
+                  <div class="alert alert-warning d-flex gap-2 py-2 px-3 small mt-3 mb-0" role="alert">
+                    <span class="flex-shrink-0">⚠️</span>
+                    <span>Revenue irregular detectado — Esta empresa presenta ingresos históricos altamente variables (típico en biotech con pagos de milestone o licencias). La clasificación de etapa tiene menor confiabilidad. Analizar con el contexto del pipeline y la posición de caja.</span>
+                  </div>
+                  {% endif %}
                 </div>
               </div>
 
@@ -2478,6 +2484,11 @@
                       <p class="text-muted small mb-0">{{ consenso.razon_no_calculable }}</p>
                       {% else %}
                       <p class="text-muted small mb-0">No hay modelos aplicables con peso &gt; 0 para calcular un precio consenso.</p>
+                      {% endif %}
+                      {% if not consenso.disponible %}
+                      <div class="alert alert-info py-2 px-3 mt-3 mb-0 small" role="alert" style="font-size:0.78rem;">
+                        💡 Para empresas en etapas tempranas, el <strong>Valor de Liquidación</strong> puede usarse como referencia de piso de valuación.
+                      </div>
                       {% endif %}
                       {% endif %}
                     </div>
@@ -2711,15 +2722,15 @@
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <span><strong>Crecimiento utilizado</strong><br><small class="text-muted">Tasa aplicada en la proyección de FCF</small></span>
-                            <span>{% with valor=resultado.metricas.crecimiento_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                            <span>{% with valor=resultado.metricas.crecimiento_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% elif resultado.metricas.cagr_fcf_todos_negativos %}N/A{% else %}N/D{% endif %}{% endwith %}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <span><strong>CAGR estimado</strong><br><small class="text-muted">Tasa de crecimiento anual compuesta del FCF histórico</small></span>
-                            <span>{% with valor=resultado.metricas.crecimiento_cagr_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                            <span>{% with valor=resultado.metricas.crecimiento_cagr_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% elif resultado.metricas.cagr_fcf_todos_negativos %}N/A{% else %}N/D{% endif %}{% endwith %}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <span><strong>Crecimiento promedio</strong><br><small class="text-muted">Promedio simple de variaciones año a año del FCF</small></span>
-                            <span>{% with valor=resultado.metricas.crecimiento_promedio_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}{% endwith %}</span>
+                            <span>{% with valor=resultado.metricas.crecimiento_promedio_pct %}{% if valor is not None %}{{ valor|floatformat:2 }}%{% elif resultado.metricas.cagr_fcf_todos_negativos %}N/A{% else %}N/D{% endif %}{% endwith %}</span>
                         </li>
                     </ul>
                     {% if resultado.metricas.cagr_cap_aviso %}
@@ -2906,7 +2917,7 @@
                   </div>
                   {% endif %}
                   <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">Ingresos TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Ingresos TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_display %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v }}{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">P/S sector (ref.)</span><span class="fw-semibold fs-5">{% if m.ps_sector_ref is not None %}{{ m.ps_sector_ref|floatformat:1 }}x{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
@@ -2935,7 +2946,7 @@
                 <div class="accordion-body">
                   <p class="text-muted small mb-3">Multiplica el Gross Profit por acción por el P/GP de referencia del sector.</p>
                   <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">Gross Profit TTM</span>{% with v=resultado.datos_empresa.gross_profit_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Gross Profit TTM</span>{% with v=resultado.datos_empresa.gross_profit_ttm_display %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v }}{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
@@ -2963,7 +2974,7 @@
                 <div class="accordion-body">
                   <p class="text-muted small mb-3">Multiplica el Free Cash Flow por acción por el P/FCF de referencia del sector.</p>
                   <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">FCF TTM</span>{% with v=resultado.datos_empresa.fcf_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">FCF TTM</span>{% with v=resultado.datos_empresa.fcf_ttm_display %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v }}{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
@@ -2996,7 +3007,7 @@
                   <p class="text-muted small mb-3">Estima el valor de la empresa multiplicando el EBITDA TTM por el múltiplo EV/EBITDA de referencia del sector, luego resta la deuda neta para obtener el equity por acción.</p>
                   {% if m.aplicable %}
                   <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">EBITDA TTM</span>{% with v=resultado.datos_empresa.ebitda_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">EBITDA TTM</span>{% with v=resultado.datos_empresa.ebitda_ttm_display %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v }}{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Deuda neta</span>{% with v=resultado.datos_empresa.deuda_neta_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
@@ -3102,7 +3113,7 @@
                 <div class="accordion-body">
                   <p class="text-muted small mb-3">Proyecta el FCF del próximo año y aplica el múltiplo P/FCF del sector.</p>
                   <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">FCF TTM</span>{% with v=resultado.datos_empresa.fcf_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">FCF TTM</span>{% with v=resultado.datos_empresa.fcf_ttm_display %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v }}{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Crecimiento estimado</span>{% with v=resultado.metricas.crecimiento_pct %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
@@ -3370,7 +3381,7 @@
                 <div class="accordion-body">
                   <p class="text-muted small mb-3">Estima el tamaño del mercado direccionable a partir de los ingresos actuales, supuestos de penetración por etapa y un múltiplo P/S capturado del sector.</p>
                   <div class="row g-3">
-                    <div class="col-md-3"><span class="text-muted small d-block">Ingresos TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
+                    <div class="col-md-3"><span class="text-muted small d-block">Ingresos TTM</span>{% with v=resultado.datos_empresa.revenue_ttm_display %}<span class="fw-semibold fs-5">{% if v is not None %}{{ v }}{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">TAM estimado</span>{% with v=m.tam_estimado_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Ingreso objetivo</span>{% with v=m.revenue_objetivo_billones %}<span class="fw-semibold fs-5">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
