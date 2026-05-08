@@ -100,6 +100,12 @@ def calcular_crecimientos(fcf_series):
         primero = valores[0]
         ultimo = valores[-1]
         cagr_calc = None
+
+        # Si todos los FCF son negativos el CAGR no es interpretable — no usar fallback
+        todos_negativos = all(v <= 0 for v in valores)
+        if todos_negativos:
+            return None, None
+
         if ultimo not in (0, None) and ultimo != 0 and primero > 0 and ultimo > 0:
             try:
                 exponente = 1 / (len(valores) - 1)
@@ -128,11 +134,19 @@ def calcular_crecimientos(fcf_series):
 
 def seleccionar_metodo_crecimiento(crecimiento_cagr, crecimiento_promedio):
     """Elige automáticamente la tasa más conservadora, la más cercana a cero."""
+    # Ambos None ocurre cuando todos los FCF históricos son negativos
+    if crecimiento_cagr is None and crecimiento_promedio is None:
+        return ("N/A", "N/A (todos los FCF negativos)", None)
 
-    opciones = [
-        ("1", "CAGR", float(crecimiento_cagr)),
-        ("2", "Promedio", float(crecimiento_promedio)),
-    ]
+    opciones = []
+    if crecimiento_cagr is not None:
+        opciones.append(("1", "CAGR", float(crecimiento_cagr)))
+    if crecimiento_promedio is not None:
+        opciones.append(("2", "Promedio", float(crecimiento_promedio)))
+
+    if not opciones:
+        return ("N/A", "N/A (todos los FCF negativos)", None)
+
     return min(
         opciones,
         key=lambda item: (abs(item[2]), 0 if item[0] == "1" else 1),

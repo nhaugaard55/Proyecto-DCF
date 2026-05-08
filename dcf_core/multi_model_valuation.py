@@ -456,6 +456,10 @@ def _modelo_ps(financials: dict, ratios: dict) -> dict:
         return {"valor": None, "aplicable": False,
                 "detalle": "Revenue TTM o acciones no disponibles"}
 
+    if revenue < 50_000_000:
+        return {"valor": None, "aplicable": False,
+                "detalle": f"Revenue insuficiente para P/S confiable (< $50M TTM). Empresa pre-comercial."}
+
     rps = revenue / acciones
     valor = rps * ps_sector
     return {
@@ -1271,7 +1275,7 @@ def run_all_models(
         if m["valor"] is not None and m["peso"] > 0
     ]
 
-    if valores_aplicables:
+    if len(valores_aplicables) >= 2:
         precio_consenso = sum(
             modelos[k]["valor"] * modelos[k]["peso"]
             for k in _MODEL_KEYS
@@ -1336,13 +1340,27 @@ def run_all_models(
             "razon_no_calculable": None,
         }
     else:
+        n_modelos = len(valores_aplicables)
         razon_no_calculable = None
-        if stage == 6:
+        if n_modelos == 1:
+            razon_no_calculable = (
+                "Menos de 2 modelos producen un valor aplicable para esta empresa. "
+                "No es posible calcular un precio consenso confiable. "
+                "El indicador más relevante es el Valor de Liquidación."
+            )
+        elif stage == 6:
             razon_no_calculable = (
                 "En etapa de Decline, los modelos de flujo de caja y múltiplos no son representativos. "
                 "El Valor de Liquidación negativo indica que los pasivos totales superan los activos "
                 "corrientes — en un escenario de liquidación, los accionistas no recuperarían capital."
             )
+        elif n_modelos == 0:
+            razon_no_calculable = (
+                "Menos de 2 modelos producen un valor aplicable para esta empresa. "
+                "No es posible calcular un precio consenso confiable. "
+                "El indicador más relevante es el Valor de Liquidación."
+            )
+        modelos_usados_keys = [k for k in _MODEL_KEYS if valores_aplicables and modelos[k]["valor"] is not None and modelos[k]["peso"] > 0]
         consenso = {
             "precio": None,
             "precio_actual": precio_actual,
@@ -1350,10 +1368,14 @@ def run_all_models(
             "rango_min": None,
             "rango_max": None,
             "veredicto": None,
-            "modelos_usados": 0,
-            "modelos_usados_keys": [],
+            "modelos_usados": n_modelos,
+            "modelos_usados_keys": modelos_usados_keys,
             "modelos_excluidos": list(_MODEL_KEYS),
             "confianza": "Sin datos",
+            "disagreement_ratio": None,
+            "disagreement_ratio_pct": None,
+            "disagreement_label": "No aplica — menos de 2 modelos con valor calculable",
+            "disagreement_color": None,
             "disponible": False,
             "razon_no_calculable": razon_no_calculable,
         }
@@ -1427,8 +1449,12 @@ def calcular_score_final(consenso_dict, altman_dict, filtros_dict, stage) -> dic
     consenso_disponible = bool(consenso.get("disponible")) and modelos_usados_count >= 2
 
     if not consenso_disponible or precio_consenso is None or not precio_actual:
-        upside_puntos = 5.0
-        upside_detalle = "Consenso insuficiente — puntaje neutro"
+        upside_puntos = 0.0
+        upside_detalle = (
+            "Sin consenso calculable — puntaje cero"
+            if not consenso_disponible
+            else "Precio consenso o actual no disponible — puntaje cero"
+        )
     else:
         upside = (precio_consenso - precio_actual) / precio_actual
         if upside >= 0.30:
@@ -1444,7 +1470,10 @@ def calcular_score_final(consenso_dict, altman_dict, filtros_dict, stage) -> dic
         upside_detalle = f"Upside {upside * 100:+.1f}%"
 
     dr = _sf(consenso.get("disagreement_ratio"))
-    if dr is None:
+    if not consenso_disponible:
+        confianza_puntos = 0.0
+        confianza_detalle = "Sin modelos suficientes — confianza cero"
+    elif dr is None:
         confianza_puntos = 5.0
         confianza_detalle = "DR no disponible — puntaje neutro"
     elif dr < 0.10:
@@ -1540,10 +1569,19 @@ def calcular_score_final(consenso_dict, altman_dict, filtros_dict, stage) -> dic
         score = min(score, 4.0)
         nota_etapa = "Empresa en declive con riesgo de insolvencia — score limitado"
 
+    nota_consenso = None
+    if not consenso_disponible:
+        nota_consenso = (
+            "Score limitado — consenso no calculable. "
+            "Solo refleja solvencia (Altman) y filtros fundamentales."
+        )
+
     if score >= 6.5:
         recomendacion = "Comprar"
     elif score >= 3.5:
         recomendacion = "Mantener"
+    elif not consenso_disponible:
+        recomendacion = "Sin datos suficientes"
     else:
         recomendacion = "Vender"
 
@@ -1552,5 +1590,6 @@ def calcular_score_final(consenso_dict, altman_dict, filtros_dict, stage) -> dic
         "recomendacion": recomendacion,
         "componentes": componentes,
         "nota_etapa": nota_etapa,
+        "nota_consenso": nota_consenso,
         "advertencia": "Score orientativo. No constituye asesoramiento financiero.",
     }

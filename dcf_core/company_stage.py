@@ -13,6 +13,8 @@ Usa únicamente los datos financieros que la app ya calcula —
 sin llamadas adicionales a APIs externas.
 """
 
+import statistics as _stats
+import sys as _sys
 from typing import Optional
 
 
@@ -241,6 +243,21 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     sector      = (datos_empresa.get("sector") or "").strip()
     ebitda_raw  = _safe_float(datos_empresa.get("ebitda_ttm"))
 
+    # FIX 5A: Detect revenue irregularity via coefficient of variation
+    revenue_irregular = False
+    revenue_cv: Optional[float] = None
+    revenue_historico = [v for v in (datos_empresa.get("revenue_historico") or []) if v is not None and v > 0]
+    if len(revenue_historico) >= 3:
+        try:
+            media = _stats.mean(revenue_historico)
+            if media > 0:
+                std = _stats.stdev(revenue_historico)
+                revenue_cv = std / media
+                if revenue_cv > 1.5:
+                    revenue_irregular = True
+        except Exception:
+            pass
+
     # ── SEÑAL 1: Free Cash Flow ──────────────────────────────────────────────
     fcf_cagr_display = "N/A"
     if not fcf_vals:
@@ -411,6 +428,31 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         scores[1] = 0.0
         scores[2] = 0.0
 
+    # ── FIX 5B: Override final — Revenue pre-comercial descarta Hyper Growth ──
+    # Este bloque va AL FINAL para que ninguna señal posterior pueda re-añadir
+    # puntos a scores[2] después del override.
+    # Condición A: revenue irregular confirmado por CV > 1.5
+    # Condición B: sin historial suficiente para calcular CV (empresa muy nueva)
+    _rev_insuficiente = len(revenue_historico) < 3
+    _aplicar_fix5b = (
+        revenue_ttm is not None
+        and revenue_ttm < 50_000_000
+        and (revenue_irregular or _rev_insuficiente)
+    )
+    print(
+        f"[company_stage FIX5B] ticker={ticker!r} "
+        f"revenue_ttm={revenue_ttm} "
+        f"revenue_irregular={revenue_irregular} "
+        f"revenue_cv={revenue_cv} "
+        f"rev_hist_len={len(revenue_historico)} "
+        f"scores[2]_before={scores[2]:.1f} "
+        f"aplicar={_aplicar_fix5b}",
+        file=_sys.stderr,
+    )
+    if _aplicar_fix5b:
+        scores[2] = 0.0
+        scores[1] += 2.0
+
     # ── Determinar etapa ganadora ────────────────────────────────────────────
     sorted_stages = sorted(scores.items(), key=lambda x: x[1], reverse=True)
     top_stage, top_score  = sorted_stages[0]
@@ -465,4 +507,12 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         "metricas_utiles":       meta["metricas_utiles"],
         "metricas_algo_utiles":  meta["metricas_algo_utiles"],
         "metricas_no_utiles":    meta["metricas_no_utiles"],
+        "revenue_irregular":     revenue_irregular,
+        "revenue_irregular_cv":  round(revenue_cv, 2) if revenue_cv is not None else None,
+        "revenue_irregular_nota": (
+            "El revenue histórico muestra alta variabilidad "
+            "(CV > 1.5), típico de empresas biotech/pre-comerciales "
+            "con ingresos por milestones o licencias irregulares. "
+            "La clasificación de etapa puede no ser representativa."
+        ) if revenue_irregular else None,
     }
