@@ -1449,8 +1449,12 @@ def calcular_score_final(consenso_dict, altman_dict, filtros_dict, stage) -> dic
     consenso_disponible = bool(consenso.get("disponible")) and modelos_usados_count >= 2
 
     if not consenso_disponible or precio_consenso is None or not precio_actual:
-        upside_puntos = 5.0
-        upside_detalle = "Consenso insuficiente — puntaje neutro"
+        upside_puntos = 0.0
+        upside_detalle = (
+            "Sin consenso calculable — puntaje cero"
+            if not consenso_disponible
+            else "Precio consenso o actual no disponible — puntaje cero"
+        )
     else:
         upside = (precio_consenso - precio_actual) / precio_actual
         if upside >= 0.30:
@@ -1466,7 +1470,10 @@ def calcular_score_final(consenso_dict, altman_dict, filtros_dict, stage) -> dic
         upside_detalle = f"Upside {upside * 100:+.1f}%"
 
     dr = _sf(consenso.get("disagreement_ratio"))
-    if dr is None:
+    if not consenso_disponible:
+        confianza_puntos = 0.0
+        confianza_detalle = "Sin modelos suficientes — confianza cero"
+    elif dr is None:
         confianza_puntos = 5.0
         confianza_detalle = "DR no disponible — puntaje neutro"
     elif dr < 0.10:
@@ -1562,10 +1569,19 @@ def calcular_score_final(consenso_dict, altman_dict, filtros_dict, stage) -> dic
         score = min(score, 4.0)
         nota_etapa = "Empresa en declive con riesgo de insolvencia — score limitado"
 
+    nota_consenso = None
+    if not consenso_disponible:
+        nota_consenso = (
+            "Score limitado — consenso no calculable. "
+            "Solo refleja solvencia (Altman) y filtros fundamentales."
+        )
+
     if score >= 6.5:
         recomendacion = "Comprar"
     elif score >= 3.5:
         recomendacion = "Mantener"
+    elif not consenso_disponible:
+        recomendacion = "Sin datos suficientes"
     else:
         recomendacion = "Vender"
 
@@ -1574,5 +1590,6 @@ def calcular_score_final(consenso_dict, altman_dict, filtros_dict, stage) -> dic
         "recomendacion": recomendacion,
         "componentes": componentes,
         "nota_etapa": nota_etapa,
+        "nota_consenso": nota_consenso,
         "advertencia": "Score orientativo. No constituye asesoramiento financiero.",
     }
