@@ -141,12 +141,23 @@ def _obtener_fcf_yfinance(ticker: str, empresa_yf: yf.Ticker, limite: int = 5) -
 
 def _obtener_metricas_yfinance(ticker: str, empresa_yf: yf.Ticker, limite: int = 5) -> tuple[Optional[float], Dict[int, float], Optional[float], Dict[int, float]]:
     """Calcula métricas de tasa y costo de deuda usando yfinance."""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    from .finanzas import obtener_tasa_libre_riesgo
+    try:
+        rf = obtener_tasa_libre_riesgo()
+    except Exception:
+        rf = 0.0441
 
     financials = getattr(empresa_yf, "financials", None)
     balance = getattr(empresa_yf, "balance_sheet", None)
 
     tasas: Dict[int, float] = {}
     costos: Dict[int, float] = {}
+
+    interes_series = None
+    ebit_series = None
 
     if financials is not None and not financials.empty:
         if "Income Tax Expense" in financials.index and "Income Before Tax" in financials.index:
@@ -173,16 +184,39 @@ def _obtener_metricas_yfinance(ticker: str, empresa_yf: yf.Ticker, limite: int =
                             continue
                     tasas[año] = tasa
 
-        interes_series = None
         if "Interest Expense" in financials.index:
             interes_series = financials.loc["Interest Expense"].dropna()
         elif "Interest Expense Non Operating" in financials.index:
             interes_series = financials.loc["Interest Expense Non Operating"].dropna()
+
+        # EBIT for interest coverage (used by Kd floor logic)
+        for _ebit_label in ("EBIT", "Operating Income"):
+            if _ebit_label in financials.index:
+                ebit_series = financials.loc[_ebit_label].dropna()
+                break
     else:
         interes_series = None
 
+    # Revenue for financial-arm detection heuristic
+    revenue_ttm: Optional[float] = None
+    try:
+        income_stmt = getattr(empresa_yf, "income_stmt", None) or getattr(empresa_yf, "financials", None)
+        if income_stmt is not None and not income_stmt.empty:
+            for _rev_label in ("Total Revenue", "Revenue"):
+                if _rev_label in income_stmt.index:
+                    _rev_s = income_stmt.loc[_rev_label].dropna()
+                    if not _rev_s.empty:
+                        try:
+                            revenue_ttm = abs(float(_rev_s.iloc[0]))
+                        except (TypeError, ValueError):
+                            pass
+                        break
+    except Exception:
+        pass
+
     deuda_por_año: Dict[int, float] = {}
     if balance is not None and not balance.empty:
+        # Use financial debt only: Total Debt (=LT+ST) preferred, fallback LT+ST separate rows
         total_debt_row = balance.loc["Total Debt"] if "Total Debt" in balance.index else None
         short_debt_row = balance.loc["Short Long Term Debt"] if "Short Long Term Debt" in balance.index else None
         long_debt_row = balance.loc["Long Term Debt"] if "Long Term Debt" in balance.index else None
@@ -218,6 +252,26 @@ def _obtener_metricas_yfinance(ticker: str, empresa_yf: yf.Ticker, limite: int =
                     continue
             deuda_por_año[año] = deuda
 
+    # Build EBIT by year for interest coverage
+    ebit_por_año: Dict[int, float] = {}
+    if ebit_series is not None:
+        for fecha, ebit_v in ebit_series.items():
+            año = getattr(fecha, "year", None)
+            if año is None:
+                try:
+                    año = int(str(fecha)[:4])
+                except (TypeError, ValueError):
+                    continue
+            try:
+                ebit_por_año[año] = float(ebit_v)
+            except (TypeError, ValueError):
+                continue
+
+    # Total debt (most recent) for financial-arm heuristic
+    total_debt_ttm: Optional[float] = None
+    if deuda_por_año:
+        total_debt_ttm = deuda_por_año[max(deuda_por_año.keys())]
+
     if interes_series is not None:
         for fecha, interes in interes_series.items():
             año = getattr(fecha, "year", None)
@@ -233,9 +287,20 @@ def _obtener_metricas_yfinance(ticker: str, empresa_yf: yf.Ticker, limite: int =
                 interes_float = abs(float(interes))
             except (TypeError, ValueError):
                 continue
-            costo = interes_float / deuda
-            if costo >= 0:
-                costos[año] = costo
+
+            # Apply floor: Kd must not be below Rf
+            ebit_año = {año: ebit_por_año[año]} if año in ebit_por_año else None
+            from .fmp import _calcular_kd_con_floor
+            kd = _calcular_kd_con_floor(
+                interes_float=interes_float,
+                deuda_financiera=deuda,
+                rf=rf,
+                ebit_por_año=ebit_año,
+                revenue_total=revenue_ttm,
+                total_debt_total=total_debt_ttm,
+            )
+            if kd is not None and kd >= 0:
+                costos[año] = kd
 
     tasa_promedio = sum(tasas.values()) / len(tasas) if tasas else None
     costo_promedio = sum(costos.values()) / len(costos) if costos else None
@@ -292,6 +357,8 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
     tax_rate_override: Optional[float] = None
     cost_of_debt_override: Optional[float] = None
 
+    nota_estructura_capital_fmp: Optional[str] = None
+
     if metricas_fmp:
         if metricas_fmp.tax_rate is not None:
             tax_rate_override = metricas_fmp.tax_rate
@@ -307,6 +374,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
                 "muestras": metricas_fmp.cost_samples,
                 "años": len(metricas_fmp.cost_samples),
             }
+        nota_estructura_capital_fmp = getattr(metricas_fmp, "nota_estructura_capital", None)
 
     metricas_yf: Optional[tuple[Optional[float], Dict[int, float], Optional[float], Dict[int, float]]] = None
 
@@ -396,6 +464,10 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
         )
         resultado = _f_dcf.result()
         noticias_data = _f_noticias.result()
+
+    # Inyectar nota de estructura de capital (brazo financiero) si aplica
+    if nota_estructura_capital_fmp:
+        resultado["nota_estructura_capital"] = nota_estructura_capital_fmp
 
     # Inyectar noticias en el resultado
     _noticias, _fuentes, _n_error, _resumen, _r_error = noticias_data

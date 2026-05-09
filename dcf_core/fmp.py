@@ -30,6 +30,7 @@ class FMPDerivedMetrics:
     tax_samples: Dict[int, float]
     cost_of_debt: Optional[float]
     cost_samples: Dict[int, float]
+    nota_estructura_capital: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -382,12 +383,84 @@ def _extraer_año(data: dict) -> Optional[int]:
     return None
 
 
+def _calcular_kd_con_floor(
+    interes_float: Optional[float],
+    deuda_financiera: Optional[float],
+    rf: float,
+    ebit_por_año: Optional[Dict[int, float]] = None,
+    revenue_total: Optional[float] = None,
+    total_debt_total: Optional[float] = None,
+) -> Optional[float]:
+    """
+    Calcula el costo de deuda con un floor igual a la tasa libre de riesgo.
+
+    Si el Kd calculado es menor que Rf, devuelve un fallback = Rf + credit_spread,
+    donde el spread es 1.5% (investment grade) o 3.0% (sub-investment grade).
+
+    Investment grade: D/E_proxy (deuda/equity_proxy) < 1.5 O cobertura de interés > 3.
+    Sub-investment grade: cualquier otro caso.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    kd_calculado: Optional[float] = None
+
+    if interes_float is not None and interes_float > 0 and deuda_financiera and deuda_financiera > 0:
+        kd_calculado = interes_float / deuda_financiera
+
+    if kd_calculado is not None and kd_calculado >= rf:
+        return kd_calculado
+
+    # Kd < Rf o no disponible → usar fallback
+    if kd_calculado is not None and kd_calculado < rf:
+        logger.warning(
+            f"Kd calculado ({kd_calculado:.2%}) menor que Rf ({rf:.2%}). Usando fallback."
+        )
+
+    # Clasificar calidad crediticia para elegir el spread.
+    # Regla: si se puede calcular la cobertura de interés, es la señal primaria.
+    # Solo se usa el proxy D/E-revenue cuando no hay interés o EBIT disponibles.
+    es_investment_grade = False
+    cobertura_calculable = False
+
+    if interes_float and interes_float > 0 and ebit_por_año:
+        ebit_promedio = sum(ebit_por_año.values()) / len(ebit_por_año)
+        cobertura = ebit_promedio / interes_float
+        cobertura_calculable = True
+        if cobertura > 3:
+            es_investment_grade = True
+        # Si cobertura <= 3 (incluyendo negativa), es sub-investment grade → no sobreescribir
+
+    if not cobertura_calculable and deuda_financiera and deuda_financiera > 0:
+        # Solo usa el proxy D/E si no se pudo calcular la cobertura
+        if revenue_total and revenue_total > 0:
+            de_proxy = deuda_financiera / revenue_total
+            if de_proxy < 1.5:
+                es_investment_grade = True
+
+    credit_spread = 0.015 if es_investment_grade else 0.030
+    return rf + credit_spread
+
+
 def obtener_metricas_financieras(ticker: str, limite: int = 5) -> FMPDerivedMetrics:
     """Calcula tasa efectiva y costo de deuda utilizando estados financieros de FMP."""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        from .finanzas import obtener_tasa_libre_riesgo
+        rf = obtener_tasa_libre_riesgo()
+    except Exception:
+        rf = 0.0441
 
     cliente = FMPClient()
     income_statements = cliente.get_income_statements(ticker, limit=limite)
     balance_statements = cliente.get_balance_sheet_statements(ticker, limit=limite)
+
+    # Para la detección de empresa con brazo financiero
+    revenue_total: Optional[float] = None
+    total_debt_total: Optional[float] = None
+    nota_estructura_capital: Optional[str] = None
 
     balance_por_año: Dict[int, float] = {}
     for balance in balance_statements:
@@ -395,6 +468,8 @@ def obtener_metricas_financieras(ticker: str, limite: int = 5) -> FMPDerivedMetr
         if año is None:
             continue
 
+        # Usar solo deuda financiera (LT + ST), NO totalDebt si incluye pasivos operativos
+        # FMP: totalDebt = shortTermDebt + longTermDebt (deuda financiera solamente)
         total_debt = balance.get("totalDebt")
         short_debt = balance.get("shortTermDebt")
         long_debt = balance.get("longTermDebt") or balance.get("longTermDebtTotal")
@@ -423,9 +498,12 @@ def obtener_metricas_financieras(ticker: str, limite: int = 5) -> FMPDerivedMetr
             continue
 
         balance_por_año[año] = deuda_valor
+        if total_debt_total is None:
+            total_debt_total = deuda_valor
 
     tasas_por_año: Dict[int, float] = {}
     costo_por_año: Dict[int, float] = {}
+    ebit_por_año: Dict[int, float] = {}
 
     for income in income_statements:
         año = _extraer_año(income)
@@ -454,11 +532,35 @@ def obtener_metricas_financieras(ticker: str, limite: int = 5) -> FMPDerivedMetr
         except (TypeError, ValueError):
             interes_float = None
 
+        # EBIT para calcular interest coverage
+        ebit_raw = income.get("operatingIncome") or income.get("ebit")
+        try:
+            ebit_v = float(ebit_raw) if ebit_raw not in (None, "") else None
+        except (TypeError, ValueError):
+            ebit_v = None
+        if ebit_v is not None:
+            ebit_por_año[año] = ebit_v
+
+        # Revenue para detección de brazo financiero
+        rev_raw = income.get("revenue") or income.get("totalRevenue")
+        if rev_raw not in (None, "") and revenue_total is None:
+            try:
+                revenue_total = abs(float(rev_raw))
+            except (TypeError, ValueError):
+                pass
+
         deuda = balance_por_año.get(año)
         if interes_float is not None and deuda:
-            costo = interes_float / deuda
-            if costo >= 0:
-                costo_por_año[año] = costo
+            kd = _calcular_kd_con_floor(
+                interes_float=interes_float,
+                deuda_financiera=deuda,
+                rf=rf,
+                ebit_por_año={año: ebit_por_año[año]} if año in ebit_por_año else None,
+                revenue_total=revenue_total,
+                total_debt_total=total_debt_total,
+            )
+            if kd is not None and kd >= 0:
+                costo_por_año[año] = kd
 
     tasa_promedio = None
     if tasas_por_año:
@@ -467,10 +569,32 @@ def obtener_metricas_financieras(ticker: str, limite: int = 5) -> FMPDerivedMetr
     costo_promedio = None
     if costo_por_año:
         costo_promedio = sum(costo_por_año.values()) / len(costo_por_año)
+    elif balance_por_año:
+        # No se pudo calcular Kd de ningún año (interest_expense ausente) — usar fallback global
+        costo_promedio = _calcular_kd_con_floor(
+            interes_float=None,
+            deuda_financiera=next(iter(balance_por_año.values())),
+            rf=rf,
+            ebit_por_año=ebit_por_año if ebit_por_año else None,
+            revenue_total=revenue_total,
+            total_debt_total=total_debt_total,
+        )
+
+    # Detección de empresa con brazo financiero (ej: Ford, GE, GM)
+    if total_debt_total and revenue_total and revenue_total > 0:
+        if total_debt_total > revenue_total * 0.8:
+            nota_estructura_capital = (
+                f"La deuda financiera total ({total_debt_total/1e9:.1f}B) supera el 80% "
+                f"del revenue ({revenue_total/1e9:.1f}B), lo que sugiere que la empresa "
+                f"opera un brazo financiero (ej: Ford Credit, GM Financial). "
+                f"La deuda incluye pasivos del brazo financiero y puede distorsionar el WACC."
+            )
+            logger.info(f"[{ticker}] Estructura capital con brazo financiero detectada. {nota_estructura_capital}")
 
     return FMPDerivedMetrics(
         tax_rate=tasa_promedio,
         tax_samples=tasas_por_año,
         cost_of_debt=costo_promedio,
         cost_samples=costo_por_año,
+        nota_estructura_capital=nota_estructura_capital,
     )

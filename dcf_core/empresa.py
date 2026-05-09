@@ -753,8 +753,37 @@ def analizar_empresa(
         tasa_crecimiento = _CAGR_CAP_DCF
         cagr_cap_applied = True
 
+    import logging as _logging
+    _logger = _logging.getLogger(__name__)
+
     capm = tasa_rf + beta * (market_return - tasa_rf)
     wacc = calcular_wacc(beta, debt, equity, cost_of_debt, tax_rate, tasa_rf)
+
+    # --- Validaciones WACC ---
+    wacc_below_rf: Optional[bool] = None
+    wacc_below_rf_aviso: Optional[str] = None
+    wacc_spread_bajo_aviso: Optional[str] = None
+
+    if wacc is not None:
+        if wacc <= tasa_rf:
+            wacc_below_rf = True
+            wacc_below_rf_aviso = (
+                f"WACC calculado ({wacc:.2%}) es menor o igual que la tasa libre de riesgo "
+                f"({tasa_rf:.2%}). El valor terminal puede estar fuertemente inflado. "
+                f"Revisar el costo de deuda (Kd) y la estructura de capital."
+            )
+            _logger.warning(wacc_below_rf_aviso)
+        else:
+            wacc_below_rf = False
+
+        g_terminal = G_TERMINAL
+        if tasa_crecimiento is not None:
+            spread = wacc - g_terminal
+            if spread < 0.005:
+                wacc_spread_bajo_aviso = (
+                    f"Spread WACC ({wacc:.2%}) − g terminal ({g_terminal:.2%}) = "
+                    f"{spread:.2%} extremadamente bajo. El valor terminal puede estar inflado."
+                )
 
     revenue_per_share_raw = info.get("revenuePerShare")
     revenue_per_share = to_float(revenue_per_share_raw) if revenue_per_share_raw else None
@@ -1030,6 +1059,9 @@ def analizar_empresa(
         "crecimiento_promedio_pct": avg_growth_rate * 100 if avg_growth_rate is not None else None,
         "valor_terminal": to_billions(valor_terminal),
         "detalles_fuente": detalles_metricas,
+        "wacc_below_rf": wacc_below_rf,
+        "wacc_below_rf_aviso": wacc_below_rf_aviso,
+        "wacc_spread_bajo_aviso": wacc_spread_bajo_aviso,
     }
 
     # Dividend CAGR histórico (para el modelo DDM)
