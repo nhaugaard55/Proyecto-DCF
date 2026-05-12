@@ -114,6 +114,14 @@
       transition: background 0.2s ease, border-color 0.2s ease;
     }
     .theme-toggle-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.55); }
+    .landing-cta {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 0.35rem 1rem;
+    }
+    .landing-cta-mobile { display: none; }
 
     /* ── HERO ─────────────────────────────────────────────────── */
     .hero-section {
@@ -585,27 +593,56 @@
       }
 
       .glass-nav .container {
-        align-items: stretch !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+        gap: 0.7rem !important;
       }
 
       .glass-nav .d-flex {
-        width: 100%;
-        justify-content: space-between;
+        width: auto;
+        flex: 0 0 auto;
+        justify-content: flex-end;
+        gap: 0.55rem !important;
+        flex-wrap: nowrap !important;
+        margin-left: auto;
       }
 
       .nav-link-item {
         display: none;
       }
 
-      .theme-toggle-btn,
-      .glass-nav .btn {
-        flex: 1 1 0;
+      .nav-brand {
+        flex: 1 1 auto;
+        margin-right: auto;
+      }
+
+      .brand-logo {
+        height: 2.1rem;
+        max-width: 13rem;
+      }
+
+      .theme-toggle-btn {
+        width: 2.65rem;
+        height: 2.65rem;
+        flex: 0 0 2.65rem;
+        padding: 0 !important;
         justify-content: center;
-        min-width: 0;
-        padding-left: 0.65rem !important;
-        padding-right: 0.65rem !important;
-        line-height: 1.2;
-        white-space: normal;
+        border-radius: 50%;
+        line-height: 1;
+      }
+
+      .landing-cta {
+        flex: 0 0 auto;
+        padding: 0.45rem 0.85rem !important;
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+
+      .landing-cta-desktop { display: none; }
+      .landing-cta-mobile { display: inline; }
+
+      #theme-icon {
+        line-height: 1;
       }
 
       .hero-section {
@@ -756,7 +793,7 @@
       <a href="#features" class="nav-link-item d-none d-md-inline">Funcionalidades</a>
       <a href="#modelos" class="nav-link-item d-none d-md-inline">Modelos</a>
       <a href="#precios" class="nav-link-item d-none d-md-inline">Precios</a>
-      <a href="/app/" class="btn btn-sm" style="background:var(--accent);color:#fff;font-weight:600;border-radius:999px;padding:0.35rem 1rem;">Empezar gratis</a>
+      <a href="/app/" class="btn btn-sm landing-cta"><span class="landing-cta-desktop">Empezar gratis</span><span class="landing-cta-mobile">Empezar</span></a>
       <button class="theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema">
         <span id="theme-icon">🌙</span>
       </button>
