@@ -1,7 +1,7 @@
 """
 Detección automática de la etapa del ciclo de vida empresarial.
 
-Implementa el framework "Valuation by Stage" de Brian Feroldi:
+Implementa un framework de valuación por etapa:
   1: Startup
   2: Hyper Growth
   3: Break Even

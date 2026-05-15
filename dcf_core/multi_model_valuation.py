@@ -92,7 +92,7 @@ _STAGE_TAM_ASSUMPTIONS: dict[int, dict[str, float]] = {
 # Pesos por etapa del ciclo de vida
 # ---------------------------------------------------------------------------
 
-# Matriz alineada con el gráfico "Valuation by Stage" de Brian Feroldi.
+# Matriz alineada con el framework de valuación por etapa.
 # 1.0 = Útil, 0.5 = Algo útil, 0.0 = No útil.
 # Luego los pesos se renormalizan sólo entre los modelos aplicables
 # que realmente aportan un precio al consenso.
