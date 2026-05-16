@@ -1024,6 +1024,16 @@
             white-space: nowrap;
         }
 
+        .sensitivity-table-responsive {
+            border-radius: 0.75rem;
+        }
+
+        #sensitivity-table th,
+        #sensitivity-table td {
+            padding-left: 0.85rem;
+            padding-right: 0.85rem;
+        }
+
         .historical-price-chart {
             height: 320px;
         }
@@ -1239,6 +1249,28 @@
         }
 
         @media (max-width: 575.98px) {
+            .sensitivity-heading {
+                padding-left: 1rem;
+                padding-right: 1.25rem;
+            }
+
+            .results-section .sensitivity-table-responsive {
+                margin-left: 0;
+                margin-right: 0;
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+
+            #sensitivity-table {
+                margin-bottom: 0;
+            }
+
+            #sensitivity-table th,
+            #sensitivity-table td {
+                padding-left: 0.7rem;
+                padding-right: 0.7rem;
+            }
+
             .multi-model-table {
                 min-width: 0 !important;
                 font-size: 0.75rem !important;
@@ -2850,9 +2882,11 @@
                     {# ── Tabla de sensibilidad ── #}
                     {% if resultado.tabla_sensibilidad %}
                     <div class="col-12 mt-2">
-                      <h5 class="fw-bold mb-1">Tabla de sensibilidad</h5>
-                      <p class="text-muted small mb-3">Valor intrínseco según WACC y tasa de crecimiento. <span class="text-success fw-semibold">Verde</span> = subvaluada, <span class="text-danger fw-semibold">Rojo</span> = sobrevaluada.</p>
-                      <div class="table-responsive">
+                      <div class="sensitivity-heading">
+                        <h5 class="fw-bold mb-1">Tabla de sensibilidad</h5>
+                        <p class="text-muted small mb-3">Valor intrínseco según WACC y tasa de crecimiento. <span class="text-success fw-semibold">Verde</span> = subvaluada, <span class="text-danger fw-semibold">Rojo</span> = sobrevaluada.</p>
+                      </div>
+                      <div class="table-responsive sensitivity-table-responsive">
                         <table class="table table-bordered table-sm text-center align-middle" id="sensitivity-table" style="background:var(--table-bg); color:var(--table-text); border-color:var(--table-border); font-size:0.82rem;" data-precio="{{ resultado.tabla_sensibilidad.precio_actual|default:0 }}">
                           <thead><tr style="background:var(--table-header-bg);"><th style="min-width:80px;">WACC \ Crec.</th>{% for g in resultado.tabla_sensibilidad.crecimientos %}<th>{{ g }}%</th>{% endfor %}</tr></thead>
                           <tbody>
