@@ -1513,11 +1513,11 @@
         @media (max-width: 575.98px) {
             .analysis-section-accordion > .accordion-item > .accordion-header > .accordion-button {
                 display: grid !important;
-                grid-template-columns: 3.75rem minmax(0, 1fr) 1.75rem;
-                gap: 0.75rem;
+                grid-template-columns: 3.05rem minmax(0, 1fr) 1.5rem;
+                gap: 0.65rem;
                 align-items: center;
-                min-height: 6.25rem;
-                padding: 1rem 1rem 1rem 0.9rem;
+                min-height: 5.1rem;
+                padding: 0.8rem 0.85rem;
             }
 
             .analysis-section-accordion > .accordion-item > .accordion-header > .accordion-button::after {
@@ -1539,19 +1539,20 @@
             .analysis-section-title .badge {
                 grid-column: 1;
                 justify-self: center;
-                width: 3.25rem;
-                height: 3.25rem;
+                width: 2.75rem;
+                height: 2.75rem;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
                 padding: 0 !important;
+                font-size: 1rem !important;
             }
 
             .analysis-section-title-text {
                 grid-column: 2;
                 min-width: 0;
                 max-width: 100%;
-                gap: 0.2rem;
+                gap: 0.12rem;
             }
 
             .analysis-section-title-text .fw-semibold {
@@ -1559,8 +1560,8 @@
                 white-space: normal;
                 overflow: visible;
                 text-overflow: clip;
-                font-size: clamp(1.35rem, 7vw, 1.7rem) !important;
-                line-height: 1.12;
+                font-size: clamp(1.12rem, 5.8vw, 1.38rem) !important;
+                line-height: 1.08;
             }
 
             .analysis-section-title-text .small {
@@ -1568,8 +1569,8 @@
                 white-space: normal;
                 overflow: visible;
                 text-overflow: clip;
-                font-size: clamp(0.95rem, 4.5vw, 1.1rem);
-                line-height: 1.18;
+                font-size: clamp(0.84rem, 3.9vw, 0.98rem);
+                line-height: 1.16;
             }
 
             #modelos-accordion .acc-left {
@@ -4458,9 +4459,16 @@ document.addEventListener("DOMContentLoaded", function () {
             const labelIntrinseco = "Valor consenso";
             const _storedTheme = (() => { try { return localStorage.getItem("dcf-ui-theme"); } catch(e) { return null; } })();
             const isDark = _storedTheme === "dark" || (!_storedTheme && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
-            const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
-            const textColor = isDark ? "#e2e8f0" : "#0b1d35";
             const isMobileChart = window.matchMedia("(max-width: 575.98px)").matches;
+            const gridColor = isDark
+                ? "rgba(255,255,255,0.08)"
+                : (isMobileChart ? "rgba(71,85,105,0.20)" : "rgba(71,85,105,0.14)");
+            const axisBorderColor = isDark
+                ? "rgba(226,232,240,0.22)"
+                : (isMobileChart ? "rgba(71,85,105,0.42)" : "rgba(71,85,105,0.30)");
+            const textColor = isDark
+                ? "#e2e8f0"
+                : (isMobileChart ? "#475569" : "#334155");
             new Chart(precioHistoricoEl, {
                 type: "line",
                 data: {
@@ -4499,22 +4507,24 @@ document.addEventListener("DOMContentLoaded", function () {
                                 maxTicksLimit: isMobileChart ? 3 : 8,
                                 maxRotation: isMobileChart ? 0 : 35,
                                 minRotation: 0,
-                                font: { size: isMobileChart ? 10 : 12 },
+                                font: { size: isMobileChart ? 12 : 12, weight: isMobileChart ? "600" : "500" },
                                 callback: function(value) {
                                     const label = this.getLabelForValue(value);
                                     return isMobileChart ? String(label).slice(0, 4) : label;
                                 },
                             },
-                            grid: { color: gridColor },
+                            grid: { color: gridColor, drawTicks: true },
+                            border: { color: axisBorderColor, width: isMobileChart ? 1.5 : 1 },
                         },
                         y: {
                             ticks: {
                                 color: textColor,
                                 maxTicksLimit: isMobileChart ? 4 : 6,
-                                font: { size: isMobileChart ? 10 : 12 },
+                                font: { size: isMobileChart ? 12 : 12, weight: isMobileChart ? "600" : "500" },
                                 callback: (v) => `$${v.toFixed(2)}`,
                             },
-                            grid: { color: gridColor },
+                            grid: { color: gridColor, drawTicks: true },
+                            border: { color: axisBorderColor, width: isMobileChart ? 1.5 : 1 },
                         },
                     },
                     plugins: {
