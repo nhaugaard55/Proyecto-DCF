@@ -192,13 +192,42 @@ def calcular_escenarios(fcf_actual, crecimiento_base, wacc, debt, acciones, prec
     return resultado
 
 
+# Fórmula canónica de precio DCF — compartida con la tabla de sensibilidad
+
+
+def calcular_precio_dcf(
+    fcf_base: float,
+    tasa_crecimiento: float,
+    wacc: float,
+    deuda_neta: float,
+    acciones: float,
+):
+    """
+    Precio por acción vía DCF para los parámetros dados.
+
+    Replica la fórmula del DCF principal de empresa.py:
+      1. Proyectar FCF años 1-5 con tasa_crecimiento
+      2. Valor terminal = FCF_5 × (1 + g_terminal) / (WACC - g_terminal)
+      3. Descontar todos los flujos
+      4. Restar deuda neta (LP + corriente − caja) → equity value
+      5. Dividir por acciones
+    """
+    if not fcf_base or fcf_base <= 0 or not wacc or wacc <= 0 or not acciones:
+        return None
+    fcf_proj = proyectar_fcf(fcf_base, tasa_crecimiento)
+    valor_total = calcular_valor_intrinseco(fcf_proj, wacc)
+    if valor_total is None:
+        return None
+    return round((valor_total - deuda_neta) / acciones, 2)
+
+
 # Genera tabla de sensibilidad WACC × crecimiento
 
 
-def calcular_tabla_sensibilidad(fcf_actual, wacc_base, crecimiento_base, debt, acciones, precio_actual):
+def calcular_tabla_sensibilidad(fcf_actual, wacc_base, crecimiento_base, deuda_neta, acciones, precio_actual):
     """
     Tabla 5×5: filas = variaciones de WACC, columnas = variaciones de crecimiento.
-    Cada celda contiene el valor intrínseco por acción.
+    Cada celda llama a calcular_precio_dcf con la misma fórmula que el DCF principal.
     """
     wacc_deltas = [-0.02, -0.01, 0.0, 0.01, 0.02]
     crec_deltas = [-0.04, -0.02, 0.0, 0.02, 0.04]
@@ -210,16 +239,7 @@ def calcular_tabla_sensibilidad(fcf_actual, wacc_base, crecimiento_base, debt, a
     for w in waccs:
         row = []
         for g in crecimientos:
-            if w <= 0:
-                row.append(None)
-                continue
-            fcf_proj = proyectar_fcf(fcf_actual, g)
-            valor_total = calcular_valor_intrinseco(fcf_proj, w)
-            if valor_total is None or not acciones:
-                row.append(None)
-                continue
-            equity_val = valor_total - debt
-            valor_accion = round(equity_val / acciones, 2)
+            valor_accion = calcular_precio_dcf(fcf_actual, g, w, deuda_neta, acciones)
             row.append(valor_accion)
         matrix.append(row)
 

@@ -491,11 +491,11 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
         precio = resultado.get("precio_actual") or 0.0
         fcf_actual_val = valores_para_crecimiento[0] if valores_para_crecimiento else 0.0
         datos_empresa = resultado.get("datos_empresa", {})
-        debt_val = datos_empresa.get("deuda", 0.0) or 0.0
+        deuda_neta_val = datos_empresa.get("deuda_neta", 0.0) or 0.0
         acciones_val = datos_empresa.get("acciones", 0.0) or 0.0
         wacc_val = (resultado.get("metricas", {}) or {}).get("wacc", 0.08) or 0.08
         escenarios = calcular_escenarios(
-            fcf_actual_val, crecimiento_base_val, wacc_val, debt_val, acciones_val, precio
+            fcf_actual_val, crecimiento_base_val, wacc_val, deuda_neta_val, acciones_val, precio
         )
         resultado["escenarios"] = escenarios
     except Exception:
@@ -504,7 +504,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
     # --- Tabla de sensibilidad ---
     try:
         tabla = calcular_tabla_sensibilidad(
-            fcf_actual_val, wacc_val, crecimiento_base_val, debt_val, acciones_val, precio
+            fcf_actual_val, wacc_val, crecimiento_base_val, deuda_neta_val, acciones_val, precio
         )
         resultado["tabla_sensibilidad"] = tabla
     except Exception:
