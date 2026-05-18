@@ -644,6 +644,24 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         if confidence != "Sin datos":
             confidence = "Baja"
 
+    # ── CAMBIO H: Etapa 6 requiere historial de FCF positivo ─────────────────
+    # Decline implica regresión desde rentabilidad previa. Una empresa que nunca
+    # generó FCF positivo no puede estar en Decline — es Startup.
+    if top_stage == 6 and fcf_vals and not any(v > 0 for v in fcf_vals):
+        note = (
+            "Reclasificado de Etapa 6 a 1: sin historial de FCF positivo — "
+            "no es Decline sino Startup"
+        )
+        stage_overrides.append({
+            "tipo": "H",
+            "nombre": "Decline sin historial positivo",
+            "accion": "stage_6_to_1",
+            "nota": note,
+        })
+        stage_notes.append(note)
+        top_stage = 1
+        confidence = "Media"
+
     # ── Relevancia de las métricas que ya muestra la app ────────────────────
     filtros_relevancia: list[dict] = []
     for filtro in (financials.get("filtros") or []):
