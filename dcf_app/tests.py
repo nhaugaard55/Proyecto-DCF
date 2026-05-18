@@ -58,6 +58,26 @@ class MultiModelValuationTests(SimpleTestCase):
         self.assertEqual(tam["peso"], 0.0)
         self.assertNotIn("tam", resultado["consenso"]["modelos_usados_keys"])
 
+    def test_decline_stage_prioritizes_asset_and_credit_models(self) -> None:
+        financials = _sample_financials()
+        financials["datos_empresa"].update({
+            "payout_ratio": 0.95,
+            "total_current_assets": 700_000_000.0,
+            "total_liabilities": 350_000_000.0,
+            "ebitda_ttm": 180_000_000.0,
+            "deuda_neta": 50_000_000.0,
+        })
+        financials["net_margin"] = 0.04
+
+        resultado = run_all_models("TEST", financials, stage=6, wacc=0.10)
+
+        self.assertEqual(resultado["modelos"]["dcf"]["relevancia"], "No útil")
+        self.assertEqual(resultado["modelos"]["liquidation_value"]["relevancia"], "Útil")
+        self.assertEqual(resultado["modelos"]["ev_ebitda"]["relevancia"], "Útil")
+        self.assertEqual(resultado["modelos"]["pfcf_trailing"]["relevancia"], "Algo útil")
+        self.assertEqual(resultado["modelos"]["ddm"]["relevancia"], "No útil")
+        self.assertIn("advertencia", resultado["modelos"]["pfcf_trailing"])
+
     def test_final_score_combines_consensus_solvency_and_filters(self) -> None:
         score = calcular_score_final(
             {
@@ -185,6 +205,89 @@ class CompanyStageDetectionTests(SimpleTestCase):
         self.assertEqual(stage["stage"], 2)
         self.assertEqual(stage["stage_name"], "Hyper Growth")
         self.assertGreater(stage["scores"][2], stage["scores"][1])
+
+    def test_decline_financial_override_degrades_capital_return(self) -> None:
+        financials = {
+            "revenue_growth_raw": 0.01,
+            "net_margin": -0.04,
+            "has_dividends": True,
+            "fcf_historico": [
+                {"anio": 2024, "valor": 1.4},
+                {"anio": 2023, "valor": 1.3},
+                {"anio": 2022, "valor": 1.2},
+            ],
+            "metricas": {"crecimiento_cagr": 0.04},
+            "datos_empresa": {
+                "revenue_ttm": 40_000_000_000.0,
+                "fcf_ttm": 1_400_000_000.0,
+                "roe_raw": -0.12,
+                "debt_to_capital": 0.72,
+            },
+            "filtros": [],
+        }
+
+        stage = detect_company_stage("F", financials)
+
+        self.assertEqual(stage["stage"], 6)
+        self.assertEqual(stage["confidence"], "Media")
+        self.assertEqual(stage["stage_overrides"][0]["tipo"], "A")
+
+    def test_decline_secular_override_catches_physical_retail(self) -> None:
+        financials = {
+            "revenue_growth_raw": -0.035,
+            "net_margin": 0.015,
+            "has_dividends": True,
+            "fcf_historico": [
+                {"anio": 2024, "valor": 0.55},
+                {"anio": 2023, "valor": 0.50},
+                {"anio": 2022, "valor": 0.45},
+            ],
+            "metricas": {"crecimiento_cagr": 0.06},
+            "datos_empresa": {
+                "sector": "Consumer Cyclical",
+                "industria": "Department Stores",
+                "revenue_ttm": 23_000_000_000.0,
+                "fcf_ttm": 550_000_000.0,
+                "pe_ratio_raw": 6.5,
+                "pb_ratio_raw": 0.8,
+            },
+            "filtros": [],
+        }
+
+        stage = detect_company_stage("M", financials)
+
+        self.assertEqual(stage["stage"], 6)
+        self.assertEqual(stage["confidence"], "Media")
+        self.assertEqual(stage["stage_overrides"][0]["tipo"], "B")
+        self.assertIn("Decline secular", stage["stage_notes"][0])
+
+    def test_margin_compression_warning_lowers_confidence_without_degrading(self) -> None:
+        financials = {
+            "revenue_growth_raw": -0.01,
+            "net_margin": 0.09,
+            "has_dividends": True,
+            "fcf_historico": [
+                {"anio": 2024, "valor": 2.4},
+                {"anio": 2023, "valor": 2.0},
+                {"anio": 2022, "valor": 1.6},
+            ],
+            "metricas": {"crecimiento_cagr": 0.20},
+            "datos_empresa": {
+                "revenue_ttm": 30_000_000_000.0,
+                "fcf_ttm": 2_400_000_000.0,
+                "pe_ratio_raw": 18.0,
+                "pb_ratio_raw": 2.2,
+                "gross_margin_trend": -0.02,
+            },
+            "filtros": [],
+        }
+
+        stage = detect_company_stage("MIXED", financials)
+
+        self.assertNotEqual(stage["stage"], 6)
+        self.assertEqual(stage["confidence"], "Baja")
+        self.assertEqual(stage["stage_overrides"][0]["tipo"], "C")
+        self.assertIn("desinversión", stage["manual_review_warnings"][0])
 
 
 class AutomaticAnalysisTests(SimpleTestCase):
