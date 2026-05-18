@@ -150,10 +150,10 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
     6: {  # Decline — los modelos de crecimiento pierden relevancia
         "dcf": 0.0, "reverse_dcf": 0.0,
         "pe_trailing": 0.0, "ps": 0.0,
-        "pgp": 0.0, "pfcf_trailing": 0.0,
-        "ev_ebitda": 0.4, "ddm": 0.4,
+        "pgp": 0.0, "pfcf_trailing": 0.5,
+        "ev_ebitda": 1.0, "ddm": 0.5,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 0.0, "liquidation_value": 0.70,
+        "tam": 0.0, "liquidation_value": 1.0,
         "schwab_iv": 0.0,
         "tam_note": False, "asset_note": True,
     },
@@ -239,6 +239,28 @@ def _relevancia_desde_peso(peso_raw: float) -> str:
     if peso_raw > 0.0:
         return "Algo útil"
     return "No útil"
+
+
+def _stage_adjusted_weights(stage: int, financials: dict) -> dict[str, float | bool]:
+    """Aplica ajustes condicionales de pesos sin mutar la matriz base."""
+    weights = dict(WEIGHTS.get(stage, WEIGHTS[4]))
+    if stage != 6:
+        return weights
+
+    datos = financials.get("datos_empresa") or {}
+    payout_ratio = _sf(datos.get("payout_ratio"))
+    net_margin = _sf(financials.get("net_margin"))
+    dividend_sostenible = (
+        payout_ratio is not None
+        and payout_ratio < 0.80
+        and net_margin is not None
+        and net_margin > 0
+    )
+
+    # En Decline, el DDM sólo aporta señal si el dividendo parece sostenible.
+    if not dividend_sostenible:
+        weights["ddm"] = 0.0
+    return weights
 
 
 # ---------------------------------------------------------------------------
@@ -1128,7 +1150,7 @@ def run_all_models(
     stage = max(1, min(6, int(stage or 4)))
     sector = (financials.get("datos_empresa") or {}).get("sector")
     ratios = _ratios(sector)
-    raw_weights = WEIGHTS.get(stage, WEIGHTS[4])
+    raw_weights = _stage_adjusted_weights(stage, financials)
     precio_actual = _sf(financials.get("precio_actual")) or 0.0
 
     # ── Ejecutar modelos ──────────────────────────────────────────────────────
@@ -1267,6 +1289,12 @@ def run_all_models(
             entry["veredicto_descripcion"] = r.get("veredicto_descripcion")
             entry["veredicto_zona_altman"] = r.get("veredicto_zona_altman")
 
+        if stage == 6 and key == "pfcf_trailing" and peso_raw > 0:
+            entry["advertencia"] = (
+                "En Decline, el FCF puede estar inflado por recortes de capex, "
+                "venta de activos o desinversión. Validar que sea operativo y sostenible."
+            )
+
         modelos[key] = entry
 
     # ── Calcular precio consenso ──────────────────────────────────────────────
@@ -1393,7 +1421,8 @@ def run_all_models(
     elif raw_weights.get("asset_note"):
         nota_especial = (
             "En etapa de declive los modelos de flujo de caja tienen utilidad "
-            "limitada. Considerá el valor de liquidación y los dividendos."
+            "limitada. Priorizá valor de liquidación, EV/EBITDA y P/Book; "
+            "usá P/FCF con cautela porque puede estar inflado por desinversión."
         )
 
     utiles_keys = [k for k in _MODEL_KEYS if float(raw_weights.get(k, 0) or 0) >= 1.0]
@@ -1447,8 +1476,12 @@ def calcular_score_final(consenso_dict, altman_dict, filtros_dict, stage) -> dic
     precio_consenso = _sf(consenso.get("precio"))
     precio_actual = _sf(consenso.get("precio_actual"))
     consenso_disponible = bool(consenso.get("disponible")) and modelos_usados_count >= 2
+    consenso_sin_datos = not bool(consenso)
 
-    if not consenso_disponible or precio_consenso is None or not precio_actual:
+    if consenso_sin_datos:
+        upside_puntos = 5.0
+        upside_detalle = "Consenso no disponible — puntaje neutro"
+    elif not consenso_disponible or precio_consenso is None or not precio_actual:
         upside_puntos = 0.0
         upside_detalle = (
             "Sin consenso calculable — puntaje cero"
@@ -1470,7 +1503,10 @@ def calcular_score_final(consenso_dict, altman_dict, filtros_dict, stage) -> dic
         upside_detalle = f"Upside {upside * 100:+.1f}%"
 
     dr = _sf(consenso.get("disagreement_ratio"))
-    if not consenso_disponible:
+    if consenso_sin_datos:
+        confianza_puntos = 5.0
+        confianza_detalle = "Consenso no disponible — puntaje neutro"
+    elif not consenso_disponible:
         confianza_puntos = 0.0
         confianza_detalle = "Sin modelos suficientes — confianza cero"
     elif dr is None:
