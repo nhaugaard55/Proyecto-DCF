@@ -420,6 +420,17 @@
         color: #fecaca;
         border-color: rgba(248, 113, 113, 0.35);
     }
+    .consensus-dispersion-alert {
+        color: #991b1b;
+    }
+    .theme-dark .consensus-dispersion-alert {
+        background: rgba(127, 29, 29, 0.34);
+        border-color: rgba(252, 165, 165, 0.82);
+        color: #fecaca;
+    }
+    .theme-dark .consensus-dispersion-alert strong {
+        color: #fee2e2;
+    }
     .results-section .table thead {
         background: var(--table-header-bg);
         color: var(--table-text);
@@ -2540,7 +2551,7 @@
                         <span class="text-muted">— {{ consenso.disagreement_label }}</span>
                       </div>
                       {% if consenso.disagreement_ratio > 0.60 %}
-                      <div class="alert alert-danger py-2 px-3 mt-2 mb-0 small" role="alert" style="font-size:0.78rem;">
+                      <div class="alert alert-danger consensus-dispersion-alert py-2 px-3 mt-2 mb-0 small" role="alert" style="font-size:0.78rem;">
                         ⚠️ <strong>Dispersión muy alta.</strong> Verificar los datos antes de usar este consenso. Posibles causas: estructura de acciones compleja, datos de fuente incompletos, o empresa en situación atípica.
                       </div>
                       {% endif %}
