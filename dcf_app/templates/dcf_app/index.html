@@ -713,6 +713,19 @@
         color: #fcd34d;
         background: rgba(245, 158, 11, 0.2);
     }
+    .analysis-data-def {
+        display: block;
+        font-size: 0.6rem;
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: normal;
+        opacity: 0.7;
+        line-height: 1.2;
+        margin-top: 1px;
+    }
+    @media (max-width: 575.98px) {
+        .analysis-data-def { font-size: 0.5rem; }
+    }
     @media (max-width: 991.98px) {
         .analysis-data-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2123,7 +2136,7 @@
                                 <h3 class="analysis-data-group-title">Flujos de caja</h3>
                                 <div class="analysis-data-cards">
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">FCF TTM</span>
+                                        <span class="analysis-data-label">FCF TTM <span class="analysis-data-def">Free Cash Flow, últimos 12 meses</span></span>
                                         {% with valor=resultado.datos_empresa.fcf_ttm_display %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor }}{% else %}N/D{% endif %}
@@ -2131,7 +2144,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">FCF año -1</span>
+                                        <span class="analysis-data-label">FCF año -1 <span class="analysis-data-def">Free Cash Flow</span></span>
                                         {% with item=resultado.fcf_historico.1 %}
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}"{% if item.valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2139,7 +2152,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">FCF año -2</span>
+                                        <span class="analysis-data-label">FCF año -2 <span class="analysis-data-def">Free Cash Flow</span></span>
                                         {% with item=resultado.fcf_historico.2 %}
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}"{% if item.valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2147,7 +2160,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">FCF año -3</span>
+                                        <span class="analysis-data-label">FCF año -3 <span class="analysis-data-def">Free Cash Flow</span></span>
                                         {% with item=resultado.fcf_historico.3 %}
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}"{% if item.valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2155,7 +2168,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">FCF año -4</span>
+                                        <span class="analysis-data-label">FCF año -4 <span class="analysis-data-def">Free Cash Flow</span></span>
                                         {% with item=resultado.fcf_historico.4 %}
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}"{% if item.valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2163,7 +2176,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">CAGR FCF calculado</span>
+                                        <span class="analysis-data-label">CAGR FCF calculado <span class="analysis-data-def">Tasa de crecimiento anual compuesta</span></span>
                                         {% with valor=resultado.metricas.crecimiento_cagr_pct %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor|floatformat:2 }}%{% elif resultado.metricas.cagr_fcf_todos_negativos %}N/A{% else %}N/D{% endif %}
@@ -2171,7 +2184,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">EBITDA TTM</span>
+                                        <span class="analysis-data-label">EBITDA TTM <span class="analysis-data-def">Result. antes de int., imp., depr. y amort.</span></span>
                                         {% with valor=resultado.datos_empresa.ebitda_ttm_display %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor }}{% else %}N/D{% endif %}
@@ -2185,7 +2198,7 @@
                                 <h3 class="analysis-data-group-title">Resultados</h3>
                                 <div class="analysis-data-cards">
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Revenue TTM</span>
+                                        <span class="analysis-data-label">Revenue TTM <span class="analysis-data-def">Ingresos totales, últimos 12 meses</span></span>
                                         {% with valor=resultado.datos_empresa.revenue_ttm_display %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor }}{% else %}N/D{% endif %}
@@ -2193,7 +2206,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Gross Profit TTM</span>
+                                        <span class="analysis-data-label">Gross Profit TTM <span class="analysis-data-def">Ganancia bruta, últimos 12 meses</span></span>
                                         {% with valor=resultado.datos_empresa.gross_profit_ttm_display %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor }}{% else %}N/D{% endif %}
@@ -2201,7 +2214,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Net Income TTM</span>
+                                        <span class="analysis-data-label">Net Income TTM <span class="analysis-data-def">Ingreso neto, últimos 12 meses</span></span>
                                         {% with valor=resultado.datos_empresa.net_income_ttm_display %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor }}{% else %}N/D{% endif %}
@@ -2209,7 +2222,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">EPS TTM</span>
+                                        <span class="analysis-data-label">EPS TTM <span class="analysis-data-def">Ganancia por acción, últimos 12 meses</span></span>
                                         {% with valor=resultado.datos_empresa.eps_ttm %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}
@@ -2217,7 +2230,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">EPS Forward</span>
+                                        <span class="analysis-data-label">EPS Forward <span class="analysis-data-def">Ganancia por acción estimada (próx. año)</span></span>
                                         {% with valor=resultado.datos_empresa.eps_forward %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}
@@ -2225,7 +2238,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Net Margin %</span>
+                                        <span class="analysis-data-label">Net Margin % <span class="analysis-data-def">Rentabilidad neta sobre ingresos</span></span>
                                         {% with valor=resultado.net_margin %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{% widthratio valor 1 100 %}%{% else %}N/D{% endif %}
@@ -2233,7 +2246,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Revenue Growth YoY %</span>
+                                        <span class="analysis-data-label">Revenue Growth YoY % <span class="analysis-data-def">Variación de ingresos vs. año anterior</span></span>
                                         {% with valor=resultado.revenue_growth_raw %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{% widthratio valor 1 100 %}%{% else %}N/D{% endif %}
@@ -2247,7 +2260,7 @@
                                 <h3 class="analysis-data-group-title">Balance</h3>
                                 <div class="analysis-data-cards">
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Deuda largo plazo</span>
+                                        <span class="analysis-data-label">Deuda largo plazo <span class="analysis-data-def">Vence en más de 1 año</span></span>
                                         {% with valor=resultado.datos_empresa.deuda_billones %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2255,7 +2268,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Deuda corriente</span>
+                                        <span class="analysis-data-label">Deuda corriente <span class="analysis-data-def">Vence en menos de 1 año</span></span>
                                         {% with valor=deuda_corriente_billones %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2279,7 +2292,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Deuda neta total</span>
+                                        <span class="analysis-data-label">Deuda neta total <span class="analysis-data-def">Deuda total menos caja</span></span>
                                         {% with valor=resultado.datos_empresa.deuda_neta_billones %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2287,7 +2300,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Activos corrientes</span>
+                                        <span class="analysis-data-label">Activos corrientes <span class="analysis-data-def">Liquidables en menos de 1 año</span></span>
                                         {% with valor=total_current_assets_billones %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2309,7 +2322,7 @@
                                 <h3 class="analysis-data-group-title">Tasas y valuación</h3>
                                 <div class="analysis-data-cards">
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Beta</span>
+                                        <span class="analysis-data-label">Beta <span class="analysis-data-def">Volatilidad relativa al mercado</span></span>
                                         {% with valor=resultado.datos_empresa.beta %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor|floatformat:2 }}{% else %}N/D{% endif %}
@@ -2317,7 +2330,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Rf</span>
+                                        <span class="analysis-data-label">Rf <span class="analysis-data-def">Tasa libre de riesgo</span></span>
                                         {% with valor=resultado.metricas.tasa_rf_pct %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}
@@ -2328,7 +2341,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Rm</span>
+                                        <span class="analysis-data-label">Rm <span class="analysis-data-def">Retorno esperado del mercado</span></span>
                                         {% with valor=resultado.metricas.market_return_pct %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}
@@ -2336,7 +2349,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Ke</span>
+                                        <span class="analysis-data-label">Ke <span class="analysis-data-def">Costo del capital propio (CAPM)</span></span>
                                         {% with valor=resultado.metricas.capm_pct %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}
@@ -2344,7 +2357,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Kd</span>
+                                        <span class="analysis-data-label">Kd <span class="analysis-data-def">Costo de la deuda</span></span>
                                         {% with valor=resultado.datos_empresa.cost_of_debt_pct fuente=resultado.datos_empresa.cost_of_debt_fuente %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor|floatformat:2 }}%{% if not fuente %}<span class="analysis-data-fallback">fallback</span>{% endif %}{% else %}N/D{% endif %}
@@ -2352,7 +2365,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Tax rate</span>
+                                        <span class="analysis-data-label">Tax rate <span class="analysis-data-def">Tasa impositiva efectiva</span></span>
                                         {% with valor=resultado.datos_empresa.tasa_impositiva_pct fuente=resultado.datos_empresa.tasa_impositiva_fuente %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor|floatformat:2 }}%{% if not fuente %}<span class="analysis-data-fallback">fallback</span>{% endif %}{% else %}N/D{% endif %}
@@ -2360,7 +2373,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">WACC final</span>
+                                        <span class="analysis-data-label">WACC final <span class="analysis-data-def">Costo prom. ponderado del capital</span></span>
                                         {% with valor=resultado.metricas.wacc_pct %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor|floatformat:2 }}%{% else %}N/D{% endif %}
@@ -2368,7 +2381,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">G terminal</span>
+                                        <span class="analysis-data-label">G terminal <span class="analysis-data-def">Tasa de crecimiento a perpetuidad</span></span>
                                         <span class="analysis-data-value">2.50%</span>
                                     </div>
                                 </div>
@@ -2378,7 +2391,7 @@
                                 <h3 class="analysis-data-group-title">Acciones y mercado</h3>
                                 <div class="analysis-data-cards">
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Shares outstanding</span>
+                                        <span class="analysis-data-label">Shares outstanding <span class="analysis-data-def">Acciones en circulación</span></span>
                                         {% with valor=resultado.datos_empresa.acciones_billones %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2394,7 +2407,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Market cap calculado</span>
+                                        <span class="analysis-data-label">Market cap calculado <span class="analysis-data-def">Precio × acciones en circulación</span></span>
                                         {% with valor=resultado.datos_empresa.market_cap_billones %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}${{ valor|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2402,7 +2415,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">DPS TTM</span>
+                                        <span class="analysis-data-label">DPS TTM <span class="analysis-data-def">Dividendo por acción, últimos 12 meses</span></span>
                                         {% with valor=resultado.dividendos.annual_dividend %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}${{ valor|floatformat:2 }}{% else %}N/D{% endif %}
@@ -2410,7 +2423,7 @@
                                         {% endwith %}
                                     </div>
                                     <div class="analysis-data-metric">
-                                        <span class="analysis-data-label">Payout ratio</span>
+                                        <span class="analysis-data-label">Payout ratio <span class="analysis-data-def">% del ingreso pagado como dividendo</span></span>
                                         {% with valor=payout_ratio_pct %}
                                         <span class="analysis-data-value{% if valor is None %} is-missing{% endif %}"{% if valor is None %} title="Dato no disponible — puede afectar algunos modelos"{% endif %}>
                                             {% if valor is not None %}{{ valor|floatformat:1 }}%{% else %}N/D{% endif %}
