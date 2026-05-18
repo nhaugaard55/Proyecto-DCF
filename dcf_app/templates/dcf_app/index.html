@@ -431,6 +431,26 @@
     .theme-dark .consensus-dispersion-alert strong {
         color: #fee2e2;
     }
+    .analysis-sequence-step-title {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+    }
+    .analysis-sequence-step-badge {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bs-primary);
+        color: #fff;
+        font-weight: 700;
+        font-size: 1.05rem;
+        line-height: 1;
+    }
     .results-section .table thead {
         background: var(--table-header-bg);
         color: var(--table-text);
@@ -2419,8 +2439,10 @@
                         {% for f in filtros_activos %}{% if f.cumple %}{% with cumplidos=cumplidos|add:1 %}{% endwith %}{% endif %}{% endfor %}
                         <div class="col-12 col-md-4">
                             <div class="p-3 rounded-3 h-100 {% if filtros_activos %}border{% endif %}" style="border-color: var(--bs-border-color)!important;">
-                                <div class="fs-2 mb-1">📊</div>
-                                <div class="fw-bold mb-1">Paso 1 — Ratios</div>
+                                <div class="analysis-sequence-step-title fw-bold mb-2">
+                                    <span class="analysis-sequence-step-badge">1</span>
+                                    <span>Ratios</span>
+                                </div>
                                 <div class="text-muted small mb-2">Filtros {% if company_stage %}etapa {{ company_stage.stage_name }}{% else %}fundamentales{% endif %}</div>
                                 {% if company_stage.stage == 6 %}
                                 <div class="small text-warning mb-1">⚠️ Empresa en declive</div>
@@ -2437,8 +2459,10 @@
                         <!-- Paso 2: Valuación -->
                         <div class="col-12 col-md-4">
                             <div class="p-3 rounded-3 h-100 border" style="border-color: var(--bs-border-color)!important;">
-                                <div class="fs-2 mb-1">📐</div>
-                                <div class="fw-bold mb-1">Paso 2 — Valuación</div>
+                                <div class="analysis-sequence-step-title fw-bold mb-2">
+                                    <span class="analysis-sequence-step-badge">2</span>
+                                    <span>Valuación</span>
+                                </div>
                                 <div class="text-muted small mb-2">Consenso multi-modelo</div>
                                 {% if multi_model and multi_model.consenso and multi_model.consenso.veredicto %}
                                     {% if multi_model.consenso.veredicto == "Subvaluada" %}
@@ -2466,8 +2490,10 @@
                         <!-- Paso 3: Técnico -->
                         <div class="col-12 col-md-4">
                             <div class="p-3 rounded-3 h-100 border" style="border-color: var(--bs-border-color)!important;">
-                                <div class="fs-2 mb-1">📈</div>
-                                <div class="fw-bold mb-1">Paso 3 — Técnico</div>
+                                <div class="analysis-sequence-step-title fw-bold mb-2">
+                                    <span class="analysis-sequence-step-badge">3</span>
+                                    <span>Técnico</span>
+                                </div>
                                 <div class="text-muted small mb-2">Punto de entrada</div>
                                 {% if resultado.analisis_tecnico.disponible %}
                                     {% if resultado.analisis_tecnico.senal == "buena" %}
