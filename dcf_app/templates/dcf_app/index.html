@@ -1408,6 +1408,109 @@
             padding: 0 !important;
         }
 
+        .analysis-section-accordion .accordion-item {
+            background: transparent;
+            border: 0;
+        }
+
+        .analysis-section-accordion .accordion-button {
+            --analysis-section-bg: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(255, 255, 255, 0.68)), rgba(255, 255, 255, 0.96);
+            --analysis-section-bg-solid: rgba(255, 255, 255, 0.96);
+            --analysis-section-bg-open: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(255, 255, 255, 0.72)), rgba(255, 255, 255, 0.98);
+            --analysis-section-bg-hover: linear-gradient(135deg, rgba(37, 99, 235, 0.13), rgba(255, 255, 255, 0.76)), rgba(255, 255, 255, 0.98);
+            --analysis-section-text: #0f172a;
+            --analysis-section-muted: rgba(71, 85, 105, 0.74);
+            --analysis-section-border: rgba(37, 99, 235, 0.18);
+            --analysis-section-border-hover: rgba(37, 99, 235, 0.32);
+            --analysis-section-shadow: 0 14px 34px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+            --analysis-section-chevron-filter: none;
+            --bs-accordion-btn-bg: var(--analysis-section-bg-solid);
+            --bs-accordion-active-bg: var(--analysis-section-bg-solid);
+            --bs-accordion-active-color: var(--analysis-section-text);
+            --bs-accordion-btn-color: var(--analysis-section-text);
+            --bs-accordion-btn-focus-box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.12);
+            border: 1px solid var(--analysis-section-border);
+            border-radius: 1rem !important;
+            background: var(--analysis-section-bg) !important;
+            background-color: var(--analysis-section-bg-solid) !important;
+            color: var(--analysis-section-text) !important;
+            box-shadow: var(--analysis-section-shadow);
+            padding: 1rem 1.25rem;
+        }
+
+        .analysis-section-accordion .accordion-button:not(.collapsed) {
+            background: var(--analysis-section-bg-open) !important;
+            background-color: var(--analysis-section-bg-solid) !important;
+            color: var(--analysis-section-text) !important;
+            box-shadow: var(--analysis-section-shadow);
+        }
+
+        .analysis-section-accordion .accordion-button:hover {
+            border-color: var(--analysis-section-border-hover);
+            background: var(--analysis-section-bg-hover) !important;
+            background-color: var(--analysis-section-bg-solid) !important;
+        }
+
+        .theme-dark .analysis-section-accordion .accordion-button,
+        .theme-dark .analysis-section-accordion .accordion-button.collapsed,
+        .theme-dark .analysis-section-accordion .accordion-button:not(.collapsed) {
+            --analysis-section-bg: linear-gradient(135deg, rgba(37, 99, 235, 0.16), rgba(15, 23, 42, 0.04)), #111827;
+            --analysis-section-bg-solid: #111827;
+            --analysis-section-bg-open: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(15, 23, 42, 0.06)), #14203a;
+            --analysis-section-bg-hover: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(15, 23, 42, 0.08)), #15213a;
+            --analysis-section-text: #f8fafc;
+            --analysis-section-muted: rgba(203, 213, 225, 0.72);
+            --analysis-section-border: rgba(59, 130, 246, 0.34);
+            --analysis-section-border-hover: rgba(96, 165, 250, 0.52);
+            --analysis-section-shadow: 0 18px 38px rgba(2, 6, 23, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+            --analysis-section-chevron-filter: invert(1) grayscale(1) brightness(1.55);
+        }
+
+        .analysis-section-accordion .accordion-button::after {
+            filter: var(--analysis-section-chevron-filter);
+            opacity: 0.9;
+        }
+
+        .analysis-section-accordion .accordion-button:focus {
+            border-color: rgba(37, 99, 235, 0.38);
+            box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.12);
+        }
+
+        .analysis-section-accordion .accordion-collapse {
+            margin-top: 1rem;
+        }
+
+        .analysis-section-accordion .accordion-body {
+            padding: 0;
+        }
+
+        .analysis-section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 0;
+        }
+
+        .analysis-section-title .badge {
+            flex-shrink: 0;
+        }
+
+        .analysis-section-title-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            min-width: 0;
+        }
+
+        .analysis-section-title-text span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .analysis-section-title-text .text-muted {
+            color: var(--analysis-section-muted) !important;
+        }
+
         .display-6 {
             font-size: 1.75rem;
         }
@@ -2306,14 +2409,24 @@
         </div>
         <!-- ===== FIN SECUENCIA ===== -->
 
-        <!-- ── SEPARADOR PASO 1 ── -->
+        <!-- ── ACORDEÓN PASO 1 ── -->
         <div class="col-12">
-            <div class="d-flex align-items-center gap-3 mt-2">
-                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">1</span>
-                <span class="fw-semibold fs-5">Ratios fundamentales</span>
-                <hr class="flex-grow-1 my-0 opacity-25">
-            </div>
-        </div>
+            <div class="accordion analysis-section-accordion" id="analysis-ratios-accordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="analysis-ratios-heading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-ratios-collapse" aria-expanded="false" aria-controls="analysis-ratios-collapse" style="background:var(--analysis-section-bg); background-color:var(--analysis-section-bg-solid); color:var(--analysis-section-text); border:1px solid var(--analysis-section-border); box-shadow:var(--analysis-section-shadow);">
+                            <span class="analysis-section-title">
+                                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">1</span>
+                                <span class="analysis-section-title-text">
+                                    <span class="fw-semibold fs-5">Ratios fundamentales</span>
+                                    <span class="small" style="color:var(--analysis-section-muted);">Etapa empresarial, señales y relevancia de métricas</span>
+                                </span>
+                            </span>
+                        </button>
+                    </h2>
+                    <div id="analysis-ratios-collapse" class="accordion-collapse collapse" aria-labelledby="analysis-ratios-heading">
+                        <div class="accordion-body">
+                            <div class="row g-4">
 
         <!-- ===== ETAPA EMPRESARIAL ===== -->
         {% if company_stage %}
@@ -2485,14 +2598,31 @@
         {% endif %}
         <!-- ===== FIN ETAPA EMPRESARIAL ===== -->
 
-        <!-- ── SEPARADOR PASO 2 ── -->
-        <div class="col-12">
-            <div class="d-flex align-items-center gap-3 mt-2">
-                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">2</span>
-                <span class="fw-semibold fs-5">Valuación</span>
-                <hr class="flex-grow-1 my-0 opacity-25">
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- ── ACORDEÓN PASO 2 ── -->
+        <div class="col-12">
+            <div class="accordion analysis-section-accordion" id="analysis-valuation-accordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="analysis-valuation-heading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-valuation-collapse" aria-expanded="false" aria-controls="analysis-valuation-collapse" style="background:var(--analysis-section-bg); background-color:var(--analysis-section-bg-solid); color:var(--analysis-section-text); border:1px solid var(--analysis-section-border); box-shadow:var(--analysis-section-shadow);">
+                            <span class="analysis-section-title">
+                                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">2</span>
+                                <span class="analysis-section-title-text">
+                                    <span class="fw-semibold fs-5">Valuación</span>
+                                    <span class="small" style="color:var(--analysis-section-muted);">Consenso multi-modelo y modelos utilizados</span>
+                                </span>
+                            </span>
+                        </button>
+                    </h2>
+                    <div id="analysis-valuation-collapse" class="accordion-collapse collapse" aria-labelledby="analysis-valuation-heading">
+                        <div class="accordion-body">
+                            <div class="row g-4">
 
         {# ── Consenso multi-modelo (siempre visible) ── #}
         {% if multi_model and multi_model.consenso %}
@@ -3460,14 +3590,31 @@
           </div>{# /accordion #}
         </div>{# /col-12 accordions #}
 
-        <!-- ── SEPARADOR PASO 3 ── -->
-        <div class="col-12">
-            <div class="d-flex align-items-center gap-3 mt-2">
-                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">3</span>
-                <span class="fw-semibold fs-5">Análisis técnico</span>
-                <hr class="flex-grow-1 my-0 opacity-25">
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- ── ACORDEÓN PASO 3 ── -->
+        <div class="col-12">
+            <div class="accordion analysis-section-accordion" id="analysis-technical-accordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="analysis-technical-heading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-technical-collapse" aria-expanded="false" aria-controls="analysis-technical-collapse" style="background:var(--analysis-section-bg); background-color:var(--analysis-section-bg-solid); color:var(--analysis-section-text); border:1px solid var(--analysis-section-border); box-shadow:var(--analysis-section-shadow);">
+                            <span class="analysis-section-title">
+                                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">3</span>
+                                <span class="analysis-section-title-text">
+                                    <span class="fw-semibold fs-5">Análisis técnico</span>
+                                    <span class="small" style="color:var(--analysis-section-muted);">Gráfico interactivo y señales de entrada</span>
+                                </span>
+                            </span>
+                        </button>
+                    </h2>
+                    <div id="analysis-technical-collapse" class="accordion-collapse collapse" aria-labelledby="analysis-technical-heading">
+                        <div class="accordion-body">
+                            <div class="row g-4">
 
         <!-- ===== PASO 3: ANÁLISIS TÉCNICO (TradingView) ===== -->
         {% if ticker %}
@@ -3512,6 +3659,8 @@
                     (function() {
                         var TV_CONTAINER_ID = "tradingview_chart_{{ ticker }}";
                         var TV_SYMBOL = "{{ tradingview_symbol }}";
+                        var TV_PANEL_ID = "analysis-technical-collapse";
+                        var tvInitialized = false;
 
                         function getIsDark() {
                             var stored = (function() { try { return localStorage.getItem('dcf-ui-theme'); } catch(e) { return null; } })();
@@ -3543,12 +3692,22 @@
                                 ],
                                 "container_id": TV_CONTAINER_ID
                             });
+                            tvInitialized = true;
                         }
 
-                        initTradingView(getIsDark());
+                        var panel = document.getElementById(TV_PANEL_ID);
+                        if (panel && !panel.classList.contains('show')) {
+                            panel.addEventListener('shown.bs.collapse', function() {
+                                initTradingView(getIsDark());
+                            }, { once: true });
+                        } else {
+                            initTradingView(getIsDark());
+                        }
 
                         window.addEventListener('dcf-theme-changed', function(e) {
-                            initTradingView(e.detail.dark);
+                            if (tvInitialized) {
+                                initTradingView(e.detail.dark);
+                            }
                         });
                     })();
                     </script>
@@ -3562,6 +3721,31 @@
         {% endif %}
         <!-- ===== FIN PASO 3 ===== -->
 
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if news_total > 0 or resultado.noticias_error %}
+        <div class="col-12">
+            <div class="accordion analysis-section-accordion" id="analysis-news-accordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="analysis-news-heading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-news-collapse" aria-expanded="false" aria-controls="analysis-news-collapse" style="background:var(--analysis-section-bg); background-color:var(--analysis-section-bg-solid); color:var(--analysis-section-text); border:1px solid var(--analysis-section-border); box-shadow:var(--analysis-section-shadow);">
+                            <span class="analysis-section-title">
+                                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">4</span>
+                                <span class="analysis-section-title-text">
+                                    <span class="fw-semibold fs-5">Noticias recientes</span>
+                                    <span class="small" style="color:var(--analysis-section-muted);">Contexto de mercado y sentimiento</span>
+                                </span>
+                            </span>
+                        </button>
+                    </h2>
+                    <div id="analysis-news-collapse" class="accordion-collapse collapse" aria-labelledby="analysis-news-heading">
+                        <div class="accordion-body">
+                            <div class="row g-4">
         {% if news_total > 0 %}
         <div class="col-12">
             <div class="card soft-card">
@@ -3642,6 +3826,13 @@
                 <div class="card-body">
                     <h3 class="h5 mb-2">Noticias recientes</h3>
                     <p class="text-muted mb-0">{{ resultado.noticias_error }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
