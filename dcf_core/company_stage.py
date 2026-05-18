@@ -504,13 +504,62 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     else:
         confidence = "Baja"
 
-    # ── Overrides de Decline ─────────────────────────────────────────────────
-    # Estos overrides corrigen falsos positivos de Capital Return en negocios
-    # maduros que todavía generan caja, pero cuyo equity ya refleja deterioro.
+    # ── Reclasificaciones y Overrides ────────────────────────────────────────
     stage_overrides: list[dict] = []
     stage_notes: list[str] = []
     manual_review_warnings: list[str] = []
     fcf_positivo = (fcf_ttm_raw is not None and fcf_ttm_raw > 0) or (fcf_vals and fcf_vals[0] > 0)
+    fcf_negativo = (fcf_ttm_raw is not None and fcf_ttm_raw < 0) or (fcf_vals and fcf_vals[0] < 0)
+
+    # ── Override D: Empresa establecida en reestructuración ──────────────────
+    # Revenue >$1B en contracción leve, FCF negativo pero EBITDA positivo:
+    # el negocio core funciona; las pérdidas son cargos extraordinarios transitorios.
+    reestructuracion = (
+        revenue_ttm is not None and revenue_ttm >= 1_000_000_000
+        and revenue_growth is not None and -0.15 <= revenue_growth < 0
+        and bool(fcf_negativo)
+        and ebitda_raw is not None and ebitda_raw > 0
+    )
+    if reestructuracion and top_stage != 3:
+        note = "Empresa establecida en reestructuración — regresión transitoria a Break Even"
+        stage_overrides.append({
+            "tipo": "D",
+            "nombre": "Reestructuración",
+            "accion": f"stage_{top_stage}_to_3",
+            "nota": note,
+        })
+        stage_notes.append(note)
+        top_stage = 3
+        confidence = "Media"
+
+    # ── CAMBIO 1: Etapa 2 requiere revenue_growth ≥ 15% ─────────────────────
+    if top_stage == 2 and revenue_growth is not None and revenue_growth < 0.15:
+        note = (
+            f"Reclasificado de Etapa 2 a 3: revenue_growth insuficiente "
+            f"para Hyper Growth ({revenue_growth:.1%})"
+        )
+        stage_overrides.append({
+            "tipo": "E",
+            "nombre": "Hyper Growth sin crecimiento suficiente",
+            "accion": "stage_2_to_3",
+            "nota": note,
+        })
+        stage_notes.append(note)
+        top_stage = 3
+        confidence = "Media"
+
+    # ── CAMBIO 2: Etapa 1 requiere revenue < $500M ───────────────────────────
+    if top_stage == 1 and revenue_ttm is not None and revenue_ttm >= 500_000_000:
+        note = "Reclasificado de Etapa 1 a 3: revenue > $500M es incompatible con Startup"
+        stage_overrides.append({
+            "tipo": "F",
+            "nombre": "Startup con revenue excesivo",
+            "accion": "stage_1_to_3",
+            "nota": note,
+        })
+        stage_notes.append(note)
+        top_stage = 3
+        confidence = "Media"
 
     decline_financiero = (
         net_margin is not None and net_margin < 0
@@ -533,7 +582,7 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     _decline_secular_2of3 = sum(1 for s in _decline_2of3 if s) >= 2 and bool(fcf_positivo)
     decline_secular = _decline_secular_primary or _decline_secular_2of3
 
-    if revenue_growth is not None and revenue_growth < 0 and not decline_secular:
+    if revenue_growth is not None and revenue_growth < 0 and not decline_secular and not reestructuracion:
         print(
             f"[company_stage Override B] no disparado para {ticker!r}: "
             f"revenue_growth={revenue_growth:.3%}, pb={pb_ratio}, pe={pe_ratio}",
@@ -598,14 +647,31 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     # ── Metadatos de la etapa ────────────────────────────────────────────────
     meta = STAGE_META[top_stage]
 
+    # Override D usa métricas específicas de reestructuración, distintas de Stage 3 estándar.
+    if any(o.get("tipo") == "D" for o in stage_overrides):
+        metricas_utiles_final      = ["Reverse DCF", "EV/EBITDA", "P/S"]
+        metricas_algo_utiles_final = ["P/Forward Earnings", "P/Forward FCF", "P/B"]
+        metricas_no_utiles_final   = ["DCF", "DDM", "P/E", "P/FCF", "TAM", "Price / Gross Profit"]
+        dcf_utility_final = "No es útil"
+        dcf_warning_final = (
+            "En reestructuración el FCF negativo refleja cargos extraordinarios, "
+            "no el rendimiento operativo. Prefiere EV/EBITDA y Reverse DCF."
+        )
+    else:
+        metricas_utiles_final      = meta["metricas_utiles"]
+        metricas_algo_utiles_final = meta["metricas_algo_utiles"]
+        metricas_no_utiles_final   = meta["metricas_no_utiles"]
+        dcf_utility_final = meta["dcf_utility"]
+        dcf_warning_final = meta["dcf_warning"]
+
     return {
         "stage":             top_stage,
         "stage_name":        meta["nombre"],
         "stage_description": meta["descripcion"],
         "confidence":        confidence,
         "color":             meta["color"],
-        "dcf_utility":       meta["dcf_utility"],
-        "dcf_warning":       meta["dcf_warning"],
+        "dcf_utility":       dcf_utility_final,
+        "dcf_warning":       dcf_warning_final,
         "scores":            dict(scores),
         "signals": {
             "fcf_trend":      fcf_trend,
@@ -624,9 +690,9 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         "stage_notes":           stage_notes,
         "manual_review_warnings": manual_review_warnings,
         "filtros_relevancia":    filtros_relevancia,
-        "metricas_utiles":       meta["metricas_utiles"],
-        "metricas_algo_utiles":  meta["metricas_algo_utiles"],
-        "metricas_no_utiles":    meta["metricas_no_utiles"],
+        "metricas_utiles":       metricas_utiles_final,
+        "metricas_algo_utiles":  metricas_algo_utiles_final,
+        "metricas_no_utiles":    metricas_no_utiles_final,
         "revenue_irregular":     revenue_irregular,
         "revenue_irregular_cv":  round(revenue_cv, 2) if revenue_cv is not None else None,
         "revenue_irregular_nota": (
