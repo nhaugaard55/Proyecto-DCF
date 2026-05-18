@@ -9,6 +9,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    try {
+      if (sessionStorage.getItem("intrinsicSplashSeen")) {
+        document.documentElement.classList.add("splash-seen");
+      }
+    } catch (e) {}
+  </script>
   <style>
     /* ── CSS variables (same as base.html) ─────────────────── */
     :root {
@@ -737,6 +744,153 @@
       font-size: 0.88rem;
     }
 
+    /* ── Intro splash ─────────────────────────────────────────
+       Timing editable:
+       - logo reveal: 1.2s scale/opacity/blur/glow
+       - hold: ~0.45s handled from JS before applying .splash-hidden
+       - dissolve: 0.5s opacity/blur/glow fade-out
+       Easing: premium cubic curve with a fast start and soft settle. */
+    #splash-screen {
+      --splash-reveal-duration: 1.2s;
+      --splash-dissolve-duration: 0.5s;
+      --splash-ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+      --splash-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(37, 99, 235, 0.18), transparent 34rem),
+        linear-gradient(135deg, #080d1c 0%, #0b1220 52%, #101827 100%);
+      opacity: 1;
+      pointer-events: auto;
+      isolation: isolate;
+      will-change: opacity, filter;
+      animation: splashFallbackDismiss 2.15s var(--splash-ease-out) forwards;
+    }
+    #splash-screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(circle at 50% 48%, rgba(59, 130, 246, 0.16), transparent min(42vw, 28rem)),
+        radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.08), transparent min(62vw, 40rem));
+      opacity: 0;
+      transform: scale(0.82);
+      will-change: transform, opacity;
+      animation: splashAuraIn var(--splash-reveal-duration) var(--splash-ease-premium) 0.05s forwards;
+    }
+    .splash-mark {
+      width: clamp(18rem, 42vw, 42rem);
+      height: auto;
+      filter: blur(0.55rem) drop-shadow(0 0 0.9rem rgba(59, 130, 246, 0.16));
+      opacity: 0;
+      transform: translateZ(0) scale(0.55);
+      transform-origin: center;
+      backface-visibility: hidden;
+      will-change: transform, opacity, filter;
+      animation: splashLogoReveal var(--splash-reveal-duration) var(--splash-ease-premium) 0.08s forwards;
+    }
+    #splash-screen.splash-hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      filter: blur(0.55rem);
+      animation: none;
+      transition:
+        opacity var(--splash-dissolve-duration) var(--splash-ease-out),
+        filter var(--splash-dissolve-duration) var(--splash-ease-out),
+        visibility 0s linear var(--splash-dissolve-duration);
+    }
+    #splash-screen.splash-hidden::before {
+      opacity: 0;
+      transform: scale(1.12);
+      transition:
+        opacity var(--splash-dissolve-duration) var(--splash-ease-out),
+        transform var(--splash-dissolve-duration) var(--splash-ease-out);
+    }
+    #splash-screen.splash-hidden .splash-mark {
+      opacity: 0;
+      transform: translateZ(0) scale(1);
+      filter: blur(0.75rem) drop-shadow(0 0 2.8rem rgba(59, 130, 246, 0.5));
+      transition:
+        opacity var(--splash-dissolve-duration) var(--splash-ease-out),
+        filter var(--splash-dissolve-duration) var(--splash-ease-out);
+    }
+    .splash-seen #splash-screen {
+      display: none;
+    }
+    @media (max-width: 767.98px) {
+      .splash-mark {
+        width: clamp(14rem, 78vw, 25rem);
+      }
+    }
+    @keyframes splashLogoReveal {
+      0% {
+        opacity: 0;
+        transform: translateZ(0) scale(0.55);
+        filter: blur(0.55rem) drop-shadow(0 0 0.9rem rgba(59, 130, 246, 0.16));
+      }
+      72% {
+        opacity: 0.94;
+        transform: translateZ(0) scale(1.015);
+        filter: blur(0.05rem) drop-shadow(0 0 2rem rgba(59, 130, 246, 0.34));
+      }
+      100% {
+        opacity: 1;
+        transform: translateZ(0) scale(1);
+        filter: blur(0) drop-shadow(0 0 2.15rem rgba(59, 130, 246, 0.36));
+      }
+    }
+    @keyframes splashAuraIn {
+      0% {
+        opacity: 0;
+        transform: scale(0.82);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    @keyframes splashFallbackDismiss {
+      /* CSS-only safety path: if JavaScript fails, the landing is revealed normally. */
+      0%, 77% {
+        opacity: 1;
+        visibility: visible;
+      }
+      100% {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+    }
+    @keyframes splashReducedDismiss {
+      to {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #splash-screen {
+        animation: splashReducedDismiss 0.08s ease forwards;
+      }
+      .splash-mark {
+        opacity: 1;
+        transform: none;
+        filter: none;
+        animation: none;
+      }
+      #splash-screen::before {
+        animation: none;
+      }
+      #splash-screen.splash-hidden {
+        transition: none;
+      }
+    }
+
     /* ── Landing loading overlay ─────────────────────────── */
     #landing-loading {
       display: none;
@@ -782,6 +936,10 @@
   </style>
 </head>
 <body>
+
+<div id="splash-screen" aria-hidden="true">
+  <img class="splash-mark" src="{% static 'dcf_app/img/intrinsic-logo.png' %}" alt="">
+</div>
 
 <!-- ═══ NAV ════════════════════════════════════════════════════ -->
 <nav class="glass-nav py-3">
@@ -1204,6 +1362,43 @@
 <!-- ═══ JS ════════════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+  // ── Intro splash: one lightweight session-only reveal ─────────
+  (function () {
+    const splash = document.getElementById("splash-screen");
+    const storageKey = "intrinsicSplashSeen";
+    if (!splash) return;
+
+    // Structure reserved for a future optional sound cue; intentionally idle.
+    const introAudio = null;
+
+    // Timing sequence: 1.2s reveal + 0.45s hold + 0.5s CSS dissolve.
+    const revealMs = 1200;
+    const holdMs = 450;
+    const hideAtMs = revealMs + holdMs;
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    function hideSplash() {
+      splash.classList.add("splash-hidden");
+    }
+
+    try {
+      if (sessionStorage.getItem(storageKey) || prefersReducedMotion) {
+        hideSplash();
+        if (!sessionStorage.getItem(storageKey)) {
+          sessionStorage.setItem(storageKey, "true");
+        }
+        return;
+      }
+
+      window.setTimeout(function () {
+        hideSplash();
+        sessionStorage.setItem(storageKey, "true");
+      }, hideAtMs);
+    } catch (e) {
+      window.setTimeout(hideSplash, hideAtMs);
+    }
+  })();
+
   // ── Theme toggle (mirrors base.html) ──────────────────────────
   (function () {
     const storageKey = "dcf-ui-theme";
