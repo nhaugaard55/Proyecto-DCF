@@ -561,6 +561,22 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         top_stage = 3
         confidence = "Media"
 
+    # ── CAMBIO G: Etapa 5 requiere revenue_growth < 20% ──────────────────────
+    if top_stage == 5 and revenue_growth is not None and revenue_growth > 0.20:
+        note = (
+            f"Reclasificado de Etapa 5 a 4: revenue_growth ({revenue_growth:.1%}) "
+            f"incompatible con Capital Return"
+        )
+        stage_overrides.append({
+            "tipo": "G",
+            "nombre": "Capital Return con crecimiento excesivo",
+            "accion": "stage_5_to_4",
+            "nota": note,
+        })
+        stage_notes.append(note)
+        top_stage = 4
+        confidence = "Media"
+
     decline_financiero = (
         net_margin is not None and net_margin < 0
         and roe is not None and roe < 0
