@@ -8,8 +8,11 @@ cache framework.
 from __future__ import annotations
 
 import os
+import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
+from html import unescape
 from typing import Any
 
 import requests
@@ -17,8 +20,14 @@ import requests
 
 _FINNHUB_URL = "https://finnhub.io/api/v1/stock/insider-transactions"
 _FMP_URL = "https://financialmodelingprep.com/stable/insider-trading"
+_SEC_COMPANY_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
+_SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik:010d}.json"
+_SEC_ARCHIVES_URL = "https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/{document}"
+_SEC_HEADERS = {"User-Agent": "DCFAnalyzer/1.0 contact@example.com"}
 _REQUEST_TIMEOUT = 3
+_SEC_ENRICHMENT_BUDGET_SECONDS = 4.5
 _CACHE_TTL_SECONDS = 60 * 60
+_CACHE_SCHEMA_VERSION = "roles-v2"
 _MAX_TRANSACTIONS = 20
 _LOOKBACK_DAYS = 180
 _SCORE_LOOKBACK_DAYS = 90
@@ -29,6 +38,8 @@ _ADVERTENCIA = (
 )
 
 _CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_SEC_CIK_CACHE: dict[str, int] = {}
+_SEC_SUBMISSIONS_CACHE: dict[int, dict[str, Any]] = {}
 
 
 def get_insider_trading(ticker: str) -> dict:
@@ -43,7 +54,8 @@ def get_insider_trading(ticker: str) -> dict:
     if not symbol:
         return _sin_datos(symbol)
 
-    cached = _CACHE.get(symbol)
+    cache_key = f"{_CACHE_SCHEMA_VERSION}:{symbol}"
+    cached = _CACHE.get(cache_key)
     if cached and time.time() - cached[0] < _CACHE_TTL_SECONDS:
         return cached[1]
 
@@ -58,14 +70,19 @@ def get_insider_trading(ticker: str) -> dict:
             transacciones = _procesar_transacciones(raw_items, normalizer)
             if not transacciones:
                 continue
+            if fuente == "finnhub":
+                _enriquecer_cargos_desde_fmp(symbol, transacciones)
+                _enriquecer_cargos_desde_sec(symbol, transacciones)
+            _propagar_cargos_por_insider(transacciones)
+            _limpiar_campos_internos(transacciones)
             payload = _con_datos(symbol, fuente, transacciones)
-            _CACHE[symbol] = (time.time(), payload)
+            _CACHE[cache_key] = (time.time(), payload)
             return payload
         except Exception:
             continue
 
     payload = _sin_datos(symbol)
-    _CACHE[symbol] = (time.time(), payload)
+    _CACHE[cache_key] = (time.time(), payload)
     return payload
 
 
@@ -161,17 +178,22 @@ def _normalizar_finnhub(item: dict[str, Any]) -> dict[str, Any]:
     )
     valor_total = _calcular_valor_total(item, shares, precio)
     raw_text = _raw_text(item)
-    cargo = _normalizar_cargo(
+    raw_cargo = (
         item.get("title")
         or item.get("officerTitle")
+        or item.get("officer_title")
         or item.get("relationship")
-        or item.get("isDirector")
+        or item.get("relation")
     )
+    cargo = _extraer_cargo_finnhub(item)
+    cargo_detalle = _texto(raw_cargo) if raw_cargo else (cargo if cargo != "N/D" else "")
 
     return {
         "fecha": item.get("transactionDate") or item.get("filingDate") or item.get("date"),
         "insider_nombre": _texto(item.get("name") or item.get("insiderName") or item.get("reportingName")),
         "insider_cargo": cargo,
+        "insider_cargo_detalle": cargo_detalle,
+        "insider_cargo_fuente": "finnhub" if cargo != "N/D" else "",
         "tipo": _clasificar_tipo(item.get("transactionCode") or item.get("code") or item.get("transactionType")),
         "tipo_extendido": _clasificar_tipo(item.get("transactionCode") or item.get("code") or item.get("transactionType")),
         "plan_automatico": _es_plan_automatico(raw_text),
@@ -183,6 +205,7 @@ def _normalizar_finnhub(item: dict[str, Any]) -> dict[str, Any]:
             or item.get("sharesOwnedFollowingTransaction")
             or item.get("securitiesOwned")
         ),
+        "_filing_id": item.get("id") or item.get("accessionNumber") or item.get("accession"),
         "_raw_text": raw_text,
     }
 
@@ -199,11 +222,15 @@ def _normalizar_fmp(item: dict[str, Any]) -> dict[str, Any]:
     precio = _to_number(item.get("price") or item.get("transactionPrice"))
     valor_total = _calcular_valor_total(item, shares, precio)
     raw_text = _raw_text(item)
+    raw_cargo = item.get("typeOfOwner") or item.get("officerTitle") or item.get("title")
+    cargo = _normalizar_cargo(raw_cargo)
 
     return {
         "fecha": item.get("transactionDate") or item.get("filingDate") or item.get("date"),
         "insider_nombre": _texto(item.get("reportingName") or item.get("name") or item.get("insiderName")),
-        "insider_cargo": _normalizar_cargo(item.get("typeOfOwner") or item.get("officerTitle") or item.get("title")),
+        "insider_cargo": cargo,
+        "insider_cargo_detalle": _texto(raw_cargo) if cargo != "N/D" else "",
+        "insider_cargo_fuente": "fmp" if cargo != "N/D" else "",
         "tipo": _clasificar_tipo(item.get("transactionType") or item.get("transactionCode") or item.get("code")),
         "tipo_extendido": _clasificar_tipo(item.get("transactionType") or item.get("transactionCode") or item.get("code")),
         "plan_automatico": _es_plan_automatico(raw_text),
@@ -215,6 +242,7 @@ def _normalizar_fmp(item: dict[str, Any]) -> dict[str, Any]:
             or item.get("sharesOwnedFollowingTransaction")
             or item.get("shareOwnedFollowingTransaction")
         ),
+        "_filing_id": item.get("id") or item.get("accessionNumber") or item.get("accession"),
         "_raw_text": raw_text,
     }
 
@@ -410,11 +438,306 @@ def _normalizar_cargo(value: Any) -> str:
         return "COO"
     if "DIRECTOR" in lookup or "BOARD" in lookup:
         return "Director"
-    if "PRESIDENT" in lookup:
-        return "Presidente"
     if "SVP" in lookup or "VP" in lookup or "VICE PRESIDENT" in lookup:
         return "VP"
+    if "PRESIDENT" in lookup:
+        return "Presidente"
     return texto[:30] if texto else "N/D"
+
+
+def _extraer_cargo_finnhub(item: dict[str, Any]) -> str:
+    """Obtiene el cargo desde campos explícitos o flags disponibles en Finnhub."""
+
+    cargo = _normalizar_cargo(
+        item.get("title")
+        or item.get("officerTitle")
+        or item.get("officer_title")
+        or item.get("relationship")
+        or item.get("relation")
+    )
+    if cargo != "N/D":
+        return cargo
+
+    if item.get("isCeo") or item.get("isCEO"):
+        return "CEO"
+    if item.get("isCfo") or item.get("isCFO"):
+        return "CFO"
+    if item.get("isCoo") or item.get("isCOO"):
+        return "COO"
+    if item.get("isDirector"):
+        return "Director"
+    if item.get("isOfficer"):
+        return "Ejecutivo"
+    if item.get("isTenPercentOwner"):
+        return "Accionista >10%"
+    return "N/D"
+
+
+def _enriquecer_cargos_desde_fmp(ticker: str, transacciones: list[dict[str, Any]]) -> None:
+    """Completa cargos faltantes con FMP sin alterar la fuente ni el score."""
+
+    if not any((tx.get("insider_cargo") in (None, "", "N/D")) for tx in transacciones):
+        return
+
+    try:
+        fmp_items = _fetch_fmp(ticker)
+    except Exception:
+        return
+
+    cargos_por_nombre: dict[str, tuple[str, str]] = {}
+    for item in fmp_items:
+        tx = _normalizar_fmp(item)
+        nombre_key = _normalizar_nombre_insider(tx.get("insider_nombre"))
+        cargo = tx.get("insider_cargo")
+        if nombre_key and cargo and cargo != "N/D":
+            cargos_por_nombre[nombre_key] = (cargo, tx.get("insider_cargo_detalle") or cargo)
+
+    if not cargos_por_nombre:
+        return
+
+    for tx in transacciones:
+        if tx.get("insider_cargo") not in (None, "", "N/D"):
+            continue
+        nombre_key = _normalizar_nombre_insider(tx.get("insider_nombre"))
+        cargo_info = cargos_por_nombre.get(nombre_key)
+        if cargo_info:
+            cargo, cargo_detalle = cargo_info
+            tx["insider_cargo"] = cargo
+            tx["insider_cargo_detalle"] = cargo_detalle
+            tx["insider_cargo_fuente"] = "fmp"
+
+
+def _enriquecer_cargos_desde_sec(ticker: str, transacciones: list[dict[str, Any]]) -> None:
+    """Completa cargos faltantes leyendo el Form 4 en SEC si el proveedor no lo trae."""
+
+    faltantes = [
+        tx for tx in transacciones
+        if tx.get("insider_cargo") in (None, "", "N/D") and tx.get("_filing_id")
+    ]
+    if not faltantes:
+        return
+
+    deadline = time.monotonic() + _SEC_ENRICHMENT_BUDGET_SECONDS
+    cik = _sec_cik_for_ticker(ticker, deadline)
+    if cik is None:
+        return
+
+    filings = _sec_recent_filings(cik, deadline)
+    if not filings:
+        return
+
+    txs_por_accession: dict[str, list[dict[str, Any]]] = {}
+    for tx in faltantes[:10]:
+        accession = str(tx.get("_filing_id") or "").strip()
+        if accession:
+            txs_por_accession.setdefault(accession, []).append(tx)
+    if not txs_por_accession:
+        return
+
+    accessions = list(txs_por_accession)
+    max_workers = min(4, len(accessions))
+    executor = ThreadPoolExecutor(max_workers=max_workers)
+    try:
+        future_map = {
+            executor.submit(_sec_cargo_for_accession, cik, accession, filings, deadline): accession
+            for accession in accessions
+        }
+        timeout = max(0.1, deadline - time.monotonic())
+        try:
+            for future in as_completed(future_map, timeout=timeout):
+                accession = future_map[future]
+                try:
+                    cargo_info = future.result()
+                except Exception:
+                    continue
+                if cargo_info and cargo_info[0] != "N/D":
+                    cargo, cargo_detalle = cargo_info
+                    for tx in txs_por_accession.get(accession, []):
+                        tx["insider_cargo"] = cargo
+                        tx["insider_cargo_detalle"] = cargo_detalle
+                        tx["insider_cargo_fuente"] = "sec"
+        except TimeoutError:
+            return
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _propagar_cargos_por_insider(transacciones: list[dict[str, Any]]) -> None:
+    """Rellena cargos faltantes usando otras transacciones del mismo insider."""
+
+    cargos_por_nombre: dict[str, tuple[str, str, str]] = {}
+    for tx in transacciones:
+        nombre_key = _normalizar_nombre_insider(tx.get("insider_nombre"))
+        cargo = tx.get("insider_cargo")
+        if not nombre_key or cargo in (None, "", "N/D"):
+            continue
+        detalle = tx.get("insider_cargo_detalle") or cargo
+        fuente = tx.get("insider_cargo_fuente") or "misma ventana"
+        cargos_por_nombre.setdefault(nombre_key, (cargo, detalle, fuente))
+
+    for tx in transacciones:
+        if tx.get("insider_cargo") not in (None, "", "N/D"):
+            continue
+        nombre_key = _normalizar_nombre_insider(tx.get("insider_nombre"))
+        cargo_info = cargos_por_nombre.get(nombre_key)
+        if not cargo_info:
+            continue
+        cargo, detalle, fuente = cargo_info
+        tx["insider_cargo"] = cargo
+        tx["insider_cargo_detalle"] = detalle
+        tx["insider_cargo_fuente"] = fuente
+
+
+def _sec_cik_for_ticker(ticker: str, deadline: float) -> int | None:
+    """Resuelve el CIK de SEC para un ticker usando caché en memoria."""
+
+    symbol = (ticker or "").strip().upper()
+    if not symbol:
+        return None
+    if symbol in _SEC_CIK_CACHE:
+        return _SEC_CIK_CACHE[symbol]
+    if time.monotonic() >= deadline:
+        return None
+
+    try:
+        response = requests.get(
+            _SEC_COMPANY_TICKERS_URL,
+            headers=_SEC_HEADERS,
+            timeout=max(0.2, min(1.0, deadline - time.monotonic())),
+        )
+        if response.status_code != 200:
+            return None
+        data = response.json()
+    except Exception:
+        return None
+
+    iterable = data.values() if isinstance(data, dict) else data
+    for item in iterable:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("ticker") or "").strip().upper() == symbol:
+            try:
+                cik = int(item.get("cik_str"))
+            except (TypeError, ValueError):
+                return None
+            _SEC_CIK_CACHE[symbol] = cik
+            return cik
+    return None
+
+
+def _sec_recent_filings(cik: int, deadline: float) -> dict[str, Any] | None:
+    """Obtiene filings recientes de SEC con caché por CIK."""
+
+    if cik in _SEC_SUBMISSIONS_CACHE:
+        return _SEC_SUBMISSIONS_CACHE[cik]
+    if time.monotonic() >= deadline:
+        return None
+
+    try:
+        response = requests.get(
+            _SEC_SUBMISSIONS_URL.format(cik=cik),
+            headers=_SEC_HEADERS,
+            timeout=max(0.2, min(1.0, deadline - time.monotonic())),
+        )
+        if response.status_code != 200:
+            return None
+        data = response.json().get("filings", {}).get("recent", {})
+    except Exception:
+        return None
+
+    if isinstance(data, dict):
+        _SEC_SUBMISSIONS_CACHE[cik] = data
+        return data
+    return None
+
+
+def _sec_cargo_for_accession(
+    cik: int,
+    accession: str,
+    filings: dict[str, Any],
+    deadline: float,
+) -> tuple[str, str] | None:
+    """Extrae el cargo del reporting owner desde el documento primario Form 4."""
+
+    if not accession:
+        return None
+    accession_numbers = filings.get("accessionNumber") or []
+    documents = filings.get("primaryDocument") or []
+    try:
+        index = accession_numbers.index(accession)
+        document = documents[index]
+    except (ValueError, IndexError):
+        return None
+
+    if not document:
+        return None
+    if time.monotonic() >= deadline:
+        return None
+
+    url = _SEC_ARCHIVES_URL.format(
+        cik=cik,
+        accession=accession.replace("-", ""),
+        document=document,
+    )
+    try:
+        response = requests.get(
+            url,
+            headers=_SEC_HEADERS,
+            timeout=max(0.2, min(1.0, deadline - time.monotonic())),
+        )
+        if response.status_code != 200:
+            return None
+    except Exception:
+        return None
+
+    return _extraer_cargo_sec_html_detalle(response.text)
+
+
+def _extraer_cargo_sec_html(html: str) -> str | None:
+    """Extrae el título de officer desde HTML/XML de un Form 4."""
+
+    cargo_info = _extraer_cargo_sec_html_detalle(html)
+    return cargo_info[0] if cargo_info else None
+
+
+def _extraer_cargo_sec_html_detalle(html: str) -> tuple[str, str] | None:
+    """Extrae cargo normalizado y título exacto desde un Form 4."""
+
+    text = html or ""
+    match = re.search(
+        r"Officer \(give title below\).*?<td[^>]*style=\"color:\s*blue\"[^>]*>(.*?)</td>",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if match:
+        detalle = _strip_html(match.group(1))
+        cargo = _normalizar_cargo(detalle)
+        if cargo != "N/D":
+            return cargo, detalle
+
+    director_block = re.search(
+        r"<span[^>]*>\s*X\s*</span>\s*</td>\s*<td[^>]*>\s*Director\s*</td>",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if director_block:
+        return "Director", "Director"
+
+    return None
+
+
+def _strip_html(value: str) -> str:
+    """Elimina tags simples y entidades HTML."""
+
+    return unescape(re.sub(r"<[^>]+>", " ", value or "")).strip()
+
+
+def _limpiar_campos_internos(transacciones: list[dict[str, Any]]) -> None:
+    """Quita campos auxiliares que no forman parte del contrato público."""
+
+    for tx in transacciones:
+        tx.pop("_raw_text", None)
+        tx.pop("_filing_id", None)
 
 
 def _normalizar_nombre_insider(value: Any) -> str:

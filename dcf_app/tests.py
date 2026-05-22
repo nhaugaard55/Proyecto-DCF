@@ -100,6 +100,75 @@ class InsiderTradingTests(SimpleTestCase):
         self.assertEqual(result["score_sentimiento"], "bajista")
         self.assertEqual(result["transacciones"][0]["insider_cargo"], "CFO")
 
+    def test_missing_finnhub_role_is_enriched_from_fmp_by_name(self) -> None:
+        today = datetime.now(timezone.utc).date().isoformat()
+        finnhub_payload = [
+            {
+                "transactionDate": today,
+                "name": "Jane Officer",
+                "transactionCode": "S",
+                "share": 100,
+                "transactionPrice": 20,
+            }
+        ]
+        fmp_payload = [
+            {
+                "transactionDate": today,
+                "reportingName": "Jane Officer",
+                "typeOfOwner": "Vice President",
+                "transactionType": "S",
+                "securitiesTransacted": 100,
+                "price": 20,
+            }
+        ]
+
+        with patch.object(insider_trading, "_fetch_finnhub", return_value=finnhub_payload), patch.object(
+            insider_trading, "_fetch_fmp", return_value=fmp_payload
+        ), patch.object(insider_trading, "_enriquecer_cargos_desde_sec"):
+            result = insider_trading.get_insider_trading("TEST")
+
+        self.assertEqual(result["fuente"], "finnhub")
+        self.assertEqual(result["transacciones"][0]["insider_cargo"], "VP")
+
+    def test_sec_form4_officer_title_is_normalized(self) -> None:
+        html = """
+        <td align="center"><span class="FormData">X</span></td>
+        <td class="MedSmallFormText">Officer (give title below)</td>
+        <td width="35%" align="left" style="color: blue">SVP - Chief Accounting Officer</td>
+        """
+
+        self.assertEqual(insider_trading._extraer_cargo_sec_html(html), "VP")
+
+    def test_role_is_propagated_to_same_insider_transactions(self) -> None:
+        transacciones = [
+            {
+                "insider_nombre": "MAESTRINI ANDRE",
+                "insider_cargo": "Presidente",
+                "insider_cargo_detalle": "Pres, CCO & Interim Co-CEO",
+                "insider_cargo_fuente": "finnhub",
+            },
+            {
+                "insider_nombre": "MAESTRINI ANDRE",
+                "insider_cargo": "N/D",
+            },
+            {
+                "insider_nombre": "NEUBURGER NICOLE",
+                "insider_cargo": "N/D",
+            },
+            {
+                "insider_nombre": "NEUBURGER NICOLE",
+                "insider_cargo": "Chief Brand Officer",
+                "insider_cargo_detalle": "Chief Brand Officer",
+                "insider_cargo_fuente": "sec",
+            },
+        ]
+
+        insider_trading._propagar_cargos_por_insider(transacciones)
+
+        self.assertEqual(transacciones[1]["insider_cargo"], "Presidente")
+        self.assertEqual(transacciones[1]["insider_cargo_detalle"], "Pres, CCO & Interim Co-CEO")
+        self.assertEqual(transacciones[2]["insider_cargo"], "Chief Brand Officer")
+
     def test_returns_unavailable_when_transactions_are_old(self) -> None:
         old_date = (datetime.now(timezone.utc).date() - timedelta(days=181)).isoformat()
         payload = [{"transactionDate": old_date, "name": "Old Insider", "transactionCode": "P", "share": 1}]
