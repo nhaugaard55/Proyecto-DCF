@@ -1,10 +1,12 @@
 from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
 from django.test import SimpleTestCase
 
+from dcf_core import insider_trading
 from dcf_core.DCF_Main import ejecutar_dcf
 from dcf_core.company_stage import detect_company_stage
 from dcf_core.finanzas import seleccionar_metodo_crecimiento
@@ -33,6 +35,82 @@ def _sample_financials() -> dict:
             "deuda": 100_000_000.0,
         },
     }
+
+
+class InsiderTradingTests(SimpleTestCase):
+    def setUp(self) -> None:
+        insider_trading._CACHE.clear()
+
+    def test_finnhub_payload_is_normalized_and_scored_as_bullish(self) -> None:
+        today = datetime.now(timezone.utc).date().isoformat()
+        payload = [
+            {
+                "transactionDate": today,
+                "name": "Jane CEO",
+                "title": "Chief Executive Officer",
+                "transactionCode": "P",
+                "share": 10_000,
+                "transactionPrice": 20,
+                "shareOwnedFollowingTransaction": 100_000,
+            },
+            {
+                "transactionDate": today,
+                "name": "John Director",
+                "title": "Director",
+                "transactionCode": "S",
+                "share": 1_000,
+                "transactionPrice": 10,
+                "shareOwnedFollowingTransaction": 40_000,
+            },
+        ]
+
+        with patch.object(insider_trading, "_fetch_finnhub", return_value=payload), patch.object(
+            insider_trading, "_fetch_fmp", return_value=[]
+        ):
+            result = insider_trading.get_insider_trading("TEST")
+
+        self.assertTrue(result["disponible"])
+        self.assertEqual(result["fuente"], "finnhub")
+        self.assertEqual(result["score_sentimiento"], "alcista")
+        self.assertEqual(result["score_color"], "verde")
+        self.assertEqual(result["resumen"]["total_compras"], 1)
+        self.assertEqual(result["transacciones"][0]["insider_cargo"], "CEO")
+        self.assertEqual(result["transacciones"][0]["tipo"], "compra")
+
+    def test_falls_back_to_fmp_when_finnhub_is_empty(self) -> None:
+        today = datetime.now(timezone.utc).date().isoformat()
+        fmp_payload = [
+            {
+                "transactionDate": today,
+                "reportingName": "Jane CFO",
+                "typeOfOwner": "Chief Financial Officer",
+                "transactionType": "S",
+                "securitiesTransacted": 2_000,
+                "price": 15,
+            }
+        ]
+
+        with patch.object(insider_trading, "_fetch_finnhub", return_value=[]), patch.object(
+            insider_trading, "_fetch_fmp", return_value=fmp_payload
+        ):
+            result = insider_trading.get_insider_trading("TEST")
+
+        self.assertTrue(result["disponible"])
+        self.assertEqual(result["fuente"], "fmp")
+        self.assertEqual(result["score_sentimiento"], "bajista")
+        self.assertEqual(result["transacciones"][0]["insider_cargo"], "CFO")
+
+    def test_returns_unavailable_when_transactions_are_old(self) -> None:
+        old_date = (datetime.now(timezone.utc).date() - timedelta(days=181)).isoformat()
+        payload = [{"transactionDate": old_date, "name": "Old Insider", "transactionCode": "P", "share": 1}]
+
+        with patch.object(insider_trading, "_fetch_finnhub", return_value=payload), patch.object(
+            insider_trading, "_fetch_fmp", return_value=[]
+        ):
+            result = insider_trading.get_insider_trading("TEST")
+
+        self.assertFalse(result["disponible"])
+        self.assertIn("últimos 180 días", result["mensaje"])
 
 
 class MultiModelValuationTests(SimpleTestCase):

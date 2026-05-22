@@ -495,6 +495,106 @@
     .multi-model-table .detail-cell {
         max-width: 18rem;
     }
+    .insider-score-card {
+        border: 1px solid var(--surface-border);
+        border-radius: 1rem;
+        background: var(--surface-card);
+        padding: 1rem;
+    }
+    .insider-score-grid {
+        display: grid;
+        grid-template-columns: 1.3fr repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+        align-items: stretch;
+    }
+    .insider-metric {
+        border: 1px solid var(--surface-border);
+        border-radius: 0.85rem;
+        background: var(--table-bg);
+        padding: 0.85rem;
+        min-width: 0;
+    }
+    .insider-metric-label {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+    }
+    .insider-metric-value {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        color: var(--text-primary);
+        font-size: 1.1rem;
+        font-weight: 700;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+    }
+    .insider-sentiment-badge,
+    .insider-type-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        font-weight: 700;
+        line-height: 1.1;
+        white-space: nowrap;
+    }
+    .insider-sentiment-badge {
+        padding: 0.45rem 0.85rem;
+        font-size: 0.95rem;
+    }
+    .insider-sentiment-badge--verde,
+    .insider-type-badge--compra {
+        background: rgba(22, 163, 74, 0.16);
+        color: #166534;
+        border: 1px solid rgba(22, 163, 74, 0.25);
+    }
+    .insider-sentiment-badge--gris,
+    .insider-type-badge--ejercicio,
+    .insider-type-badge--otro {
+        background: rgba(100, 116, 139, 0.16);
+        color: #475569;
+        border: 1px solid rgba(100, 116, 139, 0.25);
+    }
+    .insider-sentiment-badge--naranja,
+    .insider-type-badge--venta {
+        background: rgba(249, 115, 22, 0.16);
+        color: #9a3412;
+        border: 1px solid rgba(249, 115, 22, 0.28);
+    }
+    .insider-type-badge {
+        padding: 0.28rem 0.6rem;
+        font-size: 0.72rem;
+    }
+    .insider-warning {
+        border-radius: 0.85rem;
+        border: 1px solid var(--surface-border);
+        background: var(--table-bg);
+        color: var(--text-muted);
+        padding: 0.85rem 1rem;
+        font-size: 0.85rem;
+        line-height: 1.55;
+    }
+    .theme-dark .insider-sentiment-badge--verde,
+    .theme-dark .insider-type-badge--compra {
+        color: #bbf7d0;
+        background: rgba(34, 197, 94, 0.22);
+    }
+    .theme-dark .insider-sentiment-badge--gris,
+    .theme-dark .insider-type-badge--ejercicio,
+    .theme-dark .insider-type-badge--otro {
+        color: #e2e8f0;
+        background: rgba(148, 163, 184, 0.22);
+    }
+    .theme-dark .insider-sentiment-badge--naranja,
+    .theme-dark .insider-type-badge--venta {
+        color: #fed7aa;
+        background: rgba(249, 115, 22, 0.22);
+    }
     .historical-price-chart {
         height: 260px;
         width: 100%;
@@ -1058,6 +1158,19 @@
         }
 
         .multi-model-table .detail-cell {
+            display: none;
+        }
+
+        .insider-score-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .insider-table {
+            min-width: 0 !important;
+        }
+
+        .insider-col-cargo,
+        .insider-col-shares {
             display: none;
         }
 
@@ -3724,14 +3837,118 @@
             </div>
         </div>
 
-        <!-- ── ACORDEÓN PASO 3 ── -->
+        <!-- ── ACORDEÓN PASO 3: INSIDER TRADING ── -->
+        <div class="col-12">
+            <div class="accordion analysis-section-accordion" id="analysis-insider-accordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="analysis-insider-heading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-insider-collapse" aria-expanded="false" aria-controls="analysis-insider-collapse" style="background:var(--analysis-section-bg); background-color:var(--analysis-section-bg-solid); color:var(--analysis-section-text); border:1px solid var(--analysis-section-border); box-shadow:var(--analysis-section-shadow);">
+                            <span class="analysis-section-title">
+                                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">3</span>
+                                <span class="analysis-section-title-text">
+                                    <span class="fw-semibold fs-5">Insider Trading</span>
+                                    <span class="small" style="color:var(--analysis-section-muted);">Transacciones recientes de ejecutivos y directores reportadas al SEC (Form 4)</span>
+                                </span>
+                            </span>
+                        </button>
+                    </h2>
+                    <div id="analysis-insider-collapse" class="accordion-collapse collapse" aria-labelledby="analysis-insider-heading">
+                        <div class="accordion-body">
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <div class="card soft-card">
+                                        <div class="card-body">
+                                            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+                                                <h3 class="h5 mb-0">Insider Trading</h3>
+                                                {% if insider_trading.fuente %}
+                                                <span class="text-muted small">Fuente: {{ insider_trading.fuente|upper }}</span>
+                                                {% endif %}
+                                            </div>
+
+                                            {% if insider_trading.disponible %}
+                                            <div class="insider-score-card mb-4">
+                                                <div class="insider-score-grid">
+                                                    <div class="insider-metric">
+                                                        <span class="insider-metric-label">Sentimiento</span>
+                                                        <span class="insider-metric-value">
+                                                            <span class="insider-sentiment-badge insider-sentiment-badge--{{ insider_trading.score_color }}">
+                                                                {% if insider_trading.score_sentimiento == "alcista" %}🟢 Alcista{% elif insider_trading.score_sentimiento == "bajista" %}🟠 Bajista{% else %}⚪ Neutral{% endif %}
+                                                            </span>
+                                                        </span>
+                                                    </div>
+                                                    <div class="insider-metric">
+                                                        <span class="insider-metric-label">Compras (90d)</span>
+                                                        <span class="insider-metric-value">{{ insider_trading.resumen.valor_compras_display }}</span>
+                                                    </div>
+                                                    <div class="insider-metric">
+                                                        <span class="insider-metric-label">Ventas (90d)</span>
+                                                        <span class="insider-metric-value">{{ insider_trading.resumen.valor_ventas_display }}</span>
+                                                    </div>
+                                                    <div class="insider-metric">
+                                                        <span class="insider-metric-label">Ratio</span>
+                                                        <span class="insider-metric-value">{{ insider_trading.resumen.ratio_compras_pct }}%</span>
+                                                    </div>
+                                                </div>
+                                                <p class="text-muted small mb-0 mt-3">{{ insider_trading.score_descripcion }}</p>
+                                            </div>
+
+                                            <div class="table-responsive">
+                                                <table class="table table-sm align-middle insider-table" style="background:var(--table-bg); color:var(--table-text); font-size:0.84rem;">
+                                                    <thead style="background:var(--table-header-bg);">
+                                                        <tr>
+                                                            <th>Fecha</th>
+                                                            <th>Insider</th>
+                                                            <th class="insider-col-cargo">Cargo</th>
+                                                            <th>Tipo</th>
+                                                            <th class="text-end insider-col-shares">Shares</th>
+                                                            <th class="text-end">Precio</th>
+                                                            <th class="text-end">Valor total</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for tx in insider_trading.transacciones|slice:":10" %}
+                                                        <tr>
+                                                            <td>{{ tx.fecha_display }}</td>
+                                                            <td class="fw-semibold">{{ tx.insider_nombre|default:"N/D" }}</td>
+                                                            <td class="insider-col-cargo">{{ tx.insider_cargo|default:"N/D" }}</td>
+                                                            <td><span class="insider-type-badge insider-type-badge--{{ tx.tipo }}">{{ tx.tipo_label }}</span></td>
+                                                            <td class="text-end insider-col-shares">{{ tx.shares_display }}</td>
+                                                            <td class="text-end">{{ tx.precio_display }}</td>
+                                                            <td class="text-end fw-semibold">{{ tx.valor_total_display }}</td>
+                                                        </tr>
+                                                        {% empty %}
+                                                        <tr>
+                                                            <td colspan="7" class="text-center text-muted py-4">Sin actividad de insiders en los últimos 180 días</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <div class="insider-warning mt-3">
+                                                ⚠️ {{ insider_trading.advertencia }}
+                                            </div>
+                                            {% else %}
+                                            <p class="text-muted text-center mb-0 py-4">{{ insider_trading.mensaje|default:"Sin actividad de insiders en los últimos 180 días" }}</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── ACORDEÓN PASO 4 ── -->
         <div class="col-12">
             <div class="accordion analysis-section-accordion" id="analysis-technical-accordion">
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="analysis-technical-heading">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-technical-collapse" aria-expanded="false" aria-controls="analysis-technical-collapse" style="background:var(--analysis-section-bg); background-color:var(--analysis-section-bg-solid); color:var(--analysis-section-text); border:1px solid var(--analysis-section-border); box-shadow:var(--analysis-section-shadow);">
                             <span class="analysis-section-title">
-                                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">3</span>
+                                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">4</span>
                                 <span class="analysis-section-title-text">
                                     <span class="fw-semibold fs-5">Análisis técnico</span>
                                     <span class="small" style="color:var(--analysis-section-muted);">Gráfico interactivo y señales de entrada</span>
@@ -3743,13 +3960,13 @@
                         <div class="accordion-body">
                             <div class="row g-4">
 
-        <!-- ===== PASO 3: ANÁLISIS TÉCNICO (TradingView) ===== -->
+        <!-- ===== PASO 4: ANÁLISIS TÉCNICO (TradingView) ===== -->
         {% if ticker %}
         <div class="col-12">
             <div class="card soft-card">
                 <div class="card-body">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-                        <h3 class="h5 mb-0">Paso 3 — Análisis técnico</h3>
+                        <h3 class="h5 mb-0">Paso 4 — Análisis técnico</h3>
                         {% if resultado.analisis_tecnico.disponible %}
                         <div class="d-flex align-items-center gap-3">
                             {% if resultado.analisis_tecnico.rsi is not None %}
@@ -3846,7 +4063,7 @@
             </div>
         </div>
         {% endif %}
-        <!-- ===== FIN PASO 3 ===== -->
+        <!-- ===== FIN PASO 4 ===== -->
 
                             </div>
                         </div>
@@ -3862,7 +4079,7 @@
                     <h2 class="accordion-header" id="analysis-news-heading">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-news-collapse" aria-expanded="false" aria-controls="analysis-news-collapse" style="background:var(--analysis-section-bg); background-color:var(--analysis-section-bg-solid); color:var(--analysis-section-text); border:1px solid var(--analysis-section-border); box-shadow:var(--analysis-section-shadow);">
                             <span class="analysis-section-title">
-                                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">4</span>
+                                <span class="badge rounded-pill px-3 py-2 fs-6" style="background: var(--bs-primary);">5</span>
                                 <span class="analysis-section-title-text">
                                     <span class="fw-semibold fs-5">Noticias recientes</span>
                                     <span class="small" style="color:var(--analysis-section-muted);">Contexto de mercado y sentimiento</span>
