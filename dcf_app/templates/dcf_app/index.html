@@ -584,6 +584,10 @@
     }
     .insider-sentiment-badge--gris,
     .insider-type-badge--ejercicio,
+    .insider-type-badge--adjudicacion,
+    .insider-type-badge--retencion_impuestos,
+    .insider-type-badge--donacion,
+    .insider-type-badge--disposicion,
     .insider-type-badge--otro {
         background: rgba(100, 116, 139, 0.16);
         color: #475569;
@@ -649,6 +653,10 @@
     }
     .theme-dark .insider-sentiment-badge--gris,
     .theme-dark .insider-type-badge--ejercicio,
+    .theme-dark .insider-type-badge--adjudicacion,
+    .theme-dark .insider-type-badge--retencion_impuestos,
+    .theme-dark .insider-type-badge--donacion,
+    .theme-dark .insider-type-badge--disposicion,
     .theme-dark .insider-type-badge--otro {
         color: #e2e8f0;
         background: rgba(148, 163, 184, 0.22);
@@ -4143,7 +4151,7 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {% for tx in insider_trading.transacciones|slice:":10" %}
+                                                        {% for tx in insider_trading.transacciones|slice:":20" %}
                                                         <tr>
                                                             <td>{{ tx.fecha_display }}</td>
                                                             <td class="fw-semibold">{{ tx.insider_nombre|default:"N/D" }}</td>

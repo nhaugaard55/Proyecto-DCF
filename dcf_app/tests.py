@@ -77,6 +77,65 @@ class InsiderTradingTests(SimpleTestCase):
         self.assertEqual(result["transacciones"][0]["insider_cargo"], "CEO")
         self.assertEqual(result["transacciones"][0]["tipo"], "compra")
 
+    def test_finnhub_uses_change_as_transaction_shares_when_available(self) -> None:
+        today = datetime.now(timezone.utc).date().isoformat()
+        payload = [
+            {
+                "transactionDate": today,
+                "name": "Large Holder",
+                "isTenPercentOwner": True,
+                "transactionCode": "P",
+                "change": 100,
+                "share": 44_179_216,
+                "transactionPrice": 5,
+            }
+        ]
+
+        with patch.object(insider_trading, "_fetch_finnhub", return_value=payload), patch.object(
+            insider_trading, "_fetch_fmp", return_value=[]
+        ):
+            result = insider_trading.get_insider_trading("TEST")
+
+        tx = result["transacciones"][0]
+        self.assertEqual(tx["shares"], 100)
+        self.assertEqual(tx["shares_restantes"], 44_179_216)
+        self.assertEqual(tx["valor_total"], 500)
+        self.assertEqual(result["resumen"]["valor_compras_usd"], 500)
+
+    def test_form4_non_market_codes_are_labeled_without_affecting_score(self) -> None:
+        today = datetime.now(timezone.utc).date().isoformat()
+        payload = [
+            {
+                "transactionDate": today,
+                "name": "Awarded Officer",
+                "title": "Chief Legal Officer",
+                "transactionCode": "A",
+                "change": 1_000,
+                "transactionPrice": 0,
+            },
+            {
+                "transactionDate": today,
+                "name": "Tax Officer",
+                "title": "Chief Legal Officer",
+                "transactionCode": "F",
+                "change": -100,
+                "transactionPrice": 0,
+            },
+        ]
+
+        with patch.object(insider_trading, "_fetch_finnhub", return_value=payload), patch.object(
+            insider_trading, "_fetch_fmp", return_value=[]
+        ):
+            result = insider_trading.get_insider_trading("TEST")
+
+        tipos = {tx["tipo"]: tx for tx in result["transacciones"]}
+        self.assertEqual(tipos["adjudicacion"]["tipo_label"], "Adjudicación")
+        self.assertEqual(tipos["retencion_impuestos"]["tipo_label"], "Retención imp.")
+        self.assertEqual(tipos["adjudicacion"]["precio"], 0)
+        self.assertEqual(tipos["adjudicacion"]["precio_display"], "$0.00")
+        self.assertEqual(result["score_sentimiento"], "neutral")
+        self.assertEqual(result["resumen"]["valor_compras_usd"], 0)
+
     def test_falls_back_to_fmp_when_finnhub_is_empty(self) -> None:
         today = datetime.now(timezone.utc).date().isoformat()
         fmp_payload = [
@@ -138,6 +197,28 @@ class InsiderTradingTests(SimpleTestCase):
         """
 
         self.assertEqual(insider_trading._extraer_cargo_sec_html(html), "VP")
+
+    def test_sec_form4_director_is_labeled_as_board_member(self) -> None:
+        html = """
+        <td align="center"><span class="FormData">X</span></td>
+        <td class="MedSmallFormText">Director</td>
+        """
+
+        self.assertEqual(
+            insider_trading._extraer_cargo_sec_html_detalle(html),
+            ("Director", "Miembro del directorio"),
+        )
+
+    def test_sec_form4_ten_percent_owner_is_labeled(self) -> None:
+        html = """
+        <td align="center"><span class="FormData">X</span></td>
+        <td class="MedSmallFormText">10% Owner</td>
+        """
+
+        self.assertEqual(
+            insider_trading._extraer_cargo_sec_html_detalle(html),
+            ("Accionista >10%", "Accionista >10%"),
+        )
 
     def test_role_is_propagated_to_same_insider_transactions(self) -> None:
         transacciones = [
