@@ -112,6 +112,74 @@ class InsiderTradingTests(SimpleTestCase):
         self.assertFalse(result["disponible"])
         self.assertIn("últimos 180 días", result["mensaje"])
 
+    def test_sale_near_option_exercise_gets_reduced_weight(self) -> None:
+        today = datetime.now(timezone.utc).date().isoformat()
+        payload = [
+            {
+                "transactionDate": today,
+                "name": "Executive One",
+                "title": "CEO",
+                "transactionCode": "M",
+                "share": 10_000,
+                "transactionPrice": 125,
+            },
+            {
+                "transactionDate": today,
+                "name": "Executive One",
+                "title": "CEO",
+                "transactionCode": "S",
+                "share": 10_000,
+                "transactionPrice": 213,
+            },
+            {
+                "transactionDate": today,
+                "name": "Executive One",
+                "title": "CEO",
+                "transactionCode": "P",
+                "share": 1_000,
+                "transactionPrice": 200,
+            },
+        ]
+
+        with patch.object(insider_trading, "_fetch_finnhub", return_value=payload), patch.object(
+            insider_trading, "_fetch_fmp", return_value=[]
+        ):
+            result = insider_trading.get_insider_trading("TEST")
+
+        sale = next(tx for tx in result["transacciones"] if tx["tipo"] == "venta")
+        self.assertTrue(sale["venta_relacionada_ejercicio"])
+        self.assertEqual(sale["tipo_extendido"], "venta post-ejercicio")
+        self.assertEqual(result["resumen"]["valor_ventas_usd"], 2_130_000)
+        self.assertEqual(result["resumen"]["valor_ventas_ajustado_usd"], 532_500)
+        self.assertEqual(result["resumen"]["ventas_post_ejercicio_usd"], 2_130_000)
+        self.assertEqual(result["resumen"]["porcentaje_ventas_ajustadas_sobre_brutas"], 25)
+        self.assertTrue(result["resumen"]["advertencia_ventas_compensacion"])
+
+    def test_automatic_sale_gets_lowest_sale_weight(self) -> None:
+        today = datetime.now(timezone.utc).date().isoformat()
+        payload = [
+            {
+                "transactionDate": today,
+                "name": "Executive Two",
+                "title": "VP",
+                "transactionCode": "S",
+                "share": 1_000,
+                "transactionPrice": 100,
+                "footnote": "Sale made pursuant to Rule 10b5-1 planned sale.",
+            }
+        ]
+
+        with patch.object(insider_trading, "_fetch_finnhub", return_value=payload), patch.object(
+            insider_trading, "_fetch_fmp", return_value=[]
+        ):
+            result = insider_trading.get_insider_trading("TEST")
+
+        self.assertTrue(result["transacciones"][0]["plan_automatico"])
+        self.assertEqual(result["resumen"]["valor_ventas_usd"], 100_000)
+        self.assertEqual(result["resumen"]["valor_ventas_ajustado_usd"], 15_000)
+        self.assertEqual(result["resumen"]["ventas_automaticas_usd"], 100_000)
+        self.assertEqual(result["resumen"]["porcentaje_ventas_ajustadas_sobre_brutas"], 15)
+
 
 class MultiModelValuationTests(SimpleTestCase):
     def test_tam_model_is_scenario_only_in_startup_stage(self) -> None:

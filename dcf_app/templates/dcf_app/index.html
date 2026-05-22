@@ -533,6 +533,35 @@
         line-height: 1.2;
         overflow-wrap: anywhere;
     }
+    .insider-adjustment-breakdown {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.65rem;
+        margin-top: 0.85rem;
+    }
+    .insider-adjustment-item {
+        border: 1px solid var(--surface-border);
+        border-radius: 0.75rem;
+        background: var(--table-bg);
+        padding: 0.7rem;
+        min-width: 0;
+    }
+    .insider-adjustment-label {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.64rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        line-height: 1.25;
+        text-transform: uppercase;
+        margin-bottom: 0.3rem;
+    }
+    .insider-adjustment-value {
+        color: var(--text-primary);
+        font-size: 0.95rem;
+        font-weight: 750;
+        line-height: 1.2;
+    }
     .insider-sentiment-badge,
     .insider-type-badge {
         display: inline-flex;
@@ -570,6 +599,40 @@
         padding: 0.28rem 0.6rem;
         font-size: 0.72rem;
     }
+    .insider-secondary-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0.22rem 0.5rem;
+        background: rgba(59, 130, 246, 0.12);
+        color: #1d4ed8;
+        border: 1px solid rgba(59, 130, 246, 0.22);
+        font-size: 0.68rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .insider-auto-flag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 999px;
+        background: rgba(100, 116, 139, 0.14);
+        color: #475569;
+        border: 1px solid rgba(100, 116, 139, 0.22);
+        font-size: 0.72rem;
+        font-weight: 800;
+    }
+    .insider-compensation-alert {
+        border-radius: 0.85rem;
+        border: 1px solid rgba(245, 158, 11, 0.32);
+        background: rgba(245, 158, 11, 0.12);
+        color: #92400e;
+        padding: 0.8rem 1rem;
+        font-size: 0.86rem;
+        line-height: 1.5;
+    }
     .insider-warning {
         border-radius: 0.85rem;
         border: 1px solid var(--surface-border);
@@ -594,6 +657,19 @@
     .theme-dark .insider-type-badge--venta {
         color: #fed7aa;
         background: rgba(249, 115, 22, 0.22);
+    }
+    .theme-dark .insider-secondary-badge {
+        color: #bfdbfe;
+        background: rgba(59, 130, 246, 0.22);
+    }
+    .theme-dark .insider-auto-flag {
+        color: #e2e8f0;
+        background: rgba(148, 163, 184, 0.22);
+    }
+    .theme-dark .insider-compensation-alert {
+        color: #fde68a;
+        background: rgba(245, 158, 11, 0.16);
+        border-color: rgba(245, 158, 11, 0.36);
     }
     .historical-price-chart {
         height: 260px;
@@ -1162,6 +1238,10 @@
         }
 
         .insider-score-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .insider-adjustment-breakdown {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
@@ -3881,14 +3961,41 @@
                                                         <span class="insider-metric-value">{{ insider_trading.resumen.valor_compras_display }}</span>
                                                     </div>
                                                     <div class="insider-metric">
-                                                        <span class="insider-metric-label">Ventas (90d)</span>
-                                                        <span class="insider-metric-value">{{ insider_trading.resumen.valor_ventas_display }}</span>
+                                                        <span class="insider-metric-label">Ventas ajustadas (90d)</span>
+                                                        <span class="insider-metric-value">{{ insider_trading.resumen.valor_ventas_ajustado_display }}</span>
                                                     </div>
                                                     <div class="insider-metric">
                                                         <span class="insider-metric-label">Ratio</span>
                                                         <span class="insider-metric-value">{{ insider_trading.resumen.ratio_compras_pct }}%</span>
                                                     </div>
                                                 </div>
+                                                <div class="insider-adjustment-breakdown">
+                                                    <div class="insider-adjustment-item">
+                                                        <span class="insider-adjustment-label">Ventas brutas</span>
+                                                        <span class="insider-adjustment-value">{{ insider_trading.resumen.valor_ventas_display }}</span>
+                                                    </div>
+                                                    <div class="insider-adjustment-item">
+                                                        <span class="insider-adjustment-label">Ventas ajustadas</span>
+                                                        <span class="insider-adjustment-value">{{ insider_trading.resumen.valor_ventas_ajustado_display }}</span>
+                                                    </div>
+                                                    <div class="insider-adjustment-item">
+                                                        <span class="insider-adjustment-label">Post-ejercicio</span>
+                                                        <span class="insider-adjustment-value">{{ insider_trading.resumen.ventas_post_ejercicio_display }}</span>
+                                                    </div>
+                                                    <div class="insider-adjustment-item">
+                                                        <span class="insider-adjustment-label">Automáticas</span>
+                                                        <span class="insider-adjustment-value">{{ insider_trading.resumen.ventas_automaticas_display }}</span>
+                                                    </div>
+                                                    <div class="insider-adjustment-item">
+                                                        <span class="insider-adjustment-label">Ajuste aplicado</span>
+                                                        <span class="insider-adjustment-value">{{ insider_trading.resumen.porcentaje_ventas_ajustadas_sobre_brutas }}%</span>
+                                                    </div>
+                                                </div>
+                                                {% if insider_trading.resumen.advertencia_ventas_compensacion %}
+                                                <div class="insider-compensation-alert mt-3">
+                                                    ⚠️ {% if insider_trading.score_sentimiento == "bajista" %}Sentimiento bajista moderado — gran parte de las ventas parecen asociadas a compensación accionaria.{% else %}Gran parte de las ventas recientes parecen asociadas a compensación accionaria o ejercicios de opciones. El sentimiento bajista podría estar sobreestimado.{% endif %}
+                                                </div>
+                                                {% endif %}
                                                 <p class="text-muted small mb-0 mt-3">{{ insider_trading.score_descripcion }}</p>
                                             </div>
 
@@ -3911,7 +4018,17 @@
                                                             <td>{{ tx.fecha_display }}</td>
                                                             <td class="fw-semibold">{{ tx.insider_nombre|default:"N/D" }}</td>
                                                             <td class="insider-col-cargo">{{ tx.insider_cargo|default:"N/D" }}</td>
-                                                            <td><span class="insider-type-badge insider-type-badge--{{ tx.tipo }}">{{ tx.tipo_label }}</span></td>
+                                                            <td>
+                                                                <div class="d-flex flex-wrap align-items-center gap-1">
+                                                                    <span class="insider-type-badge insider-type-badge--{{ tx.tipo }}">{{ tx.tipo_label }}</span>
+                                                                    {% if tx.venta_relacionada_ejercicio %}
+                                                                    <span class="insider-secondary-badge">Post-ejercicio</span>
+                                                                    {% endif %}
+                                                                    {% if tx.plan_automatico %}
+                                                                    <span class="insider-auto-flag" title="Posible venta automática / compensación accionaria" aria-label="Posible venta automática / compensación accionaria">A</span>
+                                                                    {% endif %}
+                                                                </div>
+                                                            </td>
                                                             <td class="text-end insider-col-shares">{{ tx.shares_display }}</td>
                                                             <td class="text-end">{{ tx.precio_display }}</td>
                                                             <td class="text-end fw-semibold">{{ tx.valor_total_display }}</td>

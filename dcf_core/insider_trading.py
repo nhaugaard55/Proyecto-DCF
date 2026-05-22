@@ -128,12 +128,18 @@ def _procesar_transacciones(raw_items: list[dict[str, Any]], normalizer) -> list
             continue
         tx["fecha"] = fecha.isoformat()
         tx["fecha_display"] = fecha.strftime("%d/%m/%Y")
+        tx["venta_relacionada_ejercicio"] = bool(tx.get("venta_relacionada_ejercicio"))
+        tx["plan_automatico"] = bool(tx.get("plan_automatico"))
+        tx["tipo_extendido"] = tx.get("tipo_extendido") or tx["tipo"]
         tx["tipo_label"] = _tipo_label(tx["tipo"])
         tx["valor_total_display"] = _format_money_short(tx.get("valor_total"))
         tx["shares_display"] = _format_number(tx.get("shares"))
         tx["precio_display"] = _format_price(tx.get("precio"))
         transacciones.append(tx)
 
+    _marcar_ventas_post_ejercicio(transacciones)
+    for tx in transacciones:
+        tx.pop("_raw_text", None)
     transacciones.sort(key=lambda tx: tx["fecha"], reverse=True)
     return transacciones[:_MAX_TRANSACTIONS]
 
@@ -154,6 +160,7 @@ def _normalizar_finnhub(item: dict[str, Any]) -> dict[str, Any]:
         or item.get("transaction_price")
     )
     valor_total = _calcular_valor_total(item, shares, precio)
+    raw_text = _raw_text(item)
     cargo = _normalizar_cargo(
         item.get("title")
         or item.get("officerTitle")
@@ -166,6 +173,8 @@ def _normalizar_finnhub(item: dict[str, Any]) -> dict[str, Any]:
         "insider_nombre": _texto(item.get("name") or item.get("insiderName") or item.get("reportingName")),
         "insider_cargo": cargo,
         "tipo": _clasificar_tipo(item.get("transactionCode") or item.get("code") or item.get("transactionType")),
+        "tipo_extendido": _clasificar_tipo(item.get("transactionCode") or item.get("code") or item.get("transactionType")),
+        "plan_automatico": _es_plan_automatico(raw_text),
         "shares": abs(shares) if shares is not None else None,
         "precio": precio,
         "valor_total": valor_total,
@@ -174,6 +183,7 @@ def _normalizar_finnhub(item: dict[str, Any]) -> dict[str, Any]:
             or item.get("sharesOwnedFollowingTransaction")
             or item.get("securitiesOwned")
         ),
+        "_raw_text": raw_text,
     }
 
 
@@ -188,12 +198,15 @@ def _normalizar_fmp(item: dict[str, Any]) -> dict[str, Any]:
     )
     precio = _to_number(item.get("price") or item.get("transactionPrice"))
     valor_total = _calcular_valor_total(item, shares, precio)
+    raw_text = _raw_text(item)
 
     return {
         "fecha": item.get("transactionDate") or item.get("filingDate") or item.get("date"),
         "insider_nombre": _texto(item.get("reportingName") or item.get("name") or item.get("insiderName")),
         "insider_cargo": _normalizar_cargo(item.get("typeOfOwner") or item.get("officerTitle") or item.get("title")),
         "tipo": _clasificar_tipo(item.get("transactionType") or item.get("transactionCode") or item.get("code")),
+        "tipo_extendido": _clasificar_tipo(item.get("transactionType") or item.get("transactionCode") or item.get("code")),
+        "plan_automatico": _es_plan_automatico(raw_text),
         "shares": abs(shares) if shares is not None else None,
         "precio": precio,
         "valor_total": valor_total,
@@ -202,6 +215,7 @@ def _normalizar_fmp(item: dict[str, Any]) -> dict[str, Any]:
             or item.get("sharesOwnedFollowingTransaction")
             or item.get("shareOwnedFollowingTransaction")
         ),
+        "_raw_text": raw_text,
     }
 
 
@@ -247,7 +261,24 @@ def _calcular_score(transacciones: list[dict[str, Any]]) -> dict[str, Any]:
     ventas = [tx for tx in recientes if tx.get("tipo") == "venta"]
     valor_compras = sum(_safe_float(tx.get("valor_total")) for tx in compras)
     valor_ventas = sum(_safe_float(tx.get("valor_total")) for tx in ventas)
-    total_valor = valor_compras + valor_ventas
+    valor_ventas_ajustado = sum(_safe_float(tx.get("valor_total")) * _peso_venta_score(tx) for tx in ventas)
+    ventas_post_ejercicio = sum(
+        _safe_float(tx.get("valor_total")) for tx in ventas if tx.get("venta_relacionada_ejercicio")
+    )
+    ventas_automaticas = sum(
+        _safe_float(tx.get("valor_total")) for tx in ventas if tx.get("plan_automatico")
+    )
+    ventas_normales = sum(
+        _safe_float(tx.get("valor_total"))
+        for tx in ventas
+        if not tx.get("venta_relacionada_ejercicio") and not tx.get("plan_automatico")
+    )
+    ventas_compensacion = sum(
+        _safe_float(tx.get("valor_total"))
+        for tx in ventas
+        if tx.get("venta_relacionada_ejercicio") or tx.get("plan_automatico")
+    )
+    total_valor = valor_compras + valor_ventas_ajustado
 
     if not recientes or total_valor == 0:
         ratio = 0.0
@@ -285,13 +316,66 @@ def _calcular_score(transacciones: list[dict[str, Any]]) -> dict[str, Any]:
         "total_ventas": len(ventas),
         "valor_compras_usd": valor_compras,
         "valor_ventas_usd": valor_ventas,
+        "valor_ventas_ajustado_usd": valor_ventas_ajustado,
+        "ventas_ajustadas_usd": valor_ventas_ajustado,
+        "ventas_normales_usd": ventas_normales,
+        "ventas_post_ejercicio_usd": ventas_post_ejercicio,
+        "ventas_automaticas_usd": ventas_automaticas,
         "valor_compras_display": _format_money_short(valor_compras),
         "valor_ventas_display": _format_money_short(valor_ventas),
+        "valor_ventas_ajustado_display": _format_money_short(valor_ventas_ajustado),
+        "ventas_normales_display": _format_money_short(ventas_normales),
+        "ventas_post_ejercicio_display": _format_money_short(ventas_post_ejercicio),
+        "ventas_automaticas_display": _format_money_short(ventas_automaticas),
         "ratio_compras": ratio,
         "ratio_compras_pct": round(ratio * 100),
+        "porcentaje_ventas_ajustadas_sobre_brutas": round(
+            (valor_ventas_ajustado / valor_ventas) * 100
+        ) if valor_ventas else 0,
+        "advertencia_ventas_compensacion": valor_ventas > 0 and (ventas_compensacion / valor_ventas) > 0.50,
+        "porcentaje_ventas_compensacion": round((ventas_compensacion / valor_ventas) * 100) if valor_ventas else 0,
     }
 
     return {"score_sentimiento": score, **meta, "resumen": resumen}
+
+
+def _marcar_ventas_post_ejercicio(transacciones: list[dict[str, Any]]) -> None:
+    """Marca ventas cercanas a ejercicios de opciones del mismo insider."""
+
+    ejercicios = [
+        tx for tx in transacciones
+        if tx.get("tipo") == "ejercicio" and tx.get("insider_nombre") and _parse_fecha(tx.get("fecha"))
+    ]
+    if not ejercicios:
+        return
+
+    for venta in transacciones:
+        if venta.get("tipo") != "venta" or not venta.get("insider_nombre"):
+            continue
+        venta_fecha = _parse_fecha(venta.get("fecha"))
+        if venta_fecha is None:
+            continue
+        venta_nombre = _normalizar_nombre_insider(venta.get("insider_nombre"))
+        for ejercicio in ejercicios:
+            if venta_nombre != _normalizar_nombre_insider(ejercicio.get("insider_nombre")):
+                continue
+            ejercicio_fecha = _parse_fecha(ejercicio.get("fecha"))
+            if ejercicio_fecha is None:
+                continue
+            if abs((venta_fecha - ejercicio_fecha).days) <= 2:
+                venta["venta_relacionada_ejercicio"] = True
+                venta["tipo_extendido"] = "venta post-ejercicio"
+                break
+
+
+def _peso_venta_score(tx: dict[str, Any]) -> float:
+    """Devuelve el peso de una venta para el score de sentimiento."""
+
+    if tx.get("plan_automatico"):
+        return 0.15
+    if tx.get("venta_relacionada_ejercicio"):
+        return 0.25
+    return 1.0
 
 
 def _clasificar_tipo(code: Any) -> str:
@@ -331,6 +415,40 @@ def _normalizar_cargo(value: Any) -> str:
     if "SVP" in lookup or "VP" in lookup or "VICE PRESIDENT" in lookup:
         return "VP"
     return texto[:30] if texto else "N/D"
+
+
+def _normalizar_nombre_insider(value: Any) -> str:
+    """Normaliza nombres para comparar transacciones del mismo insider."""
+
+    return " ".join(_texto(value).upper().replace(",", " ").split())
+
+
+def _raw_text(item: dict[str, Any]) -> str:
+    """Concatena texto crudo del filing para detectar planes automáticos."""
+
+    partes = []
+    for value in item.values():
+        if isinstance(value, (str, int, float, bool)):
+            partes.append(str(value))
+        elif isinstance(value, list):
+            partes.extend(str(v) for v in value if isinstance(v, (str, int, float, bool)))
+        elif isinstance(value, dict):
+            partes.extend(str(v) for v in value.values() if isinstance(v, (str, int, float, bool)))
+    return " ".join(partes)
+
+
+def _es_plan_automatico(raw_text: str) -> bool:
+    """Detecta indicios de venta automática, tax withholding o plan 10b5-1."""
+
+    texto = (raw_text or "").lower()
+    patrones = (
+        "10b5-1",
+        "planned sale",
+        "automatic sale",
+        "sell to cover",
+        "tax withholding",
+    )
+    return any(patron in texto for patron in patrones)
 
 
 def _parse_fecha(value: Any):
