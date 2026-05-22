@@ -27,7 +27,7 @@ _SEC_HEADERS = {"User-Agent": "DCFAnalyzer/1.0 contact@example.com"}
 _REQUEST_TIMEOUT = 3
 _SEC_ENRICHMENT_BUDGET_SECONDS = 4.5
 _CACHE_TTL_SECONDS = 60 * 60
-_CACHE_SCHEMA_VERSION = "roles-v2"
+_CACHE_SCHEMA_VERSION = "roles-v4"
 _MAX_TRANSACTIONS = 20
 _LOOKBACK_DAYS = 180
 _SCORE_LOOKBACK_DAYS = 90
@@ -165,16 +165,20 @@ def _normalizar_finnhub(item: dict[str, Any]) -> dict[str, Any]:
     """Adapta una transacción de Finnhub al formato interno."""
 
     shares = _to_number(
-        item.get("share")
-        or item.get("shares")
-        or item.get("change")
-        or item.get("transactionShares")
-        or item.get("securitiesTransacted")
+        _first_present(
+            item.get("change"),
+            item.get("transactionShares"),
+            item.get("securitiesTransacted"),
+            item.get("shares"),
+            item.get("share"),
+        )
     )
     precio = _to_number(
-        item.get("transactionPrice")
-        or item.get("price")
-        or item.get("transaction_price")
+        _first_present(
+            item.get("transactionPrice"),
+            item.get("price"),
+            item.get("transaction_price"),
+        )
     )
     valor_total = _calcular_valor_total(item, shares, precio)
     raw_text = _raw_text(item)
@@ -201,10 +205,14 @@ def _normalizar_finnhub(item: dict[str, Any]) -> dict[str, Any]:
         "precio": precio,
         "valor_total": valor_total,
         "shares_restantes": _to_number(
-            item.get("shareOwnedFollowingTransaction")
-            or item.get("sharesOwnedFollowingTransaction")
-            or item.get("securitiesOwned")
+            _first_present(
+                item.get("shareOwnedFollowingTransaction"),
+                item.get("sharesOwnedFollowingTransaction"),
+                item.get("securitiesOwned"),
+                item.get("share"),
+            )
         ),
+        "_issuer_symbol": item.get("symbol"),
         "_filing_id": item.get("id") or item.get("accessionNumber") or item.get("accession"),
         "_raw_text": raw_text,
     }
@@ -219,7 +227,7 @@ def _normalizar_fmp(item: dict[str, Any]) -> dict[str, Any]:
         or item.get("shares")
         or item.get("acquistionOrDisposition")
     )
-    precio = _to_number(item.get("price") or item.get("transactionPrice"))
+    precio = _to_number(_first_present(item.get("price"), item.get("transactionPrice")))
     valor_total = _calcular_valor_total(item, shares, precio)
     raw_text = _raw_text(item)
     raw_cargo = item.get("typeOfOwner") or item.get("officerTitle") or item.get("title")
@@ -238,10 +246,13 @@ def _normalizar_fmp(item: dict[str, Any]) -> dict[str, Any]:
         "precio": precio,
         "valor_total": valor_total,
         "shares_restantes": _to_number(
-            item.get("securitiesOwned")
-            or item.get("sharesOwnedFollowingTransaction")
-            or item.get("shareOwnedFollowingTransaction")
+            _first_present(
+                item.get("securitiesOwned"),
+                item.get("sharesOwnedFollowingTransaction"),
+                item.get("shareOwnedFollowingTransaction"),
+            )
         ),
+        "_issuer_symbol": item.get("symbol"),
         "_filing_id": item.get("id") or item.get("accessionNumber") or item.get("accession"),
         "_raw_text": raw_text,
     }
@@ -282,7 +293,7 @@ def _calcular_score(transacciones: list[dict[str, Any]]) -> dict[str, Any]:
     cutoff = datetime.now(timezone.utc).date() - timedelta(days=_SCORE_LOOKBACK_DAYS)
     recientes = [
         tx for tx in transacciones
-        if (_parse_fecha(tx.get("fecha")) or cutoff) >= cutoff and tx.get("tipo") != "ejercicio"
+        if (_parse_fecha(tx.get("fecha")) or cutoff) >= cutoff and tx.get("tipo") in {"compra", "venta"}
     ]
 
     compras = [tx for tx in recientes if tx.get("tipo") == "compra"]
@@ -414,14 +425,26 @@ def _clasificar_tipo(code: Any) -> str:
         return "compra"
     if value == "S" or value.startswith("S-"):
         return "venta"
-    if value in {"A", "M"} or value.startswith("A-") or value.startswith("M-"):
+    if value == "M" or value.startswith("M-"):
         return "ejercicio"
+    if value == "A" or value.startswith("A-"):
+        return "adjudicacion"
+    if value == "F" or value.startswith("F-"):
+        return "retencion_impuestos"
+    if value == "G" or value.startswith("G-"):
+        return "donacion"
+    if value == "D" or value.startswith("D-"):
+        return "disposicion"
     if "PURCHASE" in value or "BUY" in value or "ACQUISITION" in value:
         return "compra"
     if "SALE" in value or "SELL" in value or "DISPOSITION" in value:
         return "venta"
     if "OPTION" in value or "EXERCISE" in value:
         return "ejercicio"
+    if "TAX" in value or "WITHHOLD" in value:
+        return "retencion_impuestos"
+    if "GRANT" in value or "AWARD" in value:
+        return "adjudicacion"
     return "otro"
 
 
@@ -517,49 +540,56 @@ def _enriquecer_cargos_desde_sec(ticker: str, transacciones: list[dict[str, Any]
     if not faltantes:
         return
 
-    deadline = time.monotonic() + _SEC_ENRICHMENT_BUDGET_SECONDS
-    cik = _sec_cik_for_ticker(ticker, deadline)
-    if cik is None:
-        return
-
-    filings = _sec_recent_filings(cik, deadline)
-    if not filings:
-        return
-
     txs_por_accession: dict[str, list[dict[str, Any]]] = {}
-    for tx in faltantes[:10]:
+    for tx in faltantes:
         accession = str(tx.get("_filing_id") or "").strip()
         if accession:
             txs_por_accession.setdefault(accession, []).append(tx)
     if not txs_por_accession:
         return
 
-    accessions = list(txs_por_accession)
-    max_workers = min(4, len(accessions))
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    try:
-        future_map = {
-            executor.submit(_sec_cargo_for_accession, cik, accession, filings, deadline): accession
-            for accession in accessions
-        }
-        timeout = max(0.1, deadline - time.monotonic())
-        try:
-            for future in as_completed(future_map, timeout=timeout):
-                accession = future_map[future]
-                try:
-                    cargo_info = future.result()
-                except Exception:
-                    continue
-                if cargo_info and cargo_info[0] != "N/D":
-                    cargo, cargo_detalle = cargo_info
-                    for tx in txs_por_accession.get(accession, []):
-                        tx["insider_cargo"] = cargo
-                        tx["insider_cargo_detalle"] = cargo_detalle
-                        tx["insider_cargo_fuente"] = "sec"
-        except TimeoutError:
+    deadline = time.monotonic() + _SEC_ENRICHMENT_BUDGET_SECONDS
+    for symbol in _sec_symbol_candidates(ticker, transacciones):
+        pendientes = [
+            accession for accession, txs in txs_por_accession.items()
+            if any(tx.get("insider_cargo") in (None, "", "N/D") for tx in txs)
+        ]
+        if not pendientes or time.monotonic() >= deadline:
             return
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
+
+        cik = _sec_cik_for_ticker(symbol, deadline)
+        if cik is None:
+            continue
+
+        filings = _sec_recent_filings(cik, deadline)
+        if not filings:
+            continue
+
+        max_workers = min(4, len(pendientes))
+        executor = ThreadPoolExecutor(max_workers=max_workers)
+        try:
+            future_map = {
+                executor.submit(_sec_cargo_for_accession, cik, accession, filings, deadline): accession
+                for accession in pendientes
+            }
+            timeout = max(0.1, deadline - time.monotonic())
+            try:
+                for future in as_completed(future_map, timeout=timeout):
+                    accession = future_map[future]
+                    try:
+                        cargo_info = future.result()
+                    except Exception:
+                        continue
+                    if cargo_info and cargo_info[0] != "N/D":
+                        cargo, cargo_detalle = cargo_info
+                        for tx in txs_por_accession.get(accession, []):
+                            tx["insider_cargo"] = cargo
+                            tx["insider_cargo_detalle"] = cargo_detalle
+                            tx["insider_cargo_fuente"] = "sec"
+            except TimeoutError:
+                return
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _propagar_cargos_por_insider(transacciones: list[dict[str, Any]]) -> None:
@@ -586,6 +616,17 @@ def _propagar_cargos_por_insider(transacciones: list[dict[str, Any]]) -> None:
         tx["insider_cargo"] = cargo
         tx["insider_cargo_detalle"] = detalle
         tx["insider_cargo_fuente"] = fuente
+
+
+def _sec_symbol_candidates(ticker: str, transacciones: list[dict[str, Any]]) -> list[str]:
+    """Devuelve tickers posibles para resolver CIK, incluyendo clases alternativas reportadas."""
+
+    candidates: list[str] = []
+    for value in [ticker, *(tx.get("_issuer_symbol") for tx in transacciones)]:
+        symbol = str(value or "").strip().upper()
+        if symbol and symbol not in candidates:
+            candidates.append(symbol)
+    return candidates
 
 
 def _sec_cik_for_ticker(ticker: str, deadline: float) -> int | None:
@@ -721,7 +762,15 @@ def _extraer_cargo_sec_html_detalle(html: str) -> tuple[str, str] | None:
         flags=re.IGNORECASE | re.DOTALL,
     )
     if director_block:
-        return "Director", "Director"
+        return "Director", "Miembro del directorio"
+
+    owner_block = re.search(
+        r"<span[^>]*>\s*X\s*</span>\s*</td>\s*<td[^>]*>\s*10%\s*Owner\s*</td>",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if owner_block:
+        return "Accionista >10%", "Accionista >10%"
 
     return None
 
@@ -738,6 +787,7 @@ def _limpiar_campos_internos(transacciones: list[dict[str, Any]]) -> None:
     for tx in transacciones:
         tx.pop("_raw_text", None)
         tx.pop("_filing_id", None)
+        tx.pop("_issuer_symbol", None)
 
 
 def _normalizar_nombre_insider(value: Any) -> str:
@@ -813,6 +863,15 @@ def _calcular_valor_total(item: dict[str, Any], shares: float | None, precio: fl
     return abs(shares * precio)
 
 
+def _first_present(*values: Any) -> Any:
+    """Devuelve el primer valor presente sin descartar ceros válidos."""
+
+    for value in values:
+        if value not in (None, "", "N/D"):
+            return value
+    return None
+
+
 def _to_number(value: Any) -> float | None:
     """Convierte valores numéricos con tolerancia a strings vacíos o símbolos."""
 
@@ -846,6 +905,10 @@ def _tipo_label(tipo: str) -> str:
         "compra": "Compra",
         "venta": "Venta",
         "ejercicio": "Ejercicio",
+        "adjudicacion": "Adjudicación",
+        "retencion_impuestos": "Retención imp.",
+        "donacion": "Donación",
+        "disposicion": "Disposición",
         "otro": "Otro",
     }.get(tipo, "Otro")
 
