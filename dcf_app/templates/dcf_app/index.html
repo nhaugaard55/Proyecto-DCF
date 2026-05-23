@@ -4421,7 +4421,7 @@
                                                     {% if po.dcf_pct is not None %}
                                                     <div class="analyst-range-marker" style="left:{{ po.dcf_pct }}%;">
                                                         <div class="analyst-range-marker-dot" style="background:#f59e0b;"></div>
-                                                        <div class="analyst-range-marker-label" style="color:#f59e0b;">Modelo<br>${{ po.dcf_precio|floatformat:2 }}</div>
+                                                        <div class="analyst-range-marker-label" style="color:#f59e0b;">Modelos<br>${{ po.dcf_precio|floatformat:2 }}</div>
                                                     </div>
                                                     {% endif %}
                                                     {% if po.medio_pct is not None %}
@@ -4484,14 +4484,14 @@
                                             {% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None and po.medio is not None %}
                                             <div class="analyst-dcf-compare">
                                                 {% with dcf_precio=multi_model.consenso.precio %}
-                                                Tu modelo DCF estima <strong>${{ dcf_precio|floatformat:2 }}</strong> vs consenso de analistas <strong>${{ po.medio|floatformat:2 }}</strong>
+                                                Valor estimado por consenso de modelos: <strong>${{ dcf_precio|floatformat:2 }}</strong> &mdash; Precio objetivo de analistas: <strong>${{ po.medio|floatformat:2 }}</strong>
                                                 &mdash;
                                                 {% if dcf_precio < po.medio %}
-                                                el mercado y los analistas son más optimistas que tu modelo.
+                                                los analistas son más optimistas que el consenso de modelos.
                                                 {% elif dcf_precio > po.medio %}
-                                                tu modelo es más optimista que el consenso de analistas.
+                                                el consenso de modelos es más optimista que los analistas.
                                                 {% else %}
-                                                tu modelo coincide con el consenso de analistas.
+                                                ambas estimaciones coinciden.
                                                 {% endif %}
                                                 {% endwith %}
                                             </div>
