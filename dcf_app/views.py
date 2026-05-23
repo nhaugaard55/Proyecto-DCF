@@ -20,6 +20,7 @@ from dcf_core.DCF_Main import ejecutar_dcf
 from dcf_core.business_cycle import get_business_cycle_phase
 from dcf_core.company_stage import detect_company_stage, STAGE_META
 from dcf_core.empresa import build_filtros_por_etapa
+from dcf_core.analyst_estimates import get_analyst_estimates
 from dcf_core.insider_trading import get_insider_trading
 from dcf_core.multi_model_valuation import run_all_models
 from dcf_core.search import CompanySearchResult, search_companies
@@ -329,6 +330,7 @@ def dcf_view(request):
     company_stage = None
     multi_model = None
     insider_data = {"disponible": False, "mensaje": "Sin ticker disponible para consultar insider trading."}
+    analyst_data: dict = {"disponible": False, "mensaje": "Sin ticker disponible para consultar estimaciones de analistas."}
     filtros_etapa = []
     if resultado and isinstance(resultado, dict):
         try:
@@ -355,6 +357,29 @@ def dcf_view(request):
                 "disponible": False,
                 "mensaje": "No se pudo consultar insider trading para este ticker.",
             }
+
+        try:
+            _precio_actual_raw = resultado.get("precio_actual") if isinstance(resultado, dict) else None
+            _precio_actual_float = float(_precio_actual_raw) if _precio_actual_raw is not None else None
+            analyst_data = get_analyst_estimates(ticker, precio_actual=_precio_actual_float)
+        except Exception:
+            analyst_data = {
+                "disponible": False,
+                "mensaje": "No se pudo consultar estimaciones de analistas.",
+            }
+
+        # Inyectar posición del precio consenso DCF en la barra de rango de analistas
+        try:
+            _dcf_precio = float((multi_model or {}).get("consenso", {}).get("precio") or 0) or None
+            _po = dict((analyst_data.get("precio_objetivo") or {}))
+            _bajo, _alto = _po.get("bajo"), _po.get("alto")
+            if _dcf_precio and _bajo is not None and _alto is not None and float(_alto) > float(_bajo):
+                _rango = float(_alto) - float(_bajo)
+                _po["dcf_pct"] = round(max(0.0, min(100.0, (_dcf_precio - float(_bajo)) / _rango * 100)), 1)
+                _po["dcf_precio"] = round(_dcf_precio, 2)
+                analyst_data = {**analyst_data, "precio_objetivo": _po}
+        except Exception:
+            pass
 
     chart_data = _build_chart_data(resultado)
 
@@ -406,6 +431,7 @@ def dcf_view(request):
         "total_liabilities_billones": datos_empresa_context.get("total_liabilities_billones"),
         "multi_model": multi_model,
         "insider_trading": insider_data,
+        "analyst_estimates": analyst_data,
         "resultado": resultado,
         "error": error,
         "ticker": ticker,
