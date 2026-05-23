@@ -368,6 +368,19 @@ def dcf_view(request):
                 "mensaje": "No se pudo consultar estimaciones de analistas.",
             }
 
+        # Inyectar posición del precio consenso DCF en la barra de rango de analistas
+        try:
+            _dcf_precio = float((multi_model or {}).get("consenso", {}).get("precio") or 0) or None
+            _po = dict((analyst_data.get("precio_objetivo") or {}))
+            _bajo, _alto = _po.get("bajo"), _po.get("alto")
+            if _dcf_precio and _bajo is not None and _alto is not None and float(_alto) > float(_bajo):
+                _rango = float(_alto) - float(_bajo)
+                _po["dcf_pct"] = round(max(0.0, min(100.0, (_dcf_precio - float(_bajo)) / _rango * 100)), 1)
+                _po["dcf_precio"] = round(_dcf_precio, 2)
+                analyst_data = {**analyst_data, "precio_objetivo": _po}
+        except Exception:
+            pass
+
     chart_data = _build_chart_data(resultado)
 
     if isinstance(resultado, dict):

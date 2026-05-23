@@ -4418,6 +4418,12 @@
                                                         <div class="analyst-range-marker-label" style="color:#3b82f6;">Actual<br>${{ analyst_estimates.precio_actual|floatformat:2 }}</div>
                                                     </div>
                                                     {% endif %}
+                                                    {% if po.dcf_pct is not None %}
+                                                    <div class="analyst-range-marker" style="left:{{ po.dcf_pct }}%;">
+                                                        <div class="analyst-range-marker-dot" style="background:#f59e0b;"></div>
+                                                        <div class="analyst-range-marker-label" style="color:#f59e0b;">Modelo<br>${{ po.dcf_precio|floatformat:2 }}</div>
+                                                    </div>
+                                                    {% endif %}
                                                     {% if po.medio_pct is not None %}
                                                     <div class="analyst-range-marker" style="left:{{ po.medio_pct }}%;">
                                                         <div class="analyst-range-marker-dot" style="background:#22c55e;"></div>
