@@ -688,6 +688,7 @@
     }
     @media (max-width: 767px) {
         .analyst-summary-grid { grid-template-columns: repeat(2, 1fr); }
+        .analyst-summary-grid .analyst-metric:last-child { grid-column: 1 / -1; }
     }
     .analyst-metric {
         display: flex;
@@ -810,6 +811,10 @@
         white-space: nowrap;
         line-height: 1.3;
         text-align: center;
+    }
+    @media (max-width: 767px) {
+        .analyst-range-bar-wrap { margin-bottom: 3.25rem; }
+        .analyst-range-marker-label { font-size: 0.58rem; }
     }
     .historical-price-chart {
         height: 260px;
@@ -4384,7 +4389,7 @@
                                                     </span>
                                                     {% endwith %}
                                                 </div>
-                                                <div class="analyst-metric d-none d-md-flex">
+                                                <div class="analyst-metric">
                                                     <span class="analyst-metric-label">Rango</span>
                                                     <span class="analyst-metric-value">
                                                         {% if po.bajo is not None %}${{ po.bajo|floatformat:0 }}&mdash;${{ po.alto|floatformat:0 }}{% else %}&mdash;{% endif %}
@@ -4405,7 +4410,7 @@
 
                                             <!-- Barra de rango de precio objetivo -->
                                             {% if po.bajo is not None and po.alto is not None %}
-                                            <div class="analyst-range-bar-wrap d-none d-md-block">
+                                            <div class="analyst-range-bar-wrap">
                                                 <div class="analyst-range-bar-ends">
                                                     <span>Mín ${{ po.bajo|floatformat:0 }}</span>
                                                     <span>Rango precio objetivo</span>
