@@ -451,6 +451,49 @@
         font-size: 1.05rem;
         line-height: 1;
     }
+    @media (min-width: 768px) {
+        .analysis-sequence-card {
+            cursor: pointer;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
+        }
+
+        .analysis-sequence-card:hover,
+        .analysis-sequence-card:focus-visible {
+            border-color: rgba(37, 99, 235, 0.42) !important;
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.1);
+            outline: 0;
+        }
+
+        .analysis-sequence-card.is-active {
+            border-color: rgba(37, 99, 235, 0.72) !important;
+            background: rgba(37, 99, 235, 0.05);
+            box-shadow: 0 16px 38px rgba(37, 99, 235, 0.14);
+        }
+
+        .analysis-primary-panel > .accordion-item > .accordion-header {
+            display: none;
+        }
+
+        .analysis-primary-panel > .accordion-item > .accordion-collapse {
+            margin-top: 0;
+        }
+
+        .analysis-primary-panel > .accordion-item > .accordion-collapse > .accordion-body {
+            padding-top: 0.5rem;
+        }
+
+        .theme-dark .analysis-sequence-card:hover,
+        .theme-dark .analysis-sequence-card:focus-visible {
+            border-color: rgba(96, 165, 250, 0.62) !important;
+            box-shadow: 0 18px 38px rgba(2, 6, 23, 0.36);
+        }
+
+        .theme-dark .analysis-sequence-card.is-active {
+            border-color: rgba(96, 165, 250, 0.78) !important;
+            background: rgba(37, 99, 235, 0.12);
+            box-shadow: 0 18px 40px rgba(2, 6, 23, 0.42);
+        }
+    }
     .results-section .table thead {
         background: var(--table-header-bg);
         color: var(--table-text);
@@ -2789,7 +2832,7 @@
                         {% with cumplidos=0 %}
                         {% for f in filtros_activos %}{% if f.cumple %}{% with cumplidos=cumplidos|add:1 %}{% endwith %}{% endif %}{% endfor %}
                         <div class="col-12 col-md-4">
-                            <div class="p-3 rounded-3 h-100 {% if filtros_activos %}border{% endif %}" style="border-color: var(--bs-border-color)!important;">
+                            <div id="analysis-step-ratios-card" class="analysis-sequence-card p-3 rounded-3 h-100 {% if filtros_activos %}border{% endif %}" role="button" tabindex="0" aria-controls="analysis-ratios-collapse" aria-expanded="false" data-analysis-step-trigger="ratios" style="border-color: var(--bs-border-color)!important;">
                                 <div class="analysis-sequence-step-title fw-bold mb-2">
                                     <span class="analysis-sequence-step-badge">1</span>
                                     <span>Ratios</span>
@@ -2809,7 +2852,7 @@
 
                         <!-- Paso 2: Valuación -->
                         <div class="col-12 col-md-4">
-                            <div class="p-3 rounded-3 h-100 border" style="border-color: var(--bs-border-color)!important;">
+                            <div id="analysis-step-valuation-card" class="analysis-sequence-card p-3 rounded-3 h-100 border" role="button" tabindex="0" aria-controls="analysis-valuation-collapse" aria-expanded="false" data-analysis-step-trigger="valuation" style="border-color: var(--bs-border-color)!important;">
                                 <div class="analysis-sequence-step-title fw-bold mb-2">
                                     <span class="analysis-sequence-step-badge">2</span>
                                     <span>Valuación</span>
@@ -2840,7 +2883,7 @@
 
                         <!-- Paso 3: Técnico -->
                         <div class="col-12 col-md-4">
-                            <div class="p-3 rounded-3 h-100 border" style="border-color: var(--bs-border-color)!important;">
+                            <div id="analysis-step-technical-card" class="analysis-sequence-card p-3 rounded-3 h-100 border" role="button" tabindex="0" aria-controls="analysis-technical-collapse" aria-expanded="false" data-analysis-step-trigger="technical" style="border-color: var(--bs-border-color)!important;">
                                 <div class="analysis-sequence-step-title fw-bold mb-2">
                                     <span class="analysis-sequence-step-badge">3</span>
                                     <span>Técnico</span>
@@ -2875,7 +2918,7 @@
 
         <!-- ── ACORDEÓN PASO 1 ── -->
         <div class="col-12">
-            <div class="accordion analysis-section-accordion" id="analysis-ratios-accordion">
+            <div class="accordion analysis-section-accordion analysis-primary-panel" id="analysis-ratios-accordion" data-analysis-primary-panel="ratios">
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="analysis-ratios-heading">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-ratios-collapse" aria-expanded="false" aria-controls="analysis-ratios-collapse" style="background:var(--analysis-section-bg); background-color:var(--analysis-section-bg-solid); color:var(--analysis-section-text); border:1px solid var(--analysis-section-border); box-shadow:var(--analysis-section-shadow);">
@@ -3071,7 +3114,7 @@
 
         <!-- ── ACORDEÓN PASO 2 ── -->
         <div class="col-12">
-            <div class="accordion analysis-section-accordion" id="analysis-valuation-accordion">
+            <div class="accordion analysis-section-accordion analysis-primary-panel" id="analysis-valuation-accordion" data-analysis-primary-panel="valuation">
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="analysis-valuation-heading">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-valuation-collapse" aria-expanded="false" aria-controls="analysis-valuation-collapse" style="background:var(--analysis-section-bg); background-color:var(--analysis-section-bg-solid); color:var(--analysis-section-text); border:1px solid var(--analysis-section-border); box-shadow:var(--analysis-section-shadow);">
@@ -4064,7 +4107,7 @@
 
         <!-- ── ACORDEÓN EXTRA: ANÁLISIS TÉCNICO ── -->
         <div class="col-12">
-            <div class="accordion analysis-section-accordion" id="analysis-technical-accordion">
+            <div class="accordion analysis-section-accordion analysis-primary-panel" id="analysis-technical-accordion" data-analysis-primary-panel="technical">
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="analysis-technical-heading">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-technical-collapse" aria-expanded="false" aria-controls="analysis-technical-collapse" style="background:var(--analysis-section-bg); background-color:var(--analysis-section-bg-solid); color:var(--analysis-section-text); border:1px solid var(--analysis-section-border); box-shadow:var(--analysis-section-shadow);">
@@ -4775,6 +4818,91 @@ function initRecentHistory() {
 }
 document.addEventListener("DOMContentLoaded", function () {
     initRecentHistory();
+
+    function initPrimaryAnalysisPanels() {
+        const desktopQuery = window.matchMedia("(min-width: 768px)");
+        const triggers = Array.from(document.querySelectorAll("[data-analysis-step-trigger]"));
+        const panels = {
+            ratios: document.getElementById("analysis-ratios-collapse"),
+            valuation: document.getElementById("analysis-valuation-collapse"),
+            technical: document.getElementById("analysis-technical-collapse"),
+        };
+
+        if (!triggers.length || !panels.ratios || !panels.valuation || !panels.technical) {
+            return;
+        }
+
+        function getCollapse(element) {
+            if (window.bootstrap && window.bootstrap.Collapse) {
+                return window.bootstrap.Collapse.getOrCreateInstance(element, { toggle: false });
+            }
+            return null;
+        }
+
+        function setPanelVisible(element, visible) {
+            const instance = getCollapse(element);
+            if (instance) {
+                visible ? instance.show() : instance.hide();
+                return;
+            }
+            element.classList.toggle("show", visible);
+        }
+
+        function syncCards() {
+            if (!desktopQuery.matches) {
+                triggers.forEach((trigger) => {
+                    trigger.classList.remove("is-active");
+                    trigger.setAttribute("aria-expanded", "false");
+                });
+                return;
+            }
+
+            triggers.forEach((trigger) => {
+                const step = trigger.dataset.analysisStepTrigger;
+                const isOpen = Boolean(panels[step] && panels[step].classList.contains("show"));
+                trigger.classList.toggle("is-active", isOpen);
+                trigger.setAttribute("aria-expanded", isOpen ? "true" : "false");
+            });
+        }
+
+        function activateStep(step) {
+            if (!desktopQuery.matches || !panels[step]) {
+                return;
+            }
+
+            const shouldOpen = !panels[step].classList.contains("show");
+            Object.entries(panels).forEach(([panelStep, panel]) => {
+                setPanelVisible(panel, panelStep === step && shouldOpen);
+            });
+            syncCards();
+        }
+
+        triggers.forEach((trigger) => {
+            trigger.addEventListener("click", () => activateStep(trigger.dataset.analysisStepTrigger));
+            trigger.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter" && event.key !== " ") {
+                    return;
+                }
+                event.preventDefault();
+                activateStep(trigger.dataset.analysisStepTrigger);
+            });
+        });
+
+        Object.values(panels).forEach((panel) => {
+            panel.addEventListener("shown.bs.collapse", syncCards);
+            panel.addEventListener("hidden.bs.collapse", syncCards);
+        });
+
+        if (desktopQuery.addEventListener) {
+            desktopQuery.addEventListener("change", syncCards);
+        } else if (desktopQuery.addListener) {
+            desktopQuery.addListener(syncCards);
+        }
+
+        syncCards();
+    }
+
+    initPrimaryAnalysisPanels();
 
     const analysisFormCard = document.getElementById("analysis-form-card");
     const newSearchTrigger = document.getElementById("new-search-trigger");
