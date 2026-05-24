@@ -43,16 +43,37 @@ class AnalysisRecord(models.Model):
         return etiquetas.get(self.fuente_utilizada or "", self.fuente_utilizada or "N/D")
 
 
-class WatchlistItem(models.Model):
-    """Ticker guardado por el usuario para seguimiento."""
+class WatchlistGroup(models.Model):
+    """Watchlist con nombre creada por el usuario."""
 
-    ticker = models.CharField(max_length=16, unique=True)
+    name = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("created_at",)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class WatchlistItem(models.Model):
+    """Ticker guardado dentro de una WatchlistGroup."""
+
+    watchlist = models.ForeignKey(
+        WatchlistGroup,
+        on_delete=models.CASCADE,
+        related_name="items",
+        null=True,
+        blank=True,
+    )
+    ticker = models.CharField(max_length=16)
     company_name = models.CharField(max_length=255, blank=True)
     company_exchange = models.CharField(max_length=64, blank=True)
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ("ticker",)
+        unique_together = [("watchlist", "ticker")]
 
     def __str__(self) -> str:
         return self.ticker

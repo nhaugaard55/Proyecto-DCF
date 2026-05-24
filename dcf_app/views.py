@@ -14,7 +14,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from xhtml2pdf import pisa
 
-from .models import AnalysisRecord, WatchlistItem
+from .models import AnalysisRecord, WatchlistGroup, WatchlistItem
 
 from dcf_core.DCF_Main import ejecutar_dcf
 from dcf_core.business_cycle import get_business_cycle_phase
@@ -619,41 +619,94 @@ def search_companies_view(request):
 # ---------------------------------------------------------------------------
 
 def watchlist_view(request):
-    """Página principal de la watchlist."""
-    items = WatchlistItem.objects.all()
-    return render(request, "dcf_app/watchlist.html", {"watchlist": items})
+    """Página principal de la watchlist con grupos."""
+    groups = WatchlistGroup.objects.prefetch_related("items").all()
+    return render(request, "dcf_app/watchlist.html", {"groups": groups})
 
 
 @require_POST
 def watchlist_toggle(request):
-    """Agrega o quita un ticker de la watchlist (JSON)."""
+    """Agrega o quita un ticker de un grupo de la watchlist (JSON).
+
+    Si se pasa group_id usa ese grupo; si no, usa el primer grupo existente
+    o crea uno 'General' automáticamente.
+    """
     ticker = (request.POST.get("ticker") or "").strip().upper()
     company_name = (request.POST.get("company_name") or "").strip()
     company_exchange = (request.POST.get("company_exchange") or "").strip()
+    group_id = request.POST.get("group_id") or None
 
     if not ticker:
         return JsonResponse({"error": "Ticker requerido"}, status=400)
 
-    item = WatchlistItem.objects.filter(ticker=ticker).first()
+    if group_id:
+        group = WatchlistGroup.objects.filter(id=group_id).first()
+        if not group:
+            return JsonResponse({"error": "Grupo no encontrado"}, status=404)
+    else:
+        group = WatchlistGroup.objects.order_by("created_at").first()
+        if not group:
+            group = WatchlistGroup.objects.create(name="General")
+
+    item = WatchlistItem.objects.filter(watchlist=group, ticker=ticker).first()
     if item:
         item.delete()
-        return JsonResponse({"action": "removed", "ticker": ticker})
+        in_watchlist = WatchlistItem.objects.filter(ticker=ticker).exists()
+        return JsonResponse({"action": "removed", "ticker": ticker, "in_watchlist": in_watchlist})
     else:
         WatchlistItem.objects.create(
+            watchlist=group,
             ticker=ticker,
             company_name=company_name,
             company_exchange=company_exchange,
         )
-        return JsonResponse({"action": "added", "ticker": ticker})
+        return JsonResponse({"action": "added", "ticker": ticker, "group_id": group.id, "in_watchlist": True})
 
 
 @require_GET
 def watchlist_status(request):
-    """Devuelve si un ticker está en la watchlist."""
+    """Devuelve si un ticker está en cualquier grupo de la watchlist."""
     ticker = (request.GET.get("ticker") or "").strip().upper()
     if not ticker:
         return JsonResponse({"in_watchlist": False})
     in_watchlist = WatchlistItem.objects.filter(ticker=ticker).exists()
     return JsonResponse({"in_watchlist": in_watchlist, "ticker": ticker})
+
+
+@require_POST
+def watchlist_group_create(request):
+    """Crea un nuevo grupo de watchlist."""
+    name = (request.POST.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Nombre requerido"}, status=400)
+    if len(name) > 100:
+        name = name[:100]
+    group = WatchlistGroup.objects.create(name=name)
+    return JsonResponse({"id": group.id, "name": group.name})
+
+
+@require_POST
+def watchlist_group_delete(request):
+    """Elimina un grupo y todos sus items."""
+    group_id = request.POST.get("group_id") or None
+    if not group_id:
+        return JsonResponse({"error": "group_id requerido"}, status=400)
+    deleted, _ = WatchlistGroup.objects.filter(id=group_id).delete()
+    if not deleted:
+        return JsonResponse({"error": "Grupo no encontrado"}, status=404)
+    return JsonResponse({"action": "deleted", "group_id": group_id})
+
+
+@require_POST
+def watchlist_group_rename(request):
+    """Renombra un grupo de watchlist."""
+    group_id = request.POST.get("group_id") or None
+    name = (request.POST.get("name") or "").strip()
+    if not group_id or not name:
+        return JsonResponse({"error": "group_id y name requeridos"}, status=400)
+    updated = WatchlistGroup.objects.filter(id=group_id).update(name=name[:100])
+    if not updated:
+        return JsonResponse({"error": "Grupo no encontrado"}, status=404)
+    return JsonResponse({"action": "renamed", "group_id": group_id, "name": name[:100]})
 
 
