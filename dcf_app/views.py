@@ -1,5 +1,6 @@
 import io
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, cast
@@ -14,7 +15,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from xhtml2pdf import pisa
 
-from .models import AnalysisRecord, WatchlistItem
+from .models import AnalysisRecord, WatchlistGroup, WatchlistItem
 
 from dcf_core.DCF_Main import ejecutar_dcf
 from dcf_core.business_cycle import get_business_cycle_phase
@@ -28,8 +29,61 @@ from dcf_core.search import CompanySearchResult, search_companies
 
 _SYMBOL_PATTERN = re.compile(r"^\s*([A-Za-z0-9.\-:]+)")
 
-_DCF_CACHE_TTL = 600  # 10 minutos
+_DCF_CACHE_TTL = 600   # 10 minutos
+_TYPE_CACHE_TTL = 3600  # 1 hora
 _AUTO_FUENTE = "auto"
+
+_UNSUPPORTED_QUOTE_TYPES: dict[str, str] = {
+    "ETF":            "un ETF (fondo cotizado en bolsa)",
+    "MUTUALFUND":     "un fondo de inversión",
+    "INDEX":          "un índice bursátil",
+    "FUTURE":         "un contrato de futuros",
+    "CRYPTOCURRENCY": "una criptomoneda",
+    "CURRENCY":       "una divisa",
+    "OPTION":         "una opción financiera",
+    "WARRANT":        "un warrant",
+}
+
+
+def _check_ticker_eligibility(ticker: str) -> str | None:
+    """
+    Devuelve un mensaje de error si el ticker no es una acción analizable,
+    o None si es apto para el DCF. Resultado cacheado 1 hora.
+    """
+    cache_key = f"ticker_eligibility_{ticker}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached or None  # "" → None (apto)
+
+    try:
+        import yfinance as yf
+        info = yf.Ticker(ticker).info or {}
+        quote_type = info.get("quoteType")
+        long_name = info.get("longName") or info.get("shortName")
+    except Exception:
+        cache.set(cache_key, "", _TYPE_CACHE_TTL)
+        return None  # No bloquear si yfinance falla
+
+    if not quote_type and not long_name:
+        msg = (
+            f"No se encontró ninguna empresa con el ticker \"{ticker}\". "
+            "Verifica que el símbolo sea correcto."
+        )
+        cache.set(cache_key, msg, _TYPE_CACHE_TTL)
+        return msg
+
+    if quote_type and quote_type not in ("EQUITY",):
+        tipo = _UNSUPPORTED_QUOTE_TYPES.get(quote_type, f"un instrumento de tipo {quote_type}")
+        name_part = f' ("{long_name}")' if long_name else ""
+        msg = (
+            f"El ticker \"{ticker}\"{name_part} corresponde a {tipo}. "
+            "El análisis intrínseco está disponible únicamente para acciones de empresas."
+        )
+        cache.set(cache_key, msg, _TYPE_CACHE_TTL)
+        return msg
+
+    cache.set(cache_key, "", _TYPE_CACHE_TTL)
+    return None
 
 
 def _cached_ejecutar_dcf(ticker: str) -> dict:
@@ -314,18 +368,22 @@ def dcf_view(request):
     ticker = request.GET.get("ticker", "").strip().upper()
 
     if ticker:
-        try:
-            resultado = _cached_ejecutar_dcf(ticker)
-        except Exception as exc:
-            error = f"Ocurrió un error al analizar el ticker: {exc}"
-            resultado = None
+        eligibility_error = _check_ticker_eligibility(ticker)
+        if eligibility_error:
+            error = eligibility_error
         else:
-            _guardar_analisis(
-                ticker=ticker,
-                company_name=company_name,
-                company_exchange=company_exchange,
-                resultado=resultado,
-            )
+            try:
+                resultado = _cached_ejecutar_dcf(ticker)
+            except Exception as exc:
+                error = f"Ocurrió un error al analizar el ticker: {exc}"
+                resultado = None
+            else:
+                _guardar_analisis(
+                    ticker=ticker,
+                    company_name=company_name,
+                    company_exchange=company_exchange,
+                    resultado=resultado,
+                )
 
     company_stage = None
     multi_model = None
@@ -368,15 +426,40 @@ def dcf_view(request):
                 "mensaje": "No se pudo consultar estimaciones de analistas.",
             }
 
-        # Inyectar posición del precio consenso DCF en la barra de rango de analistas
+        # Recalcular posiciones de la barra con rango dinámico que incluye todos los marcadores
         try:
             _dcf_precio = float((multi_model or {}).get("consenso", {}).get("precio") or 0) or None
             _po = dict((analyst_data.get("precio_objetivo") or {}))
             _bajo, _alto = _po.get("bajo"), _po.get("alto")
-            if _dcf_precio and _bajo is not None and _alto is not None and float(_alto) > float(_bajo):
-                _rango = float(_alto) - float(_bajo)
-                _po["dcf_pct"] = round(max(0.0, min(100.0, (_dcf_precio - float(_bajo)) / _rango * 100)), 1)
-                _po["dcf_precio"] = round(_dcf_precio, 2)
+            _precio_actual_bar = analyst_data.get("precio_actual")
+            _medio = _po.get("medio")
+
+            if _bajo is not None and _alto is not None and float(_alto) > float(_bajo):
+                # Rango visual: abarca TODOS los precios (analista + actuales) + 10% de padding
+                # Los ticks de Mín/Máx se posicionan dentro del bar en su lugar real
+                _candidatos = [float(p) for p in [_bajo, _alto, _precio_actual_bar, _medio] if p is not None]
+                if _dcf_precio:
+                    _candidatos.append(float(_dcf_precio))
+                _vis_min = min(_candidatos)
+                _vis_max = max(_candidatos)
+                _vis_span_raw = (_vis_max - _vis_min) or 1.0
+                _vis_low  = _vis_min - 0.10 * _vis_span_raw
+                _vis_span = _vis_span_raw * 1.20
+
+                def _a_pct(v):
+                    if v is None:
+                        return None
+                    return round(max(0.0, min(100.0, (float(v) - _vis_low) / _vis_span * 100)), 1)
+
+                # Posiciones de los marcadores de precio
+                _po["precio_actual_pct"] = _a_pct(_precio_actual_bar)
+                _po["medio_pct"]         = _a_pct(_medio)
+                # Posiciones de los ticks del rango analista (Mín / Máx)
+                _po["bajo_bar_pct"]  = _a_pct(float(_bajo))
+                _po["alto_bar_pct"]  = _a_pct(float(_alto))
+                if _dcf_precio:
+                    _po["dcf_pct"]    = _a_pct(_dcf_precio)
+                    _po["dcf_precio"] = round(_dcf_precio, 2)
                 analyst_data = {**analyst_data, "precio_objetivo": _po}
         except Exception:
             pass
@@ -404,9 +487,6 @@ def dcf_view(request):
     base_query_string = base_query.urlencode()
 
     news_payload = [_serialize_news_item(item) for item in news_list]
-    recent_records_queryset = AnalysisRecord.objects.all()
-    recent_records = list(recent_records_queryset[:RECENT_HISTORY_FETCH_LIMIT])
-
     tradingview_symbol = ticker
     if company_exchange and ticker:
         tradingview_symbol = f"{company_exchange.upper()}:{ticker}"
@@ -450,8 +530,6 @@ def dcf_view(request):
             "initial_page": page_number,
             "base_query": base_query_string,
         },
-        "recent_records": recent_records,
-        "recent_records_limit": RECENT_HISTORY_VISIBLE_LIMIT,
         "filtros_etapa": filtros_etapa,
         "company_stage": company_stage,
         "stage_labels": ["Startup", "Hyper Growth", "Break Even", "Op. Leverage", "Cap. Return", "Decline"],
@@ -619,37 +697,53 @@ def search_companies_view(request):
 # ---------------------------------------------------------------------------
 
 def watchlist_view(request):
-    """Página principal de la watchlist."""
-    items = WatchlistItem.objects.all()
-    return render(request, "dcf_app/watchlist.html", {"watchlist": items})
+    """Página principal de la watchlist con grupos."""
+    groups = WatchlistGroup.objects.prefetch_related("items").all()
+    return render(request, "dcf_app/watchlist.html", {"groups": groups})
 
 
 @require_POST
 def watchlist_toggle(request):
-    """Agrega o quita un ticker de la watchlist (JSON)."""
+    """Agrega o quita un ticker de un grupo de la watchlist (JSON).
+
+    Si se pasa group_id usa ese grupo; si no, usa el primer grupo existente
+    o crea uno 'General' automáticamente.
+    """
     ticker = (request.POST.get("ticker") or "").strip().upper()
     company_name = (request.POST.get("company_name") or "").strip()
     company_exchange = (request.POST.get("company_exchange") or "").strip()
+    group_id = request.POST.get("group_id") or None
 
     if not ticker:
         return JsonResponse({"error": "Ticker requerido"}, status=400)
 
-    item = WatchlistItem.objects.filter(ticker=ticker).first()
+    if group_id:
+        group = WatchlistGroup.objects.filter(id=group_id).first()
+        if not group:
+            return JsonResponse({"error": "Grupo no encontrado"}, status=404)
+    else:
+        group = WatchlistGroup.objects.order_by("created_at").first()
+        if not group:
+            group = WatchlistGroup.objects.create(name="General")
+
+    item = WatchlistItem.objects.filter(watchlist=group, ticker=ticker).first()
     if item:
         item.delete()
-        return JsonResponse({"action": "removed", "ticker": ticker})
+        in_watchlist = WatchlistItem.objects.filter(ticker=ticker).exists()
+        return JsonResponse({"action": "removed", "ticker": ticker, "in_watchlist": in_watchlist})
     else:
         WatchlistItem.objects.create(
+            watchlist=group,
             ticker=ticker,
             company_name=company_name,
             company_exchange=company_exchange,
         )
-        return JsonResponse({"action": "added", "ticker": ticker})
+        return JsonResponse({"action": "added", "ticker": ticker, "group_id": group.id, "in_watchlist": True})
 
 
 @require_GET
 def watchlist_status(request):
-    """Devuelve si un ticker está en la watchlist."""
+    """Devuelve si un ticker está en cualquier grupo de la watchlist."""
     ticker = (request.GET.get("ticker") or "").strip().upper()
     if not ticker:
         return JsonResponse({"in_watchlist": False})
@@ -657,35 +751,67 @@ def watchlist_status(request):
     return JsonResponse({"in_watchlist": in_watchlist, "ticker": ticker})
 
 
-# ---------------------------------------------------------------------------
-# Comparar empresas
-# ---------------------------------------------------------------------------
+@require_POST
+def watchlist_group_create(request):
+    """Crea un nuevo grupo de watchlist."""
+    name = (request.POST.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "Nombre requerido"}, status=400)
+    if len(name) > 100:
+        name = name[:100]
+    group = WatchlistGroup.objects.create(name=name)
+    return JsonResponse({"id": group.id, "name": group.name})
 
-def comparar_view(request):
-    """Muestra un análisis comparativo de dos tickers."""
-    ticker_a = (request.GET.get("ticker_a") or "").strip().upper()
-    ticker_b = (request.GET.get("ticker_b") or "").strip().upper()
 
-    resultado_a = resultado_b = error_a = error_b = None
+@require_POST
+def watchlist_group_delete(request):
+    """Elimina un grupo y todos sus items."""
+    group_id = request.POST.get("group_id") or None
+    if not group_id:
+        return JsonResponse({"error": "group_id requerido"}, status=400)
+    deleted, _ = WatchlistGroup.objects.filter(id=group_id).delete()
+    if not deleted:
+        return JsonResponse({"error": "Grupo no encontrado"}, status=404)
+    return JsonResponse({"action": "deleted", "group_id": group_id})
 
-    if ticker_a:
+
+@require_POST
+def watchlist_group_rename(request):
+    """Renombra un grupo de watchlist."""
+    group_id = request.POST.get("group_id") or None
+    name = (request.POST.get("name") or "").strip()
+    if not group_id or not name:
+        return JsonResponse({"error": "group_id y name requeridos"}, status=400)
+    updated = WatchlistGroup.objects.filter(id=group_id).update(name=name[:100])
+    if not updated:
+        return JsonResponse({"error": "Grupo no encontrado"}, status=404)
+    return JsonResponse({"action": "renamed", "group_id": group_id, "name": name[:100]})
+
+
+@require_GET
+def watchlist_prices_view(request):
+    """Devuelve precios actuales para una lista de tickers (uso de watchlist)."""
+    tickers_param = (request.GET.get("tickers") or "").strip()
+    if not tickers_param:
+        return JsonResponse({"prices": {}})
+
+    symbols = [s.strip().upper() for s in tickers_param.split(",") if s.strip()][:25]
+
+    def _fetch(symbol: str) -> tuple[str, float | None]:
         try:
-            resultado_a = _cached_ejecutar_dcf(ticker_a)
-        except Exception as exc:
-            error_a = str(exc)
+            import yfinance as yf
+            fi = yf.Ticker(symbol).fast_info
+            price = getattr(fi, "last_price", None) or getattr(fi, "regular_market_price", None)
+            return symbol, round(float(price), 2) if price and float(price) > 0 else None
+        except Exception:
+            return symbol, None
 
-    if ticker_b:
-        try:
-            resultado_b = _cached_ejecutar_dcf(ticker_b)
-        except Exception as exc:
-            error_b = str(exc)
+    with ThreadPoolExecutor(max_workers=min(len(symbols), 6)) as ex:
+        prices = dict(ex.map(_fetch, symbols))
 
-    context = {
-        "ticker_a": ticker_a,
-        "ticker_b": ticker_b,
-        "resultado_a": resultado_a,
-        "resultado_b": resultado_b,
-        "error_a": error_a,
-        "error_b": error_b,
-    }
-    return render(request, "dcf_app/comparar.html", context)
+    return JsonResponse({"prices": prices})
+
+
+def history_view(request):
+    records = list(AnalysisRecord.objects.all())
+    return render(request, "dcf_app/history.html", {"records": records})

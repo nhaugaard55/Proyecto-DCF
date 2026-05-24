@@ -2,33 +2,185 @@
 
 {% block nav_actions %}
 <a href="{% url 'home' %}" class="btn btn-outline-light btn-sm">← Volver al análisis</a>
-<a href="{% url 'comparar' %}" class="btn btn-outline-light btn-sm">⇌ Comparar</a>
 {% endblock %}
 
 {% block extra_head %}
 <style>
-  .watchlist-card {
+  /* ── Watchlist group cards ─────────────────────────────────── */
+  .wl-group {
+    border: 1px solid var(--surface-border, rgba(0,0,0,.12));
+    border-radius: 1rem;
+    overflow: visible;
     background: var(--surface-card);
-    border-color: var(--surface-border) !important;
+  }
+  .theme-dark .wl-group {
+    border-color: rgba(255,255,255,0.1);
+    background: #131b2d;
+  }
+  .wl-group-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.9rem 1.25rem;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 1rem;
+  }
+  .wl-group:not(.collapsed) .wl-group-header {
+    border-radius: 1rem 1rem 0 0;
+  }
+  .wl-group-header:hover { background: rgba(0,0,0,.03); }
+  .theme-dark .wl-group-header:hover { background: rgba(255,255,255,.04); }
+
+  /* Chevron */
+  .wl-chevron {
+    flex-shrink: 0;
+    color: var(--bs-secondary-color, #6c757d);
+    transition: transform .22s ease;
+  }
+  .theme-dark .wl-chevron { color: #94a3b8; }
+  .wl-group.collapsed .wl-chevron { transform: rotate(-90deg); }
+
+  .wl-group-name {
+    font-weight: 700;
+    font-size: 1rem;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--bs-body-color);
+  }
+  .theme-dark .wl-group-name { color: #e2e8f0; }
+
+  .wl-group-name-input {
+    font-weight: 700;
+    font-size: 1rem;
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 0.4rem;
+    padding: 0.2rem 0.5rem;
+    background: transparent;
+    color: inherit;
+    display: none;
+  }
+  .theme-dark .wl-group-name-input {
+    border-color: rgba(255,255,255,0.2);
+    color: #e2e8f0;
   }
 
+  .wl-group-count {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color, #6c757d);
+    flex-shrink: 0;
+  }
+  .theme-dark .wl-group-count { color: #94a3b8; }
+
+  /* Collapsible body */
+  .wl-group-body {
+    padding: 0.75rem 1.25rem 1.25rem;
+    border-top: 1px solid var(--surface-border, rgba(0,0,0,.08));
+    border-radius: 0 0 1rem 1rem;
+  }
+  .theme-dark .wl-group-body { border-top-color: rgba(255,255,255,0.08); }
+  .wl-group.collapsed .wl-group-body { display: none; }
+
+  /* ── Item rows ─────────────────────────────────────────────── */
+  .wl-item {
+    display: grid;
+    grid-template-columns: 1fr 7rem 1fr;
+    grid-template-rows: auto auto;
+    gap: 0.05rem 0.75rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--surface-border, rgba(0,0,0,.06));
+  }
+  .theme-dark .wl-item { border-bottom-color: rgba(255,255,255,.07); }
+  .wl-item:last-child { border-bottom: none; }
+  .wl-item-ticker { grid-column: 1; grid-row: 1; font-weight: 600; color: var(--bs-body-color); }
+  .theme-dark .wl-item-ticker { color: #e2e8f0; }
+  .wl-item-meta { grid-column: 1; grid-row: 2; color: #6c757d; font-size: 0.8rem; }
+  .theme-dark .wl-item-meta { color: #94a3b8; }
+  .wl-item-actions {
+    grid-column: 3; grid-row: 1 / 3;
+    display: flex; gap: 0.4rem;
+    align-self: center; justify-content: flex-end;
+  }
+
+  /* Price column */
+  .wl-item-price {
+    grid-column: 2; grid-row: 1 / 3;
+    align-self: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-align: right;
+    color: var(--bs-body-color);
+  }
+  .theme-dark .wl-item-price { color: #e2e8f0; }
+  .wl-item-price.loading { color: var(--bs-secondary-color, #6c757d); font-size: 0.78rem; }
+  .theme-dark .wl-item-price.loading { color: #64748b; }
+
+  /* Empty msg */
+  .wl-empty-msg { color: #6c757d; }
+  .theme-dark .wl-empty-msg { color: #94a3b8; }
+
+  /* ── Search bar ────────────────────────────────────────────── */
+  .wl-search-wrapper { position: relative; }
+  .wl-dd {
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    max-height: 14rem;
+    overflow-y: auto;
+    border-radius: 0.5rem;
+    box-shadow: 0 12px 28px rgba(15,23,42,.15);
+    background: #ffffff;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+  }
+  .theme-dark .wl-dd {
+    background: #1e293b;
+    border-color: rgba(255,255,255,0.12);
+  }
+  .wl-dd.show { display: block; }
+  .wl-dd .dd-item {
+    display: block; width: 100%; padding: 0.5rem 0.85rem;
+    background: none; border: none; text-align: left; cursor: pointer;
+    color: var(--bs-body-color); font-size: 0.875rem; transition: background .12s;
+  }
+  .wl-dd .dd-item:hover,
+  .wl-dd .dd-item.active { background: rgba(37,99,235,.08); }
+  .theme-dark .wl-dd .dd-item { color: #e2e8f0; }
+  .theme-dark .wl-dd .dd-item:hover,
+  .theme-dark .wl-dd .dd-item.active { background: rgba(96,165,250,.12); }
+  .wl-dd .dd-sym { font-weight: 700; margin-right: 0.4rem; }
+  .wl-dd .dd-name { color: var(--bs-secondary-color, #6c757d); font-size: 0.78rem; }
+  .theme-dark .wl-dd .dd-sym { color: #f1f5f9; }
+  .theme-dark .wl-dd .dd-name { color: #94a3b8; }
+  .wl-dd .dd-no-results { padding: .65rem .85rem; color: var(--bs-secondary-color,#6c757d); font-size:.85rem; }
+
+  /* ── New group form ────────────────────────────────────────── */
+  .wl-new-group-form {
+    display: none;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.75rem;
+  }
+  .wl-new-group-form.show { display: flex; }
+
   @media (max-width: 575.98px) {
-    .watchlist-card {
-      align-items: stretch !important;
-      flex-direction: column;
-      padding: 1rem !important;
+    .wl-item {
+      grid-template-columns: 1fr auto auto;
+      gap: 0.15rem 0.4rem;
     }
-
-    .watchlist-card-actions {
-      display: grid !important;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem !important;
-      width: 100%;
-    }
-
-    .watchlist-card-actions .btn {
-      width: 100%;
-    }
+    .wl-item-price { grid-column: 2; grid-row: 1; align-self: center; }
+    .wl-item-actions { grid-column: 3; grid-row: 1; align-self: center; justify-content: flex-start; }
+    .wl-item-meta { grid-column: 1 / 4; grid-row: 2; }
+    .wl-new-group-form { flex-direction: column; }
+    .wl-new-group-form input,
+    .wl-new-group-form button { width: 100%; }
   }
 </style>
 {% endblock %}
@@ -36,57 +188,380 @@
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-8">
-    <h2 class="fw-bold mb-1">★ Watchlist</h2>
-    <p class="text-muted mb-4">Tickers guardados para seguimiento rápido.</p>
 
-    {% if watchlist %}
-    <div class="d-flex flex-column gap-3">
-      {% for item in watchlist %}
-      <div class="watchlist-card p-4 rounded-3 border d-flex align-items-center justify-content-between gap-3">
-        <div>
-          <div class="fw-bold fs-5">{{ item.ticker }}</div>
-          {% if item.company_name %}
-          <div class="text-muted small">{{ item.company_name }}{% if item.company_exchange %} · {{ item.company_exchange }}{% endif %}</div>
-          {% endif %}
-          <div class="text-muted small">Agregado {{ item.added_at|date:"d/m/Y" }}</div>
+    <div class="d-flex align-items-center justify-content-between mb-1">
+      <h2 class="fw-bold mb-0">★ Watchlist</h2>
+      <button class="btn btn-primary btn-sm" id="btn-new-group">+ Nueva watchlist</button>
+    </div>
+    <p class="text-muted mb-4">Organizá tus empresas en watchlists por categorías.</p>
+
+    <!-- Nueva watchlist inline form -->
+    <div class="wl-new-group-form mb-4" id="new-group-form">
+      <input type="text" class="form-control form-control-sm" id="new-group-name"
+             placeholder="Nombre de la watchlist (ej: Tecnológicas)" maxlength="100">
+      <button class="btn btn-primary btn-sm" id="btn-create-group">Crear</button>
+      <button class="btn btn-outline-secondary btn-sm" id="btn-cancel-group">Cancelar</button>
+    </div>
+
+    <!-- Grupos -->
+    <div id="wl-groups" class="d-flex flex-column gap-3">
+
+      {% for group in groups %}
+      <div class="wl-group" data-group-id="{{ group.id }}">
+        <!-- Header / toggle -->
+        <div class="wl-group-header">
+          <svg class="wl-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="wl-group-name" title="Doble click para renombrar">{{ group.name }}</span>
+          <input type="text" class="wl-group-name-input form-control form-control-sm"
+                 value="{{ group.name }}" maxlength="100">
+          <span class="wl-group-count">{{ group.items.count }} empresa{% if group.items.count != 1 %}s{% endif %}</span>
+          <button class="btn btn-outline-danger btn-sm wl-group-delete-btn py-0 px-2" title="Eliminar watchlist" onclick="event.stopPropagation()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+          </button>
         </div>
-        <div class="watchlist-card-actions d-flex gap-2">
-          <a href="{% url 'home' %}?ticker={{ item.ticker }}" class="btn btn-sm btn-outline-primary">Analizar</a>
-          <button class="btn btn-sm btn-outline-danger watchlist-remove-btn"
-                  data-ticker="{{ item.ticker }}">Quitar</button>
+        <!-- Body -->
+        <div class="wl-group-body">
+          <div class="wl-items-list">
+            {% for item in group.items.all %}
+            <div class="wl-item" data-ticker="{{ item.ticker }}">
+              <div class="wl-item-ticker">{{ item.ticker }}</div>
+              <div class="wl-item-price loading" data-price-ticker="{{ item.ticker }}">—</div>
+              <div class="wl-item-actions">
+                <a href="{% url 'home' %}?ticker={{ item.ticker }}" class="btn btn-sm btn-outline-primary">Analizar</a>
+                <button class="btn btn-sm btn-outline-danger wl-remove-btn" data-ticker="{{ item.ticker }}">Quitar</button>
+              </div>
+              <div class="wl-item-meta">{% if item.company_name %}{{ item.company_name }}{% if item.company_exchange %} · {{ item.company_exchange }}{% endif %} · {% endif %}Agregado {{ item.added_at|date:"d/m/Y" }}</div>
+            </div>
+            {% empty %}
+            <p class="wl-empty-msg small mb-2">Esta watchlist está vacía. Buscá una empresa abajo para agregarla.</p>
+            {% endfor %}
+          </div>
+          <div class="wl-search-wrapper mt-3">
+            <input type="text" class="form-control form-control-sm wl-search-input"
+                   placeholder="Buscar empresa para agregar..."
+                   autocomplete="off" spellcheck="false">
+            <div class="wl-dd"></div>
+          </div>
+          <div class="wl-feedback mt-1 small" style="min-height:1.1rem;"></div>
         </div>
       </div>
+      {% empty %}
+      <div id="wl-no-groups" class="text-center py-5 text-muted">
+        <div class="fs-1 mb-3">★</div>
+        <p>No tenés watchlists todavía. Creá una con el botón de arriba.</p>
+      </div>
       {% endfor %}
+
     </div>
-    {% else %}
-    <div class="text-center py-5 text-muted">
-      <div class="fs-1 mb-3">★</div>
-      <p>Tu watchlist está vacía. Analiza una empresa y agrégala desde los botones de acción.</p>
-      <a href="{% url 'home' %}" class="btn btn-primary mt-2">Ir al análisis</a>
-    </div>
-    {% endif %}
   </div>
 </div>
 
 <script>
-document.querySelectorAll(".watchlist-remove-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
-        const ticker = btn.dataset.ticker;
-        const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || "";
-        btn.disabled = true;
-        try {
-            const resp = await fetch("{% url 'watchlist_toggle' %}", {
-                method: "POST",
-                headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ ticker }).toString(),
-            });
-            const data = await resp.json();
-            if (data.action === "removed") {
-                btn.closest(".d-flex.align-items-center").remove();
-            }
-        } catch (e) {}
-        btn.disabled = false;
+(function () {
+    var SEARCH_URL     = "{% url 'company_search' %}";
+    var TOGGLE_URL     = "{% url 'watchlist_toggle' %}";
+    var GRP_CREATE_URL = "{% url 'watchlist_group_create' %}";
+    var GRP_DELETE_URL = "{% url 'watchlist_group_delete' %}";
+    var GRP_RENAME_URL = "{% url 'watchlist_group_rename' %}";
+    var HOME_URL       = "{% url 'home' %}";
+    var DEBOUNCE_MS    = 180;
+    var STORAGE_KEY    = 'wl-collapsed';
+
+    function csrf() {
+        return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    }
+    function post(url, data) {
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(data).toString(),
+        }).then(function (r) { return r.json(); });
+    }
+    function today() {
+        var d = new Date();
+        return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
+    }
+    function escHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Collapsed state persistence ──────────────────────────────
+    function getCollapsed() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { return []; }
+    }
+    function saveCollapsed(ids) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(ids)); } catch(e) {}
+    }
+
+    // ── New group form ───────────────────────────────────────────
+    var btnNew    = document.getElementById('btn-new-group');
+    var form      = document.getElementById('new-group-form');
+    var nameInput = document.getElementById('new-group-name');
+    var btnCreate = document.getElementById('btn-create-group');
+    var btnCancel = document.getElementById('btn-cancel-group');
+    var groupsEl  = document.getElementById('wl-groups');
+    var noGroups  = document.getElementById('wl-no-groups');
+
+    btnNew.addEventListener('click', function () { form.classList.add('show'); nameInput.focus(); });
+    btnCancel.addEventListener('click', function () { form.classList.remove('show'); nameInput.value = ''; });
+    btnCreate.addEventListener('click', createGroup);
+    nameInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') createGroup();
+        if (e.key === 'Escape') btnCancel.click();
     });
-});
+
+    function createGroup() {
+        var name = nameInput.value.trim();
+        if (!name) return;
+        btnCreate.disabled = true;
+        post(GRP_CREATE_URL, { name: name }).then(function (data) {
+            if (data.id) {
+                if (noGroups) noGroups.remove();
+                var el = buildGroupEl(data.id, data.name);
+                groupsEl.appendChild(el);
+                initGroup(el);
+                form.classList.remove('show');
+                nameInput.value = '';
+            }
+        }).finally(function () { btnCreate.disabled = false; });
+    }
+
+    // ── Build group element ──────────────────────────────────────
+    function buildGroupEl(id, name) {
+        var div = document.createElement('div');
+        div.className = 'wl-group';
+        div.dataset.groupId = id;
+        div.innerHTML =
+            '<div class="wl-group-header">' +
+                '<svg class="wl-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
+                '<span class="wl-group-name" title="Doble click para renombrar">' + escHtml(name) + '</span>' +
+                '<input type="text" class="wl-group-name-input form-control form-control-sm" value="' + escHtml(name) + '" maxlength="100">' +
+                '<span class="wl-group-count">0 empresas</span>' +
+                '<button class="btn btn-outline-danger btn-sm wl-group-delete-btn py-0 px-2" title="Eliminar watchlist" onclick="event.stopPropagation()">' +
+                    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>' +
+                '</button>' +
+            '</div>' +
+            '<div class="wl-group-body">' +
+                '<div class="wl-items-list">' +
+                    '<p class="wl-empty-msg small mb-2">Esta watchlist está vacía. Buscá una empresa abajo para agregarla.</p>' +
+                '</div>' +
+                '<div class="wl-search-wrapper mt-3">' +
+                    '<input type="text" class="form-control form-control-sm wl-search-input" placeholder="Buscar empresa para agregar..." autocomplete="off" spellcheck="false">' +
+                    '<div class="wl-dd"></div>' +
+                '</div>' +
+                '<div class="wl-feedback mt-1 small" style="min-height:1.1rem;"></div>' +
+            '</div>';
+        return div;
+    }
+
+    // ── Price fetching ───────────────────────────────────────────
+    var PRICES_URL = "{% url 'watchlist_prices' %}";
+
+    function fetchPricesFor(symbols) {
+        if (!symbols.length) return;
+        fetch(PRICES_URL + '?tickers=' + symbols.map(encodeURIComponent).join(','))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var prices = data.prices || {};
+                Object.keys(prices).forEach(function(ticker) {
+                    var price = prices[ticker];
+                    document.querySelectorAll('[data-price-ticker="' + ticker + '"]').forEach(function(el) {
+                        if (price !== null && price !== undefined) {
+                            el.textContent = '$' + Number(price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                            el.classList.remove('loading');
+                        } else {
+                            el.textContent = 'N/D';
+                            el.classList.remove('loading');
+                        }
+                    });
+                });
+            })
+            .catch(function() {});
+    }
+
+    // Fetch all prices on page load
+    (function() {
+        var all = Array.from(document.querySelectorAll('[data-price-ticker]'))
+            .map(function(el) { return el.dataset.priceTicker; })
+            .filter(function(v, i, a) { return v && a.indexOf(v) === i; });
+        if (all.length) fetchPricesFor(all);
+    })();
+
+    // ── Init all existing groups ─────────────────────────────────
+    var collapsedIds = getCollapsed();
+    document.querySelectorAll('.wl-group').forEach(function (el) {
+        if (collapsedIds.includes(el.dataset.groupId)) el.classList.add('collapsed');
+        initGroup(el);
+    });
+
+    function initGroup(groupEl) {
+        var groupId   = groupEl.dataset.groupId;
+        var header    = groupEl.querySelector('.wl-group-header');
+        var nameSpan  = groupEl.querySelector('.wl-group-name');
+        var nameField = groupEl.querySelector('.wl-group-name-input');
+        var countEl   = groupEl.querySelector('.wl-group-count');
+        var deleteBtn = groupEl.querySelector('.wl-group-delete-btn');
+        var itemsList = groupEl.querySelector('.wl-items-list');
+        var searchInp = groupEl.querySelector('.wl-search-input');
+        var ddEl      = groupEl.querySelector('.wl-dd');
+        var feedback  = groupEl.querySelector('.wl-feedback');
+
+        // ── Accordion toggle ─────────────────────────────────────
+        header.addEventListener('click', function () {
+            groupEl.classList.toggle('collapsed');
+            var ids = getCollapsed().filter(function(id){ return id !== groupId; });
+            if (groupEl.classList.contains('collapsed')) ids.push(groupId);
+            saveCollapsed(ids);
+        });
+
+        // ── Rename on double-click ───────────────────────────────
+        nameSpan.addEventListener('dblclick', function (e) {
+            e.stopPropagation();
+            nameSpan.style.display = 'none';
+            nameField.style.display = 'block';
+            nameField.focus(); nameField.select();
+        });
+        nameField.addEventListener('click', function (e) { e.stopPropagation(); });
+        nameField.addEventListener('blur', commitRename);
+        nameField.addEventListener('keydown', function (e) {
+            e.stopPropagation();
+            if (e.key === 'Enter') commitRename();
+            if (e.key === 'Escape') cancelRename();
+        });
+        function commitRename() {
+            var newName = nameField.value.trim();
+            if (!newName) { cancelRename(); return; }
+            post(GRP_RENAME_URL, { group_id: groupId, name: newName }).then(function (data) {
+                if (data.action === 'renamed') { nameSpan.textContent = data.name; nameField.value = data.name; }
+            }).finally(cancelRename);
+        }
+        function cancelRename() { nameField.style.display = 'none'; nameSpan.style.display = ''; }
+
+        // ── Delete group ─────────────────────────────────────────
+        deleteBtn.addEventListener('click', function () {
+            if (!confirm('¿Eliminar la watchlist "' + nameSpan.textContent + '" y todas sus empresas?')) return;
+            deleteBtn.disabled = true;
+            post(GRP_DELETE_URL, { group_id: groupId }).then(function (data) {
+                if (data.action === 'deleted') {
+                    groupEl.remove();
+                    if (!document.querySelector('.wl-group')) {
+                        var empty = document.createElement('div');
+                        empty.id = 'wl-no-groups';
+                        empty.className = 'text-center py-5 text-muted';
+                        empty.innerHTML = '<div class="fs-1 mb-3">★</div><p>No tenés watchlists todavía. Creá una con el botón de arriba.</p>';
+                        groupsEl.appendChild(empty);
+                    }
+                }
+            }).catch(function () { deleteBtn.disabled = false; });
+        });
+
+        // ── Remove item ──────────────────────────────────────────
+        function attachRemove(btn) {
+            btn.addEventListener('click', function () {
+                var ticker = btn.dataset.ticker;
+                btn.disabled = true;
+                post(TOGGLE_URL, { ticker: ticker, group_id: groupId }).then(function (data) {
+                    if (data.action === 'removed') {
+                        btn.closest('.wl-item').remove();
+                        updateCount();
+                        if (!itemsList.querySelector('.wl-item')) showEmpty();
+                    }
+                }).catch(function () { btn.disabled = false; });
+            });
+        }
+        itemsList.querySelectorAll('.wl-remove-btn').forEach(attachRemove);
+
+        // ── Search & add ─────────────────────────────────────────
+        var timer = null, activeIdx = -1;
+        function getItems() { return Array.from(ddEl.querySelectorAll('.dd-item')); }
+        function setActive(idx) { getItems().forEach(function(el,i){ el.classList.toggle('active',i===idx); }); activeIdx=idx; }
+        function hideDd() { ddEl.classList.remove('show'); ddEl.innerHTML=''; activeIdx=-1; }
+
+        function setFeedback(msg, color) {
+            feedback.textContent = msg; feedback.style.color = color||'';
+            if (msg) setTimeout(function(){ if(feedback.textContent===msg) feedback.textContent=''; }, 3000);
+        }
+        function updateCount() {
+            var n = itemsList.querySelectorAll('.wl-item').length;
+            countEl.textContent = n + ' empresa' + (n!==1?'s':'');
+        }
+        function showEmpty() {
+            if (!itemsList.querySelector('.wl-empty-msg')) {
+                var p = document.createElement('p');
+                p.className = 'wl-empty-msg small mb-2';
+                p.textContent = 'Esta watchlist está vacía. Buscá una empresa abajo para agregarla.';
+                itemsList.appendChild(p);
+            }
+        }
+        function buildItemEl(ticker, name, exchange) {
+            var div = document.createElement('div');
+            div.className = 'wl-item'; div.dataset.ticker = ticker;
+            var metaStr = (name ? escHtml(name)+(exchange?' · '+escHtml(exchange):'') + ' · ' : '') + 'Agregado ' + today();
+            div.innerHTML =
+                '<div class="wl-item-ticker">'+escHtml(ticker)+'</div>' +
+                '<div class="wl-item-price loading" data-price-ticker="'+escHtml(ticker)+'">—</div>' +
+                '<div class="wl-item-actions">' +
+                    '<a href="'+HOME_URL+'?ticker='+encodeURIComponent(ticker)+'" class="btn btn-sm btn-outline-primary">Analizar</a>' +
+                    '<button class="btn btn-sm btn-outline-danger wl-remove-btn" data-ticker="'+escHtml(ticker)+'">Quitar</button>' +
+                '</div>' +
+                '<div class="wl-item-meta">'+metaStr+'</div>';
+            attachRemove(div.querySelector('.wl-remove-btn'));
+            fetchPricesFor([ticker]);
+            return div;
+        }
+
+        function renderResults(results) {
+            ddEl.innerHTML = '';
+            if (!results.length) { ddEl.innerHTML='<div class="dd-no-results">Sin resultados</div>'; ddEl.classList.add('show'); return; }
+            results.forEach(function(r) {
+                var btn = document.createElement('button');
+                btn.type='button'; btn.className='dd-item';
+                btn.innerHTML='<span class="dd-sym">'+escHtml(r.symbol)+'</span><span class="dd-name">'+escHtml(r.name)+' · '+escHtml(r.exchange)+'</span>';
+                btn.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    searchInp.value=''; hideDd();
+                    post(TOGGLE_URL, { ticker:r.symbol, company_name:r.name, company_exchange:r.exchange, group_id:groupId })
+                        .then(function(data) {
+                            if (data.action==='added') {
+                                var emptyMsg = itemsList.querySelector('.wl-empty-msg');
+                                if (emptyMsg) emptyMsg.remove();
+                                itemsList.appendChild(buildItemEl(r.symbol, r.name, r.exchange));
+                                updateCount();
+                                setFeedback(r.symbol+' agregado.', '#22c55e');
+                            } else if (data.action==='removed') {
+                                var existing = itemsList.querySelector('[data-ticker="'+r.symbol+'"]');
+                                if (existing) existing.remove();
+                                updateCount();
+                                if (!itemsList.querySelector('.wl-item')) showEmpty();
+                                setFeedback(r.symbol+' ya estaba y fue quitado.', '#f97316');
+                            }
+                        });
+                });
+                ddEl.appendChild(btn);
+            });
+            ddEl.classList.add('show'); activeIdx=-1;
+        }
+
+        searchInp.addEventListener('input', function() {
+            clearTimeout(timer);
+            var q = searchInp.value.trim();
+            if (!q) { hideDd(); return; }
+            timer = setTimeout(function() {
+                fetch(SEARCH_URL+'?q='+encodeURIComponent(q)+'&limit=8')
+                    .then(function(r){ return r.json(); })
+                    .then(function(d){ renderResults(d.results||[]); })
+                    .catch(function(){ hideDd(); });
+            }, DEBOUNCE_MS);
+        });
+        searchInp.addEventListener('keydown', function(e) {
+            var items=getItems();
+            if (e.key==='ArrowDown'){e.preventDefault();setActive(Math.min(activeIdx+1,items.length-1));}
+            else if(e.key==='ArrowUp'){e.preventDefault();setActive(Math.max(activeIdx-1,0));}
+            else if(e.key==='Enter'&&activeIdx>=0&&items[activeIdx]){e.preventDefault();items[activeIdx].dispatchEvent(new MouseEvent('mousedown'));}
+            else if(e.key==='Escape') hideDd();
+        });
+        searchInp.addEventListener('blur', function(){ setTimeout(hideDd,150); });
+    }
+})();
 </script>
 {% endblock %}
