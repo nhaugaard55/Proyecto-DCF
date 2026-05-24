@@ -27,7 +27,7 @@ _SEC_HEADERS = {"User-Agent": "DCFAnalyzer/1.0 contact@example.com"}
 _REQUEST_TIMEOUT = 3
 _SEC_ENRICHMENT_BUDGET_SECONDS = 4.5
 _CACHE_TTL_SECONDS = 60 * 60
-_CACHE_SCHEMA_VERSION = "roles-v5"
+_CACHE_SCHEMA_VERSION = "roles-v6"
 _MAX_TRANSACTIONS = 20
 _LOOKBACK_DAYS = 180
 _SCORE_LOOKBACK_DAYS = 90
@@ -656,36 +656,71 @@ def _fetch_sec_form4_nombre_cargo(
 def _extraer_nombre_cargo_sec(text: str) -> tuple[str, str, str] | None:
     """Extrae (nombre_normalizado, cargo, detalle) desde XML o HTML de un Form 4."""
 
+    # ── Formato XML (Form 4 raw) ───────────────────────────────────────────────
     name_match = re.search(r"<rptOwnerName[^>]*>(.*?)</rptOwnerName>", text, re.IGNORECASE | re.DOTALL)
-    if not name_match:
+    if name_match:
+        nombre = _strip_html(name_match.group(1)).strip()
+        nombre_norm = _normalizar_nombre_insider(nombre)
+        if not nombre_norm:
+            return None
+
+        title_match = re.search(r"<officerTitle[^>]*>(.*?)</officerTitle>", text, re.IGNORECASE | re.DOTALL)
+        if title_match:
+            raw_title = _strip_html(title_match.group(1)).strip()
+            if raw_title:
+                cargo = _normalizar_cargo(raw_title)
+                if cargo != "N/D":
+                    return nombre_norm, cargo, raw_title
+
+        is_director = re.search(r"<isDirector[^>]*>1</isDirector>", text, re.IGNORECASE)
+        if is_director:
+            return nombre_norm, "Director", "Miembro del directorio"
+
+        is_owner = re.search(r"<isTenPercentOwner[^>]*>1</isTenPercentOwner>", text, re.IGNORECASE)
+        if is_owner:
+            return nombre_norm, "Accionista >10%", "Accionista >10%"
+
+        is_officer = re.search(r"<isOfficer[^>]*>1</isOfficer>", text, re.IGNORECASE)
+        if is_officer:
+            cargo_info = _extraer_cargo_sec_html_detalle(text)
+            if cargo_info:
+                return nombre_norm, cargo_info[0], cargo_info[1]
+            return nombre_norm, "Ejecutivo", "Ejecutivo"
+
         return None
-    nombre = _strip_html(name_match.group(1)).strip()
+
+    # ── Formato HTML (XSLT-rendered) ──────────────────────────────────────────
+    name_html = re.search(
+        r"1\.\s*Name[^<]*(?:<[^>]+>)*.*?<a[^>]*>([^<]{3,60})</a>",
+        text,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not name_html:
+        return None
+    nombre = name_html.group(1).strip()
     nombre_norm = _normalizar_nombre_insider(nombre)
     if not nombre_norm:
         return None
 
-    title_match = re.search(r"<officerTitle[^>]*>(.*?)</officerTitle>", text, re.IGNORECASE | re.DOTALL)
-    if title_match:
-        raw_title = _strip_html(title_match.group(1)).strip()
-        if raw_title:
-            cargo = _normalizar_cargo(raw_title)
-            if cargo != "N/D":
-                return nombre_norm, cargo, raw_title
+    cargo_info = _extraer_cargo_sec_html_detalle(text)
+    if cargo_info:
+        return nombre_norm, cargo_info[0], cargo_info[1]
 
-    is_director = re.search(r"<isDirector[^>]*>1</isDirector>", text, re.IGNORECASE)
-    if is_director:
+    director_html = re.search(
+        r"<span[^>]*>\s*X\s*</span>\s*</td>\s*<td[^>]*>\s*Director\s*</td>",
+        text,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if director_html:
         return nombre_norm, "Director", "Miembro del directorio"
 
-    is_owner = re.search(r"<isTenPercentOwner[^>]*>1</isTenPercentOwner>", text, re.IGNORECASE)
-    if is_owner:
+    owner_html = re.search(
+        r"<span[^>]*>\s*X\s*</span>\s*</td>\s*<td[^>]*>\s*10%\s*Owner\s*</td>",
+        text,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if owner_html:
         return nombre_norm, "Accionista >10%", "Accionista >10%"
-
-    is_officer = re.search(r"<isOfficer[^>]*>1</isOfficer>", text, re.IGNORECASE)
-    if is_officer:
-        cargo_info = _extraer_cargo_sec_html_detalle(text)
-        if cargo_info:
-            return nombre_norm, cargo_info[0], cargo_info[1]
-        return nombre_norm, "Ejecutivo", "Ejecutivo"
 
     return None
 
