@@ -7,7 +7,6 @@
 </button>
 {% endif %}
 <a href="{% url 'watchlist' %}" class="btn btn-outline-light btn-sm">★ Watchlist</a>
-<a href="{% url 'comparar' %}" class="btn btn-outline-light btn-sm">⇌ Comparar</a>
 {% endblock %}
 
 {% block extra_head %}
@@ -4775,7 +4774,6 @@
         data-company-exchange="{{ company_exchange|default:'' }}">
         {% if in_watchlist %}★ En watchlist{% else %}☆ Agregar a watchlist{% endif %}
     </button>
-    <a href="{% url 'comparar' %}?ticker_a={{ ticker }}" class="btn btn-outline-secondary btn-lg px-4">⇌ Comparar con otra empresa</a>
 </div>
 {% elif ticker %}
 <section class="results-section">

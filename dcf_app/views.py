@@ -657,35 +657,3 @@ def watchlist_status(request):
     return JsonResponse({"in_watchlist": in_watchlist, "ticker": ticker})
 
 
-# ---------------------------------------------------------------------------
-# Comparar empresas
-# ---------------------------------------------------------------------------
-
-def comparar_view(request):
-    """Muestra un análisis comparativo de dos tickers."""
-    ticker_a = (request.GET.get("ticker_a") or "").strip().upper()
-    ticker_b = (request.GET.get("ticker_b") or "").strip().upper()
-
-    resultado_a = resultado_b = error_a = error_b = None
-
-    if ticker_a:
-        try:
-            resultado_a = _cached_ejecutar_dcf(ticker_a)
-        except Exception as exc:
-            error_a = str(exc)
-
-    if ticker_b:
-        try:
-            resultado_b = _cached_ejecutar_dcf(ticker_b)
-        except Exception as exc:
-            error_b = str(exc)
-
-    context = {
-        "ticker_a": ticker_a,
-        "ticker_b": ticker_b,
-        "resultado_a": resultado_a,
-        "resultado_b": resultado_b,
-        "error_a": error_a,
-        "error_b": error_b,
-    }
-    return render(request, "dcf_app/comparar.html", context)
