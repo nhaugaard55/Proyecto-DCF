@@ -171,10 +171,10 @@
         border: 1px solid var(--surface-border);
         border-radius: 1rem;
         padding: 0.75rem 1rem;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
+        display: grid;
+        grid-template-columns: 1fr auto auto auto auto auto;
         align-items: center;
+        gap: 0 1.5rem;
         width: 100%;
         text-align: left;
         color: inherit;
@@ -247,18 +247,11 @@
         gap: 0.15rem;
         min-width: 0;
     }
-    .recent-chip-metrics {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-        flex-wrap: wrap;
-        flex: 1 1 auto;
-    }
     .recent-chip-value {
         display: flex;
         flex-direction: column;
         gap: 0.15rem;
-        min-width: 110px;
+        min-width: 0;
     }
     .recent-chip-value-label {
         font-size: 0.7rem;
@@ -272,10 +265,10 @@
         font-size: 0.95rem;
     }
     .recent-chip-date {
-        margin-left: auto;
         font-size: 0.75rem;
         color: var(--text-muted);
-        flex-shrink: 0;
+        justify-self: end;
+        white-space: nowrap;
     }
     .recent-history-details {
         margin-top: 0.75rem;
@@ -1436,16 +1429,13 @@
         }
 
         .recent-chip {
-            display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr 1fr;
             gap: 0.65rem;
             padding: 0.85rem;
         }
 
-        .recent-chip-metrics {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.65rem;
+        .recent-chip-group {
+            grid-column: 1 / -1;
         }
 
         .recent-chip-status {
@@ -1453,12 +1443,9 @@
             width: fit-content;
         }
 
-        .recent-chip-value {
-            min-width: 0;
-        }
-
         .recent-chip-date {
-            margin-left: 0;
+            grid-column: 1 / -1;
+            justify-self: start;
         }
 
         .results-section .row {
@@ -2323,35 +2310,33 @@
                             <span class="recent-chip-company">{{ record.company_name }}</span>
                             {% endif %}
                         </div>
-                        <div class="recent-chip-metrics">
-                            {% if record.estado %}
-                            <span class="recent-chip-status recent-chip-status--{{ estado_slug }}">{{ record.estado|title }}</span>
-                            {% else %}
-                            <span class="recent-chip-status recent-chip-status--razonable">Sin determinar</span>
-                            {% endif %}
-                            <div class="recent-chip-value">
-                                <span class="recent-chip-value-label">Valor intrínseco</span>
-                                <span class="recent-chip-value-amount">
-                                    {% if record.valor_intrinseco is not None %}${{ record.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}
-                                </span>
-                            </div>
-                            <div class="recent-chip-value">
-                                <span class="recent-chip-value-label">Precio actual</span>
-                                <span class="recent-chip-value-amount">
-                                    {% if record.precio_actual is not None %}${{ record.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}
-                                </span>
-                            </div>
-                            {% with diff=record.diferencia_pct %}
-                                {% if diff is not None %}
-                                <div class="recent-chip-value">
-                                    <span class="recent-chip-value-label">Margen</span>
-                                    <span class="recent-chip-value-amount {% if diff > 0 %}text-success{% elif diff < 0 %}text-danger{% else %}text-muted{% endif %}">
-                                        {{ diff|floatformat:2 }}%
-                                    </span>
-                                </div>
-                                {% endif %}
-                            {% endwith %}
+                        {% if record.estado %}
+                        <span class="recent-chip-status recent-chip-status--{{ estado_slug }}">{{ record.estado|title }}</span>
+                        {% else %}
+                        <span class="recent-chip-status recent-chip-status--razonable">Sin determinar</span>
+                        {% endif %}
+                        <div class="recent-chip-value">
+                            <span class="recent-chip-value-label">Valor intrínseco</span>
+                            <span class="recent-chip-value-amount">
+                                {% if record.valor_intrinseco is not None %}${{ record.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}
+                            </span>
                         </div>
+                        <div class="recent-chip-value">
+                            <span class="recent-chip-value-label">Precio actual</span>
+                            <span class="recent-chip-value-amount">
+                                {% if record.precio_actual is not None %}${{ record.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}
+                            </span>
+                        </div>
+                        {% with diff=record.diferencia_pct %}
+                        <div class="recent-chip-value">
+                            {% if diff is not None %}
+                            <span class="recent-chip-value-label">Margen</span>
+                            <span class="recent-chip-value-amount {% if diff > 0 %}text-success{% elif diff < 0 %}text-danger{% else %}text-muted{% endif %}">
+                                {{ diff|floatformat:2 }}%
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% endwith %}
                         <span class="recent-chip-date">{{ record.created_at|date:"d/m/Y H:i" }}</span>
                     </button>
                     <div class="recent-history-details d-none" data-history-details>
