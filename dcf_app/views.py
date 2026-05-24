@@ -29,8 +29,61 @@ from dcf_core.search import CompanySearchResult, search_companies
 
 _SYMBOL_PATTERN = re.compile(r"^\s*([A-Za-z0-9.\-:]+)")
 
-_DCF_CACHE_TTL = 600  # 10 minutos
+_DCF_CACHE_TTL = 600   # 10 minutos
+_TYPE_CACHE_TTL = 3600  # 1 hora
 _AUTO_FUENTE = "auto"
+
+_UNSUPPORTED_QUOTE_TYPES: dict[str, str] = {
+    "ETF":            "un ETF (fondo cotizado en bolsa)",
+    "MUTUALFUND":     "un fondo de inversión",
+    "INDEX":          "un índice bursátil",
+    "FUTURE":         "un contrato de futuros",
+    "CRYPTOCURRENCY": "una criptomoneda",
+    "CURRENCY":       "una divisa",
+    "OPTION":         "una opción financiera",
+    "WARRANT":        "un warrant",
+}
+
+
+def _check_ticker_eligibility(ticker: str) -> str | None:
+    """
+    Devuelve un mensaje de error si el ticker no es una acción analizable,
+    o None si es apto para el DCF. Resultado cacheado 1 hora.
+    """
+    cache_key = f"ticker_eligibility_{ticker}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached or None  # "" → None (apto)
+
+    try:
+        import yfinance as yf
+        info = yf.Ticker(ticker).info or {}
+        quote_type = info.get("quoteType")
+        long_name = info.get("longName") or info.get("shortName")
+    except Exception:
+        cache.set(cache_key, "", _TYPE_CACHE_TTL)
+        return None  # No bloquear si yfinance falla
+
+    if not quote_type and not long_name:
+        msg = (
+            f"No se encontró ninguna empresa con el ticker \"{ticker}\". "
+            "Verifica que el símbolo sea correcto."
+        )
+        cache.set(cache_key, msg, _TYPE_CACHE_TTL)
+        return msg
+
+    if quote_type and quote_type not in ("EQUITY",):
+        tipo = _UNSUPPORTED_QUOTE_TYPES.get(quote_type, f"un instrumento de tipo {quote_type}")
+        name_part = f' ("{long_name}")' if long_name else ""
+        msg = (
+            f"El ticker \"{ticker}\"{name_part} corresponde a {tipo}. "
+            "El análisis DCF está disponible únicamente para acciones de empresas."
+        )
+        cache.set(cache_key, msg, _TYPE_CACHE_TTL)
+        return msg
+
+    cache.set(cache_key, "", _TYPE_CACHE_TTL)
+    return None
 
 
 def _cached_ejecutar_dcf(ticker: str) -> dict:
@@ -315,18 +368,22 @@ def dcf_view(request):
     ticker = request.GET.get("ticker", "").strip().upper()
 
     if ticker:
-        try:
-            resultado = _cached_ejecutar_dcf(ticker)
-        except Exception as exc:
-            error = f"Ocurrió un error al analizar el ticker: {exc}"
-            resultado = None
+        eligibility_error = _check_ticker_eligibility(ticker)
+        if eligibility_error:
+            error = eligibility_error
         else:
-            _guardar_analisis(
-                ticker=ticker,
-                company_name=company_name,
-                company_exchange=company_exchange,
-                resultado=resultado,
-            )
+            try:
+                resultado = _cached_ejecutar_dcf(ticker)
+            except Exception as exc:
+                error = f"Ocurrió un error al analizar el ticker: {exc}"
+                resultado = None
+            else:
+                _guardar_analisis(
+                    ticker=ticker,
+                    company_name=company_name,
+                    company_exchange=company_exchange,
+                    resultado=resultado,
+                )
 
     company_stage = None
     multi_model = None
