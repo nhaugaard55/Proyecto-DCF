@@ -439,17 +439,24 @@
         flex-wrap: wrap;
     }
     .analysis-sequence-step-badge {
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: 999px;
+        width: 1.6rem;
+        height: 1.6rem;
+        border-radius: 50%;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: var(--bs-primary);
-        color: #fff;
-        font-weight: 700;
-        font-size: 1.05rem;
+        background: rgba(37,99,235,.1);
+        border: 1.5px solid rgba(37,99,235,.35);
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.72rem;
         line-height: 1;
+        flex-shrink: 0;
+    }
+    .theme-dark .analysis-sequence-step-badge {
+        background: rgba(96,165,250,.1);
+        border-color: rgba(96,165,250,.3);
+        color: #93c5fd;
     }
     .analysis-sequence-card {
         position: relative;
@@ -2913,8 +2920,8 @@
                                 {% if company_stage.stage == 6 %}
                                 <div class="small text-warning mb-1"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Empresa en declive</div>
                                 {% endif %}
-                                <div class="fw-semibold">
-                                    {% for f in filtros_activos %}{% if f.cumple %}<span class="text-success">✓</span>{% else %}<span class="text-danger">✗</span>{% endif %}{% endfor %}
+                                <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                    {% for f in filtros_activos %}{% if f.cumple %}<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% else %}<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>{% endif %}{% endfor %}
                                 </div>
                             </div>
                         </div>
@@ -2932,23 +2939,23 @@
                                 <div class="text-muted small mb-2">Consenso multi-modelo</div>
                                 {% if multi_model and multi_model.consenso and multi_model.consenso.veredicto %}
                                     {% if multi_model.consenso.veredicto == "Subvaluada" %}
-                                    <span class="badge bg-success px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Subvaluada</span>
+                                    <span class="badge rlv-util"><svg class="mi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Subvaluada</span>
                                     {% elif multi_model.consenso.veredicto == "Sobrevaluada" %}
-                                    <span class="badge bg-danger px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> Sobrevaluada</span>
+                                    <span class="badge rlv-no"><svg class="mi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> Sobrevaluada</span>
                                     {% else %}
-                                    <span class="badge bg-warning text-dark px-3 py-2"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Precio razonable</span>
+                                    <span class="badge rlv-algo"><svg class="mi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Precio razonable</span>
                                     {% endif %}
                                     {% if multi_model.consenso.upside_pct is not None %}
                                     <div class="text-muted small mt-2">{{ multi_model.consenso.upside_pct|floatformat:1 }}% vs precio actual</div>
                                     {% endif %}
                                 {% elif resultado.estado == "SUBVALUADA" %}
-                                <span class="badge bg-success px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Subvaluada</span>
+                                <span class="badge rlv-util"><svg class="mi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Subvaluada</span>
                                 {% elif resultado.estado == "SOBREVALUADA" %}
-                                <span class="badge bg-danger px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> Sobrevaluada</span>
+                                <span class="badge rlv-no"><svg class="mi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> Sobrevaluada</span>
                                 {% elif resultado.estado == "RAZONABLE" %}
-                                <span class="badge bg-warning text-dark px-3 py-2"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Precio razonable</span>
+                                <span class="badge rlv-algo"><svg class="mi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Precio razonable</span>
                                 {% else %}
-                                <span class="badge bg-secondary px-3 py-2">N/D</span>
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis">N/D</span>
                                 {% endif %}
                             </div>
                         </div>
@@ -2963,21 +2970,21 @@
                                 <div class="text-muted small mb-2">Punto de entrada</div>
                                 {% if resultado.analisis_tecnico.disponible %}
                                     {% if resultado.analisis_tecnico.senal == "buena" %}
-                                    <span class="badge bg-success px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> {{ resultado.analisis_tecnico.senal_texto }}</span>
+                                    <span class="badge rlv-util"><svg class="mi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> {{ resultado.analisis_tecnico.senal_texto }}</span>
                                     {% elif resultado.analisis_tecnico.senal == "oportunidad" %}
-                                    <span class="badge bg-warning text-dark px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> {{ resultado.analisis_tecnico.senal_texto }}</span>
+                                    <span class="badge rlv-algo"><svg class="mi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> {{ resultado.analisis_tecnico.senal_texto }}</span>
                                     {% elif resultado.analisis_tecnico.senal == "sobrecomprado" %}
-                                    <span class="badge bg-danger px-3 py-2">⛔ {{ resultado.analisis_tecnico.senal_texto }}</span>
+                                    <span class="badge rlv-no"><svg class="mi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> {{ resultado.analisis_tecnico.senal_texto }}</span>
                                     {% elif resultado.analisis_tecnico.senal == "esperar" %}
-                                    <span class="badge bg-danger px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> {{ resultado.analisis_tecnico.senal_texto }}</span>
+                                    <span class="badge rlv-no"><svg class="mi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> {{ resultado.analisis_tecnico.senal_texto }}</span>
                                     {% else %}
-                                    <span class="badge bg-secondary px-3 py-2">🔄 {{ resultado.analisis_tecnico.senal_texto }}</span>
+                                    <span class="badge bg-secondary-subtle text-secondary-emphasis">{{ resultado.analisis_tecnico.senal_texto }}</span>
                                     {% endif %}
                                     {% if resultado.analisis_tecnico.rsi is not None %}
                                     <div class="text-muted small mt-2">RSI: {{ resultado.analisis_tecnico.rsi|floatformat:1 }}</div>
                                     {% endif %}
                                 {% else %}
-                                <span class="badge bg-secondary px-3 py-2">Sin datos</span>
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis">Sin datos</span>
                                 {% endif %}
                             </div>
                         </div>
