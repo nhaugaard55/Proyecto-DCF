@@ -1604,6 +1604,11 @@
             pointer-events: none;
         }
 
+        /* Dark mode: invert Bootstrap's dark chevron so it's visible on dark card backgrounds */
+        .theme-dark .accordion-button::after {
+            filter: invert(1) grayscale(1) brightness(1.5);
+        }
+
         @media (max-width: 767px) {
             .accordion-button { flex-wrap: nowrap; gap: 0; padding: 0.75rem 2.5rem 0.75rem 0.85rem; align-items: center; }
             .acc-left  { flex: 1; min-width: 0; overflow: hidden; }
