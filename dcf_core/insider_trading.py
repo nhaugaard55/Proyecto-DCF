@@ -27,7 +27,7 @@ _SEC_HEADERS = {"User-Agent": "DCFAnalyzer/1.0 contact@example.com"}
 _REQUEST_TIMEOUT = 3
 _SEC_ENRICHMENT_BUDGET_SECONDS = 4.5
 _CACHE_TTL_SECONDS = 60 * 60
-_CACHE_SCHEMA_VERSION = "roles-v4"
+_CACHE_SCHEMA_VERSION = "roles-v5"
 _MAX_TRANSACTIONS = 20
 _LOOKBACK_DAYS = 180
 _SCORE_LOOKBACK_DAYS = 90
@@ -230,7 +230,7 @@ def _normalizar_fmp(item: dict[str, Any]) -> dict[str, Any]:
     precio = _to_number(_first_present(item.get("price"), item.get("transactionPrice")))
     valor_total = _calcular_valor_total(item, shares, precio)
     raw_text = _raw_text(item)
-    raw_cargo = item.get("typeOfOwner") or item.get("officerTitle") or item.get("title")
+    raw_cargo = item.get("officerTitle") or item.get("title") or item.get("typeOfOwner")
     cargo = _normalizar_cargo(raw_cargo)
 
     return {
@@ -465,6 +465,12 @@ def _normalizar_cargo(value: Any) -> str:
         return "VP"
     if "PRESIDENT" in lookup:
         return "Presidente"
+    if "GENERAL COUNSEL" in lookup or "CLO" in lookup:
+        return "Counsel"
+    if "10%" in lookup or "TEN PERCENT" in lookup:
+        return "Accionista >10%"
+    if "OFFICER" in lookup:
+        return "Ejecutivo"
     return texto[:30] if texto else "N/D"
 
 
@@ -531,30 +537,16 @@ def _enriquecer_cargos_desde_fmp(ticker: str, transacciones: list[dict[str, Any]
 
 
 def _enriquecer_cargos_desde_sec(ticker: str, transacciones: list[dict[str, Any]]) -> None:
-    """Completa cargos faltantes leyendo el Form 4 en SEC si el proveedor no lo trae."""
+    """Completa cargos faltantes escaneando Form 4s recientes de SEC por CIK."""
 
-    faltantes = [
-        tx for tx in transacciones
-        if tx.get("insider_cargo") in (None, "", "N/D") and tx.get("_filing_id")
-    ]
+    faltantes = [tx for tx in transacciones if tx.get("insider_cargo") in (None, "", "N/D")]
     if not faltantes:
         return
 
-    txs_por_accession: dict[str, list[dict[str, Any]]] = {}
-    for tx in faltantes:
-        accession = str(tx.get("_filing_id") or "").strip()
-        if accession:
-            txs_por_accession.setdefault(accession, []).append(tx)
-    if not txs_por_accession:
-        return
-
     deadline = time.monotonic() + _SEC_ENRICHMENT_BUDGET_SECONDS
+
     for symbol in _sec_symbol_candidates(ticker, transacciones):
-        pendientes = [
-            accession for accession, txs in txs_por_accession.items()
-            if any(tx.get("insider_cargo") in (None, "", "N/D") for tx in txs)
-        ]
-        if not pendientes or time.monotonic() >= deadline:
+        if time.monotonic() >= deadline:
             return
 
         cik = _sec_cik_for_ticker(symbol, deadline)
@@ -565,31 +557,137 @@ def _enriquecer_cargos_desde_sec(ticker: str, transacciones: list[dict[str, Any]
         if not filings:
             continue
 
-        max_workers = min(4, len(pendientes))
-        executor = ThreadPoolExecutor(max_workers=max_workers)
+        cargos = _construir_mapa_cargos_sec(cik, filings, deadline)
+        if not cargos:
+            continue
+
+        for tx in transacciones:
+            if tx.get("insider_cargo") not in (None, "", "N/D"):
+                continue
+            nombre_key = _normalizar_nombre_insider(tx.get("insider_nombre"))
+            cargo_info = cargos.get(nombre_key)
+            if cargo_info:
+                cargo, detalle = cargo_info
+                tx["insider_cargo"] = cargo
+                tx["insider_cargo_detalle"] = detalle
+                tx["insider_cargo_fuente"] = "sec"
+
+        if not any(tx.get("insider_cargo") in (None, "", "N/D") for tx in transacciones):
+            return
+
+
+def _construir_mapa_cargos_sec(
+    cik: int,
+    filings: dict[str, Any],
+    deadline: float,
+) -> dict[str, tuple[str, str]]:
+    """Escanea Form 4s recientes y devuelve {nombre_normalizado: (cargo, detalle)}."""
+
+    all_accessions = filings.get("accessionNumber") or []
+    all_forms = filings.get("form") or []
+    all_docs = filings.get("primaryDocument") or []
+
+    form4_items = [
+        (acc, doc)
+        for acc, form, doc in zip(all_accessions, all_forms, all_docs)
+        if form in ("4", "4/A") and acc and doc
+    ][:20]
+
+    if not form4_items:
+        return {}
+
+    cargos: dict[str, tuple[str, str]] = {}
+    max_workers = min(4, len(form4_items))
+    executor = ThreadPoolExecutor(max_workers=max_workers)
+    try:
+        future_map = {
+            executor.submit(_fetch_sec_form4_nombre_cargo, cik, acc, doc, deadline): acc
+            for acc, doc in form4_items
+            if time.monotonic() < deadline
+        }
+        timeout = max(0.1, deadline - time.monotonic())
         try:
-            future_map = {
-                executor.submit(_sec_cargo_for_accession, cik, accession, filings, deadline): accession
-                for accession in pendientes
-            }
-            timeout = max(0.1, deadline - time.monotonic())
-            try:
-                for future in as_completed(future_map, timeout=timeout):
-                    accession = future_map[future]
-                    try:
-                        cargo_info = future.result()
-                    except Exception:
-                        continue
-                    if cargo_info and cargo_info[0] != "N/D":
-                        cargo, cargo_detalle = cargo_info
-                        for tx in txs_por_accession.get(accession, []):
-                            tx["insider_cargo"] = cargo
-                            tx["insider_cargo_detalle"] = cargo_detalle
-                            tx["insider_cargo_fuente"] = "sec"
-            except TimeoutError:
-                return
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
+            for future in as_completed(future_map, timeout=timeout):
+                try:
+                    result = future.result()
+                except Exception:
+                    continue
+                if result:
+                    nombre_norm, cargo, detalle = result
+                    cargos.setdefault(nombre_norm, (cargo, detalle))
+        except TimeoutError:
+            pass
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    return cargos
+
+
+def _fetch_sec_form4_nombre_cargo(
+    cik: int,
+    accession: str,
+    document: str,
+    deadline: float,
+) -> tuple[str, str, str] | None:
+    """Descarga un Form 4 y extrae (nombre_normalizado, cargo, detalle)."""
+
+    if time.monotonic() >= deadline:
+        return None
+
+    url = _SEC_ARCHIVES_URL.format(
+        cik=cik,
+        accession=accession.replace("-", ""),
+        document=document,
+    )
+    try:
+        response = requests.get(
+            url,
+            headers=_SEC_HEADERS,
+            timeout=max(0.2, min(1.0, deadline - time.monotonic())),
+        )
+        if response.status_code != 200:
+            return None
+    except Exception:
+        return None
+
+    return _extraer_nombre_cargo_sec(response.text)
+
+
+def _extraer_nombre_cargo_sec(text: str) -> tuple[str, str, str] | None:
+    """Extrae (nombre_normalizado, cargo, detalle) desde XML o HTML de un Form 4."""
+
+    name_match = re.search(r"<rptOwnerName[^>]*>(.*?)</rptOwnerName>", text, re.IGNORECASE | re.DOTALL)
+    if not name_match:
+        return None
+    nombre = _strip_html(name_match.group(1)).strip()
+    nombre_norm = _normalizar_nombre_insider(nombre)
+    if not nombre_norm:
+        return None
+
+    title_match = re.search(r"<officerTitle[^>]*>(.*?)</officerTitle>", text, re.IGNORECASE | re.DOTALL)
+    if title_match:
+        raw_title = _strip_html(title_match.group(1)).strip()
+        if raw_title:
+            cargo = _normalizar_cargo(raw_title)
+            if cargo != "N/D":
+                return nombre_norm, cargo, raw_title
+
+    is_director = re.search(r"<isDirector[^>]*>1</isDirector>", text, re.IGNORECASE)
+    if is_director:
+        return nombre_norm, "Director", "Miembro del directorio"
+
+    is_owner = re.search(r"<isTenPercentOwner[^>]*>1</isTenPercentOwner>", text, re.IGNORECASE)
+    if is_owner:
+        return nombre_norm, "Accionista >10%", "Accionista >10%"
+
+    is_officer = re.search(r"<isOfficer[^>]*>1</isOfficer>", text, re.IGNORECASE)
+    if is_officer:
+        cargo_info = _extraer_cargo_sec_html_detalle(text)
+        if cargo_info:
+            return nombre_norm, cargo_info[0], cargo_info[1]
+        return nombre_norm, "Ejecutivo", "Ejecutivo"
+
+    return None
 
 
 def _propagar_cargos_por_insider(transacciones: list[dict[str, Any]]) -> None:
