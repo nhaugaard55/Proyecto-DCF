@@ -30,9 +30,17 @@
     border: 1px solid var(--bs-border-color, #dee2e6);
   }
   .theme-dark .wl-dd {
-    background: #131b2d;
-    border-color: rgba(255,255,255,0.1);
+    background: #1e293b;
+    border-color: rgba(255,255,255,0.12);
   }
+  .theme-dark .wl-dd .dd-item {
+    color: #e2e8f0;
+  }
+  .theme-dark .wl-dd .dd-item:hover,
+  .theme-dark .wl-dd .dd-item.active { background: rgba(96, 165, 250, 0.12); }
+  .theme-dark .wl-dd .dd-sym { color: #f1f5f9; }
+  .theme-dark .wl-dd .dd-name { color: #94a3b8; }
+  .theme-dark .wl-dd .dd-no-results { color: #94a3b8; }
   .wl-dd.show { display: block; }
   .wl-dd .dd-item {
     display: block;
