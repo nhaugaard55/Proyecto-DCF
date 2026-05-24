@@ -122,6 +122,9 @@
         .theme-dark .theme-toggle-btn {
             color: #e2e8f0;
         }
+        .theme-toggle-btn .ti-sun { display: none; }
+        .theme-dark .theme-toggle-btn .ti-sun { display: inline-block; }
+        .theme-dark .theme-toggle-btn .ti-moon { display: none; }
 
         .mobile-menu-toggle {
             border-color: rgba(255, 255, 255, 0.45);
@@ -444,7 +447,8 @@
             </div>
             <div class="nav-controls d-flex align-items-center ms-2">
                 <button type="button" class="theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema">
-                    <span id="theme-toggle-icon" aria-hidden="true">🌙</span>
+                    <svg class="ti-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                    <svg class="ti-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
                     <span id="theme-toggle-text">Modo oscuro</span>
                 </button>
                 <button class="navbar-toggler mobile-menu-toggle d-sm-none" type="button" data-bs-toggle="collapse" data-bs-target="#main-nav-actions" aria-controls="main-nav-actions" aria-expanded="false" aria-label="Abrir menú">
@@ -466,7 +470,6 @@
             const storageKey = "dcf-ui-theme";
             const body = document.body;
             const toggleButton = document.getElementById("theme-toggle");
-            const iconElement = document.getElementById("theme-toggle-icon");
             const textElement = document.getElementById("theme-toggle-text");
 
             function applyTheme(theme, persist = true) {
@@ -478,9 +481,6 @@
                     } catch (error) {
                         // Ignorar problemas de storage (modo incógnito, etc).
                     }
-                }
-                if (iconElement) {
-                    iconElement.textContent = isDark ? "☀️" : "🌙";
                 }
                 if (textElement) {
                     textElement.textContent = isDark ? "Modo claro" : "Modo oscuro";
