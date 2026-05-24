@@ -426,15 +426,40 @@ def dcf_view(request):
                 "mensaje": "No se pudo consultar estimaciones de analistas.",
             }
 
-        # Inyectar posición del precio consenso DCF en la barra de rango de analistas
+        # Recalcular posiciones de la barra con rango dinámico que incluye todos los marcadores
         try:
             _dcf_precio = float((multi_model or {}).get("consenso", {}).get("precio") or 0) or None
             _po = dict((analyst_data.get("precio_objetivo") or {}))
             _bajo, _alto = _po.get("bajo"), _po.get("alto")
-            if _dcf_precio and _bajo is not None and _alto is not None and float(_alto) > float(_bajo):
-                _rango = float(_alto) - float(_bajo)
-                _po["dcf_pct"] = round(max(0.0, min(100.0, (_dcf_precio - float(_bajo)) / _rango * 100)), 1)
-                _po["dcf_precio"] = round(_dcf_precio, 2)
+            _precio_actual_bar = analyst_data.get("precio_actual")
+            _medio = _po.get("medio")
+
+            if _bajo is not None and _alto is not None and float(_alto) > float(_bajo):
+                # Rango visual: abarca TODOS los precios (analista + actuales) + 10% de padding
+                # Los ticks de Mín/Máx se posicionan dentro del bar en su lugar real
+                _candidatos = [float(p) for p in [_bajo, _alto, _precio_actual_bar, _medio] if p is not None]
+                if _dcf_precio:
+                    _candidatos.append(float(_dcf_precio))
+                _vis_min = min(_candidatos)
+                _vis_max = max(_candidatos)
+                _vis_span_raw = (_vis_max - _vis_min) or 1.0
+                _vis_low  = _vis_min - 0.10 * _vis_span_raw
+                _vis_span = _vis_span_raw * 1.20
+
+                def _a_pct(v):
+                    if v is None:
+                        return None
+                    return round(max(0.0, min(100.0, (float(v) - _vis_low) / _vis_span * 100)), 1)
+
+                # Posiciones de los marcadores de precio
+                _po["precio_actual_pct"] = _a_pct(_precio_actual_bar)
+                _po["medio_pct"]         = _a_pct(_medio)
+                # Posiciones de los ticks del rango analista (Mín / Máx)
+                _po["bajo_bar_pct"]  = _a_pct(float(_bajo))
+                _po["alto_bar_pct"]  = _a_pct(float(_alto))
+                if _dcf_precio:
+                    _po["dcf_pct"]    = _a_pct(_dcf_precio)
+                    _po["dcf_precio"] = round(_dcf_precio, 2)
                 analyst_data = {**analyst_data, "precio_objetivo": _po}
         except Exception:
             pass
