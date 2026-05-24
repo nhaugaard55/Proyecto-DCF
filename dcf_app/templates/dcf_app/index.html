@@ -914,6 +914,20 @@
         .analyst-range-bar-wrap { margin-bottom: 3.25rem; }
         .analyst-range-marker-label { font-size: 0.58rem; }
     }
+    /* ── Micro-iconos SVG y puntos de estado ── */
+    .mi { display: inline-block; vertical-align: middle; flex-shrink: 0; line-height: 1; }
+    .status-dot {
+        display: inline-block;
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        vertical-align: middle;
+        flex-shrink: 0;
+        margin-right: 2px;
+    }
+    .status-dot--verde   { background: #22c55e; }
+    .status-dot--naranja { background: #f97316; }
+    .status-dot--neutral { background: #94a3b8; }
+    .status-dot--rojo    { background: #ef4444; }
     .historical-price-chart {
         height: 260px;
         width: 100%;
@@ -2525,7 +2539,7 @@
                         {% endif %}
                         {% if score.nota_consenso %}
                         <div class="alert alert-secondary py-2 px-3 mt-3 mb-0 small" role="alert">
-                          ℹ️ {{ score.nota_consenso }}
+                          <svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg> {{ score.nota_consenso }}
                         </div>
                         {% endif %}
                     </div>
@@ -2557,7 +2571,7 @@
                 <div class="card-body">
                     <button class="analysis-data-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#analysis-data-collapse" aria-expanded="false" aria-controls="analysis-data-collapse">
                         <span class="analysis-data-title">
-                            <span class="analysis-data-icon" aria-hidden="true">📊</span>
+                            <span class="analysis-data-icon" aria-hidden="true"><svg class="mi" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
                             <span>
                                 <span class="h5 d-block mb-1">Datos utilizados en el análisis</span>
                                 <span class="text-muted small">Fuentes: Financial Modeling Prep + Yahoo Finance</span>
@@ -2894,7 +2908,7 @@
                                 </div>
                                 <div class="text-muted small mb-2">Filtros {% if company_stage %}etapa {{ company_stage.stage_name }}{% else %}fundamentales{% endif %}</div>
                                 {% if company_stage.stage == 6 %}
-                                <div class="small text-warning mb-1">⚠️ Empresa en declive</div>
+                                <div class="small text-warning mb-1"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Empresa en declive</div>
                                 {% endif %}
                                 <div class="fw-semibold">
                                     {% for f in filtros_activos %}{% if f.cumple %}<span class="text-success">✓</span>{% else %}<span class="text-danger">✗</span>{% endif %}{% endfor %}
@@ -2915,21 +2929,21 @@
                                 <div class="text-muted small mb-2">Consenso multi-modelo</div>
                                 {% if multi_model and multi_model.consenso and multi_model.consenso.veredicto %}
                                     {% if multi_model.consenso.veredicto == "Subvaluada" %}
-                                    <span class="badge bg-success px-3 py-2">✅ Subvaluada</span>
+                                    <span class="badge bg-success px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Subvaluada</span>
                                     {% elif multi_model.consenso.veredicto == "Sobrevaluada" %}
-                                    <span class="badge bg-danger px-3 py-2">❌ Sobrevaluada</span>
+                                    <span class="badge bg-danger px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> Sobrevaluada</span>
                                     {% else %}
-                                    <span class="badge bg-warning text-dark px-3 py-2">⚠️ Precio razonable</span>
+                                    <span class="badge bg-warning text-dark px-3 py-2"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Precio razonable</span>
                                     {% endif %}
                                     {% if multi_model.consenso.upside_pct is not None %}
                                     <div class="text-muted small mt-2">{{ multi_model.consenso.upside_pct|floatformat:1 }}% vs precio actual</div>
                                     {% endif %}
                                 {% elif resultado.estado == "SUBVALUADA" %}
-                                <span class="badge bg-success px-3 py-2">✅ Subvaluada</span>
+                                <span class="badge bg-success px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Subvaluada</span>
                                 {% elif resultado.estado == "SOBREVALUADA" %}
-                                <span class="badge bg-danger px-3 py-2">❌ Sobrevaluada</span>
+                                <span class="badge bg-danger px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> Sobrevaluada</span>
                                 {% elif resultado.estado == "RAZONABLE" %}
-                                <span class="badge bg-warning text-dark px-3 py-2">⚠️ Precio razonable</span>
+                                <span class="badge bg-warning text-dark px-3 py-2"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Precio razonable</span>
                                 {% else %}
                                 <span class="badge bg-secondary px-3 py-2">N/D</span>
                                 {% endif %}
@@ -2946,13 +2960,13 @@
                                 <div class="text-muted small mb-2">Punto de entrada</div>
                                 {% if resultado.analisis_tecnico.disponible %}
                                     {% if resultado.analisis_tecnico.senal == "buena" %}
-                                    <span class="badge bg-success px-3 py-2">✅ {{ resultado.analisis_tecnico.senal_texto }}</span>
+                                    <span class="badge bg-success px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> {{ resultado.analisis_tecnico.senal_texto }}</span>
                                     {% elif resultado.analisis_tecnico.senal == "oportunidad" %}
-                                    <span class="badge bg-warning text-dark px-3 py-2">⚡ {{ resultado.analisis_tecnico.senal_texto }}</span>
+                                    <span class="badge bg-warning text-dark px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> {{ resultado.analisis_tecnico.senal_texto }}</span>
                                     {% elif resultado.analisis_tecnico.senal == "sobrecomprado" %}
                                     <span class="badge bg-danger px-3 py-2">⛔ {{ resultado.analisis_tecnico.senal_texto }}</span>
                                     {% elif resultado.analisis_tecnico.senal == "esperar" %}
-                                    <span class="badge bg-danger px-3 py-2">❌ {{ resultado.analisis_tecnico.senal_texto }}</span>
+                                    <span class="badge bg-danger px-3 py-2"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> {{ resultado.analisis_tecnico.senal_texto }}</span>
                                     {% else %}
                                     <span class="badge bg-secondary px-3 py-2">🔄 {{ resultado.analisis_tecnico.senal_texto }}</span>
                                     {% endif %}
@@ -3010,7 +3024,7 @@
                   </div>
                   {% if company_stage.revenue_irregular %}
                   <div class="alert alert-warning d-flex gap-2 py-2 px-3 small mt-3 mb-0" role="alert">
-                    <span class="flex-shrink-0">⚠️</span>
+                    <span class="flex-shrink-0"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
                     <span>Revenue irregular detectado — Esta empresa presenta ingresos históricos altamente variables (típico en biotech con pagos de milestone o licencias). La clasificación de etapa tiene menor confiabilidad. Analizar con el contexto del pipeline y la posición de caja.</span>
                   </div>
                   {% endif %}
@@ -3083,7 +3097,7 @@
                 <!-- ── Métricas sugeridas ── -->
                 <div class="col-md-6">
                   {% if company_stage.metricas_utiles %}
-                  <p class="small fw-semibold text-muted text-uppercase mb-1" style="letter-spacing:.05em">✅ Útiles en esta etapa</p>
+                  <p class="small fw-semibold text-muted text-uppercase mb-1" style="letter-spacing:.05em"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Útiles en esta etapa</p>
                   <div class="d-flex flex-wrap gap-1 mb-2">
                     {% for m in company_stage.metricas_utiles %}
                     <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success" style="border-opacity:.3!important;font-size:.72rem;">{{ m }}</span>
@@ -3091,7 +3105,7 @@
                   </div>
                   {% endif %}
                   {% if company_stage.metricas_algo_utiles %}
-                  <p class="small fw-semibold text-muted text-uppercase mb-1 mt-2" style="letter-spacing:.05em">⚠️ Algo útiles</p>
+                  <p class="small fw-semibold text-muted text-uppercase mb-1 mt-2" style="letter-spacing:.05em"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Algo útiles</p>
                   <div class="d-flex flex-wrap gap-1 mb-2">
                     {% for m in company_stage.metricas_algo_utiles %}
                     <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning" style="border-opacity:.3!important;font-size:.72rem;">{{ m }}</span>
@@ -3099,7 +3113,7 @@
                   </div>
                   {% endif %}
                   {% if company_stage.metricas_no_utiles %}
-                  <p class="small fw-semibold text-muted text-uppercase mb-1 mt-2" style="letter-spacing:.05em">❌ No útiles</p>
+                  <p class="small fw-semibold text-muted text-uppercase mb-1 mt-2" style="letter-spacing:.05em"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> No útiles</p>
                   <div class="d-flex flex-wrap gap-1">
                     {% for m in company_stage.metricas_no_utiles %}
                     <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary border border-secondary" style="border-opacity:.2!important;font-size:.72rem;">{{ m }}</span>
@@ -3140,11 +3154,11 @@
                       </td>
                       <td class="text-center">
                         {% if f.relevancia == "u" %}
-                          <span class="badge bg-success bg-opacity-10 text-success" style="font-size:.7rem;">✅ Útil</span>
+                          <span class="badge bg-success bg-opacity-10 text-success" style="font-size:.7rem;"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Útil</span>
                         {% elif f.relevancia == "a" %}
-                          <span class="badge bg-warning bg-opacity-10 text-warning" style="font-size:.7rem;">⚠️ Algo útil</span>
+                          <span class="badge bg-warning bg-opacity-10 text-warning" style="font-size:.7rem;"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Algo útil</span>
                         {% else %}
-                          <span class="badge bg-secondary bg-opacity-10 text-secondary" style="font-size:.7rem;">❌ No útil</span>
+                          <span class="badge bg-secondary bg-opacity-10 text-secondary" style="font-size:.7rem;"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> No útil</span>
                         {% endif %}
                       </td>
                     </tr>
@@ -3197,7 +3211,7 @@
                 <span class="badge bg-primary-subtle text-primary-emphasis small">{{ ctx.stage_name }}</span>
               </div>
               <p class="text-muted small mb-4">Precio consenso ponderado según la etapa del ciclo de vida empresarial.
-                {% if ctx.nota_especial %}<span class="fw-semibold text-warning">⚠ {{ ctx.nota_especial }}</span>{% endif %}
+                {% if ctx.nota_especial %}<span class="fw-semibold text-warning"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>{{ ctx.nota_especial }}</span>{% endif %}
               </p>
               <div class="row g-4">
                 <div class="col-md-4">
@@ -3229,7 +3243,7 @@
                       {% endif %}
                       {% if not consenso.disponible %}
                       <div class="alert alert-info py-2 px-3 mt-3 mb-0 small" role="alert" style="font-size:0.78rem;">
-                        💡 Para empresas en etapas tempranas, el <strong>Valor de Liquidación</strong> puede usarse como referencia de piso de valuación.
+                        <svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg> Para empresas en etapas tempranas, el <strong>Valor de Liquidación</strong> puede usarse como referencia de piso de valuación.
                       </div>
                       {% endif %}
                       {% endif %}
@@ -3244,7 +3258,7 @@
                       </div>
                       {% if consenso.disagreement_ratio > 0.60 %}
                       <div class="alert alert-danger consensus-dispersion-alert py-2 px-3 mt-2 mb-0 small" role="alert" style="font-size:0.78rem;">
-                        ⚠️ <strong>Dispersión muy alta.</strong> Verificar los datos antes de usar este consenso. Posibles causas: estructura de acciones compleja, datos de fuente incompletos, o empresa en situación atípica.
+                        <svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> <strong>Dispersión muy alta.</strong> Verificar los datos antes de usar este consenso. Posibles causas: estructura de acciones compleja, datos de fuente incompletos, o empresa en situación atípica.
                       </div>
                       {% endif %}
                       {% endif %}
@@ -3314,7 +3328,7 @@
                           {% else %}—{% endif %}
                         </td>
                         <td class="text-end">{% if m.peso > 0 %}<span class="fw-semibold">{{ m.peso_pct|floatformat:1 }}%</span>{% else %}—{% endif %}</td>
-                        <td class="text-center relevance-cell">{% if m.relevancia == "Útil" %}✅ Útil{% elif m.relevancia == "Algo útil" %}⚠️ Algo útil{% else %}❌ No útil{% endif %}</td>
+                        <td class="text-center relevance-cell">{% if m.relevancia == "Útil" %}<svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Útil{% elif m.relevancia == "Algo útil" %}<svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Algo útil{% else %}<svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> No útil{% endif %}</td>
                         <td class="text-muted small detail-cell">{{ m.detalle }}</td>
                       </tr>
                       {% endfor %}
@@ -3386,7 +3400,7 @@
                                 <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}B{% else %}N/D{% endif %}</span>
                             {% endwith %}
                             {% if resultado.datos_empresa.acciones_ajuste_aviso %}
-                            <small class="text-warning d-block mt-1">⚠ {{ resultado.datos_empresa.acciones_ajuste_aviso }}</small>
+                            <small class="text-warning d-block mt-1"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>{{ resultado.datos_empresa.acciones_ajuste_aviso }}</small>
                             {% endif %}
                         </div>
                         <div class="col-6">
@@ -3407,7 +3421,7 @@
                                 <span class="fw-semibold">{% if valor is not None %}{{ valor|floatformat:2 }}{% else %}N/D{% endif %}</span>
                             {% endwith %}
                             {% if resultado.datos_empresa.beta_aviso %}
-                            <small class="text-warning d-block mt-1">⚠ {{ resultado.datos_empresa.beta_aviso }}</small>
+                            <small class="text-warning d-block mt-1"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>{{ resultado.datos_empresa.beta_aviso }}</small>
                             {% endif %}
                         </div>
                         <div class="col-6">
@@ -3477,7 +3491,7 @@
                     </ul>
                     {% if resultado.metricas.cagr_cap_aviso %}
                     <div class="alert alert-warning d-flex gap-2 mt-3 mb-0 py-2 px-3 small" role="alert">
-                        <span class="flex-shrink-0">⚠️</span>
+                        <span class="flex-shrink-0"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
                         <span>{{ resultado.metricas.cagr_cap_aviso }}</span>
                     </div>
                     {% endif %}
@@ -3656,7 +3670,7 @@
                   <p class="text-muted small mb-3">Multiplica los ingresos por acción por el P/S de referencia del sector.</p>
                   {% if resultado.datos_empresa.escala_aviso %}
                   <div class="alert alert-warning d-flex gap-2 py-2 px-3 small mb-3" role="alert">
-                    <span class="flex-shrink-0">⚠️</span>
+                    <span class="flex-shrink-0"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
                     <span>{{ resultado.datos_empresa.escala_aviso }}</span>
                   </div>
                   {% endif %}
@@ -4325,7 +4339,7 @@
                                                         <span class="insider-metric-label">Sentimiento</span>
                                                         <span class="insider-metric-value">
                                                             <span class="insider-sentiment-badge insider-sentiment-badge--{{ insider_trading.score_color }}">
-                                                                {% if insider_trading.score_sentimiento == "alcista" %}🟢 Alcista{% elif insider_trading.score_sentimiento == "bajista" %}🟠 Bajista{% else %}⚪ Neutral{% endif %}
+                                                                {% if insider_trading.score_sentimiento == "alcista" %}<span class="status-dot status-dot--verde"></span> Alcista{% elif insider_trading.score_sentimiento == "bajista" %}<span class="status-dot status-dot--naranja"></span> Bajista{% else %}<span class="status-dot status-dot--neutral"></span> Neutral{% endif %}
                                                             </span>
                                                         </span>
                                                     </div>
@@ -4366,7 +4380,7 @@
                                                 </div>
                                                 {% if insider_trading.resumen.advertencia_ventas_compensacion %}
                                                 <div class="insider-compensation-alert mt-3">
-                                                    ⚠️ {% if insider_trading.score_sentimiento == "bajista" %}Sentimiento bajista moderado — gran parte de las ventas parecen asociadas a compensación accionaria.{% else %}Gran parte de las ventas recientes parecen asociadas a compensación accionaria o ejercicios de opciones. El sentimiento bajista podría estar sobreestimado.{% endif %}
+                                                    <svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> {% if insider_trading.score_sentimiento == "bajista" %}Sentimiento bajista moderado — gran parte de las ventas parecen asociadas a compensación accionaria.{% else %}Gran parte de las ventas recientes parecen asociadas a compensación accionaria o ejercicios de opciones. El sentimiento bajista podría estar sobreestimado.{% endif %}
                                                 </div>
                                                 {% endif %}
                                                 <p class="text-muted small mb-0 mt-3">{{ insider_trading.score_descripcion }}</p>
@@ -4418,7 +4432,7 @@
                                             </div>
 
                                             <div class="insider-warning mt-3">
-                                                ⚠️ {{ insider_trading.advertencia }}
+                                                <svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> {{ insider_trading.advertencia }}
                                             </div>
                                             {% else %}
                                             <p class="text-muted text-center mb-0 py-4">{{ insider_trading.mensaje|default:"Sin actividad de insiders en los últimos 180 días" }}</p>
@@ -4468,7 +4482,7 @@
                                                     <span class="analyst-metric-label">Consenso</span>
                                                     <span class="analyst-metric-value">
                                                         <span class="analyst-consensus-badge analyst-consensus-badge--{{ analyst_estimates.recomendacion_color }}">
-                                                            {% if analyst_estimates.recomendacion_color == "verde" %}🟢{% elif analyst_estimates.recomendacion_color == "rojo" %}🔴{% else %}⚪{% endif %}
+                                                            {% if analyst_estimates.recomendacion_color == "verde" %}<span class="status-dot status-dot--verde"></span>{% elif analyst_estimates.recomendacion_color == "rojo" %}<span class="status-dot status-dot--rojo"></span>{% else %}<span class="status-dot status-dot--neutral"></span>{% endif %}
                                                             {{ analyst_estimates.recomendacion_consenso }}
                                                         </span>
                                                     </span>
@@ -4602,7 +4616,7 @@
 
                                             <!-- Advertencia -->
                                             <div class="analyst-warning">
-                                                ⚠️ {{ analyst_estimates.advertencia }}
+                                                <svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> {{ analyst_estimates.advertencia }}
                                             </div>
                                             {% endwith %}
 

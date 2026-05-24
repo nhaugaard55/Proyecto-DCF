@@ -121,6 +121,9 @@
       transition: background 0.2s ease, border-color 0.2s ease;
     }
     .theme-toggle-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.55); }
+    .theme-toggle-btn .ti-sun { display: none; }
+    .theme-dark .theme-toggle-btn .ti-sun { display: inline-block; }
+    .theme-dark .theme-toggle-btn .ti-moon { display: none; }
     .landing-cta {
       background: var(--accent);
       color: #fff;
@@ -425,12 +428,16 @@
       border-color: rgba(37, 99, 235, 0.2);
     }
     .feature-icon {
-      font-size: 1.5rem;
-      margin-bottom: 0.75rem;
       display: block;
+      margin-bottom: 0.75rem;
+      color: var(--accent);
     }
     .feature-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.35rem; color: var(--text-primary); }
     .feature-desc { font-size: 0.82rem; color: var(--text-muted); line-height: 1.55; }
+    .mi { display: inline-block; vertical-align: middle; flex-shrink: 0; line-height: 1; }
+    .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; vertical-align: middle; flex-shrink: 0; margin-right: 2px; }
+    .status-dot--verde { background: #22c55e; }
+    .status-dot--rojo  { background: #ef4444; }
 
     /* ── MODELS GRID ──────────────────────────────────────────── */
     .models-grid {
@@ -953,7 +960,8 @@
       <a href="#precios" class="nav-link-item d-none d-md-inline">Precios</a>
       <a href="/app/" class="btn btn-sm landing-cta"><span class="landing-cta-desktop">Empezar gratis</span><span class="landing-cta-mobile">Empezar</span></a>
       <button class="theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema">
-        <span id="theme-icon">🌙</span>
+        <svg class="ti-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        <svg class="ti-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
       </button>
     </div>
   </div>
@@ -1026,7 +1034,7 @@
         <span class="mock-ticker-sym">AAPL</span>
         <span class="mock-company">Apple Inc.</span>
       </div>
-      <span class="mock-badge">🟢 Subvaluada</span>
+      <span class="mock-badge"><span class="status-dot status-dot--verde"></span> Subvaluada</span>
     </div>
 
     <!-- Métricas -->
@@ -1080,27 +1088,27 @@
         <tr>
           <td>DCF — Flujo de Caja Descontado</td>
           <td><strong>$198.20</strong></td>
-          <td><span class="mock-model-badge ok">✅ Útil</span></td>
+          <td><span class="mock-model-badge ok"><svg class="mi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Útil</span></td>
         </tr>
         <tr>
           <td>P/E Trailing</td>
           <td><strong>$185.60</strong></td>
-          <td><span class="mock-model-badge ok">✅ Útil</span></td>
+          <td><span class="mock-model-badge ok"><svg class="mi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Útil</span></td>
         </tr>
         <tr>
           <td>P/FCF Trailing</td>
           <td><strong>$201.10</strong></td>
-          <td><span class="mock-model-badge ok">✅ Útil</span></td>
+          <td><span class="mock-model-badge ok"><svg class="mi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Útil</span></td>
         </tr>
         <tr>
           <td>P/S</td>
           <td><strong>$220.80</strong></td>
-          <td><span class="mock-model-badge warn">⚠️ Algo útil</span></td>
+          <td><span class="mock-model-badge warn"><svg class="mi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Algo útil</span></td>
         </tr>
         <tr>
           <td>Reverse DCF</td>
           <td style="color:var(--text-muted); font-size:0.8rem;">g implícita: 14.2%</td>
-          <td><span class="mock-model-badge ok">✅ Útil</span></td>
+          <td><span class="mock-model-badge ok"><svg class="mi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Útil</span></td>
         </tr>
       </tbody>
     </table>
@@ -1120,42 +1128,42 @@
   <div class="row g-3">
     <div class="col-md-6 col-lg-4">
       <div class="feature-card">
-        <span class="feature-icon">🌐</span>
+        <span class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span>
         <div class="feature-title">Ciclo económico</div>
         <div class="feature-desc">Detecta la fase macro actual usando datos de FRED y ETFs de referencia. Saber si estás en expansión o contracción cambia el múltiplo justo.</div>
       </div>
     </div>
     <div class="col-md-6 col-lg-4">
       <div class="feature-card">
-        <span class="feature-icon">📊</span>
+        <span class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span>
         <div class="feature-title">Etapa de la empresa</div>
         <div class="feature-desc">Framework de valuación por etapa en 6 etapas: Startup → Crecimiento → Expansión → Madurez → Capital Return → Declive. El modelo correcto para cada momento.</div>
       </div>
     </div>
     <div class="col-md-6 col-lg-4">
       <div class="feature-card">
-        <span class="feature-icon">⚖️</span>
+        <span class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><line x1="12" y1="3" x2="12" y2="21"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></span>
         <div class="feature-title">Valuación multi-modelo</div>
         <div class="feature-desc">13 modelos con pesos adaptativos según la etapa. DCF, P/E, EV/EBITDA, DDM, Earnings Growth, Liquidación y más. Un precio consenso ponderado y objetivo.</div>
       </div>
     </div>
     <div class="col-md-6 col-lg-4">
       <div class="feature-card">
-        <span class="feature-icon">🔁</span>
+        <span class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></span>
         <div class="feature-title">Reverse DCF</div>
         <div class="feature-desc">¿Qué tasa de crecimiento está descontando el mercado? Te dice si la expectativa implícita en el precio actual es conservadora, razonable u optimista.</div>
       </div>
     </div>
     <div class="col-md-6 col-lg-4">
       <div class="feature-card">
-        <span class="feature-icon">📰</span>
+        <span class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg></span>
         <div class="feature-title">Noticias + IA</div>
         <div class="feature-desc">Noticias recientes con resumen de sentimiento generado por IA en español. El contexto narrativo que los modelos numéricos no ven.</div>
       </div>
     </div>
     <div class="col-md-6 col-lg-4">
       <div class="feature-card">
-        <span class="feature-icon">📄</span>
+        <span class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg></span>
         <div class="feature-title">Export PDF</div>
         <div class="feature-desc">Informe ejecutivo completo descargable en PDF. Todos los supuestos, proyecciones y tablas de sensibilidad en un solo archivo.</div>
       </div>
@@ -1410,7 +1418,7 @@
       const dark = theme === "dark";
       body.classList.toggle("theme-dark", dark);
       if (persist) { try { localStorage.setItem(storageKey, theme); } catch(e){} }
-      if (icon) icon.textContent = dark ? "☀️" : "🌙";
+      // icon switiching handled by CSS (.ti-moon / .ti-sun)
     }
 
     function detect() {
