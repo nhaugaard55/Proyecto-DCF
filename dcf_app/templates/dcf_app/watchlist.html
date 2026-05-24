@@ -88,10 +88,10 @@
 
   /* ── Item rows ─────────────────────────────────────────────── */
   .wl-item {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 7rem 1fr;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0 0.75rem;
     padding: 0.65rem 0;
     border-bottom: 1px solid var(--surface-border, rgba(0,0,0,.06));
   }
@@ -101,7 +101,18 @@
   .theme-dark .wl-item .fw-semibold { color: #e2e8f0; }
   .wl-item .text-muted { color: #6c757d !important; }
   .theme-dark .wl-item .text-muted { color: #94a3b8 !important; }
-  .wl-item-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+  .wl-item-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+
+  /* Price column */
+  .wl-item-price {
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-align: right;
+    color: var(--bs-body-color);
+  }
+  .theme-dark .wl-item-price { color: #e2e8f0; }
+  .wl-item-price.loading { color: var(--bs-secondary-color, #6c757d); font-size: 0.78rem; }
+  .theme-dark .wl-item-price.loading { color: #64748b; }
 
   /* Empty msg */
   .wl-empty-msg { color: #6c757d; }
@@ -210,6 +221,7 @@
                 {% endif %}
                 <div class="text-muted small">Agregado {{ item.added_at|date:"d/m/Y" }}</div>
               </div>
+              <div class="wl-item-price loading" data-price-ticker="{{ item.ticker }}">—</div>
               <div class="wl-item-actions">
                 <a href="{% url 'home' %}?ticker={{ item.ticker }}" class="btn btn-sm btn-outline-primary">Analizar</a>
                 <button class="btn btn-sm btn-outline-danger wl-remove-btn" data-ticker="{{ item.ticker }}">Quitar</button>
@@ -337,6 +349,39 @@
         return div;
     }
 
+    // ── Price fetching ───────────────────────────────────────────
+    var PRICES_URL = "{% url 'watchlist_prices' %}";
+
+    function fetchPricesFor(symbols) {
+        if (!symbols.length) return;
+        fetch(PRICES_URL + '?tickers=' + symbols.map(encodeURIComponent).join(','))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var prices = data.prices || {};
+                Object.keys(prices).forEach(function(ticker) {
+                    var price = prices[ticker];
+                    document.querySelectorAll('[data-price-ticker="' + ticker + '"]').forEach(function(el) {
+                        if (price !== null && price !== undefined) {
+                            el.textContent = '$' + Number(price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                            el.classList.remove('loading');
+                        } else {
+                            el.textContent = 'N/D';
+                            el.classList.remove('loading');
+                        }
+                    });
+                });
+            })
+            .catch(function() {});
+    }
+
+    // Fetch all prices on page load
+    (function() {
+        var all = Array.from(document.querySelectorAll('[data-price-ticker]'))
+            .map(function(el) { return el.dataset.priceTicker; })
+            .filter(function(v, i, a) { return v && a.indexOf(v) === i; });
+        if (all.length) fetchPricesFor(all);
+    })();
+
     // ── Init all existing groups ─────────────────────────────────
     var collapsedIds = getCollapsed();
     document.querySelectorAll('.wl-group').forEach(function (el) {
@@ -453,11 +498,13 @@
                     (meta?'<div class="text-muted small">'+meta+'</div>':'') +
                     '<div class="text-muted small">Agregado '+today()+'</div>' +
                 '</div>' +
+                '<div class="wl-item-price loading" data-price-ticker="'+escHtml(ticker)+'">—</div>' +
                 '<div class="wl-item-actions">' +
                     '<a href="'+HOME_URL+'?ticker='+encodeURIComponent(ticker)+'" class="btn btn-sm btn-outline-primary">Analizar</a>' +
                     '<button class="btn btn-sm btn-outline-danger wl-remove-btn" data-ticker="'+escHtml(ticker)+'">Quitar</button>' +
                 '</div>';
             attachRemove(div.querySelector('.wl-remove-btn'));
+            fetchPricesFor([ticker]);
             return div;
         }
 

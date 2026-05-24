@@ -1,5 +1,6 @@
 import io
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, cast
@@ -708,5 +709,29 @@ def watchlist_group_rename(request):
     if not updated:
         return JsonResponse({"error": "Grupo no encontrado"}, status=404)
     return JsonResponse({"action": "renamed", "group_id": group_id, "name": name[:100]})
+
+
+@require_GET
+def watchlist_prices_view(request):
+    """Devuelve precios actuales para una lista de tickers (uso de watchlist)."""
+    tickers_param = (request.GET.get("tickers") or "").strip()
+    if not tickers_param:
+        return JsonResponse({"prices": {}})
+
+    symbols = [s.strip().upper() for s in tickers_param.split(",") if s.strip()][:25]
+
+    def _fetch(symbol: str) -> tuple[str, float | None]:
+        try:
+            import yfinance as yf
+            fi = yf.Ticker(symbol).fast_info
+            price = getattr(fi, "last_price", None) or getattr(fi, "regular_market_price", None)
+            return symbol, round(float(price), 2) if price and float(price) > 0 else None
+        except Exception:
+            return symbol, None
+
+    with ThreadPoolExecutor(max_workers=min(len(symbols), 6)) as ex:
+        prices = dict(ex.map(_fetch, symbols))
+
+    return JsonResponse({"prices": prices})
 
 

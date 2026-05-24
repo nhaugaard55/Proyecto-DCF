@@ -11,5 +11,6 @@ urlpatterns = [
     path('watchlist/group/delete/', views.watchlist_group_delete, name='watchlist_group_delete'),
     path('watchlist/group/rename/', views.watchlist_group_rename, name='watchlist_group_rename'),
     path('api/search_companies/', views.search_companies_view, name='company_search'),
+    path('api/watchlist-prices/', views.watchlist_prices_view, name='watchlist_prices'),
     path('api/business-cycle/', views.business_cycle_view, name='business_cycle'),
 ]
