@@ -77,7 +77,7 @@ def _check_ticker_eligibility(ticker: str) -> str | None:
         name_part = f' ("{long_name}")' if long_name else ""
         msg = (
             f"El ticker \"{ticker}\"{name_part} corresponde a {tipo}. "
-            "El análisis DCF está disponible únicamente para acciones de empresas."
+            "El análisis intrínseco está disponible únicamente para acciones de empresas."
         )
         cache.set(cache_key, msg, _TYPE_CACHE_TTL)
         return msg
