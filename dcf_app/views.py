@@ -405,9 +405,6 @@ def dcf_view(request):
     base_query_string = base_query.urlencode()
 
     news_payload = [_serialize_news_item(item) for item in news_list]
-    recent_records_queryset = AnalysisRecord.objects.all()
-    recent_records = list(recent_records_queryset[:RECENT_HISTORY_FETCH_LIMIT])
-
     tradingview_symbol = ticker
     if company_exchange and ticker:
         tradingview_symbol = f"{company_exchange.upper()}:{ticker}"
@@ -451,8 +448,6 @@ def dcf_view(request):
             "initial_page": page_number,
             "base_query": base_query_string,
         },
-        "recent_records": recent_records,
-        "recent_records_limit": RECENT_HISTORY_VISIBLE_LIMIT,
         "filtros_etapa": filtros_etapa,
         "company_stage": company_stage,
         "stage_labels": ["Startup", "Hyper Growth", "Break Even", "Op. Leverage", "Cap. Return", "Decline"],
@@ -735,3 +730,6 @@ def watchlist_prices_view(request):
     return JsonResponse({"prices": prices})
 
 
+def history_view(request):
+    records = list(AnalysisRecord.objects.all())
+    return render(request, "dcf_app/history.html", {"records": records})

@@ -1,0 +1,279 @@
+{% extends "dcf_app/base.html" %}
+
+{% block nav_actions %}
+<a href="{% url 'home' %}" class="btn btn-outline-light btn-sm">← Volver al análisis</a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .recent-history-list {
+    list-style: none;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .recent-history-item { margin: 0; }
+
+  .recent-chip {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 1rem;
+    padding: 0.75rem 1rem;
+    display: grid;
+    grid-template-columns: 1fr auto auto auto auto auto;
+    align-items: center;
+    gap: 0 1.5rem;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .recent-chip:hover {
+    border-color: rgba(59, 130, 246, 0.35);
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+    transform: translateY(-1px);
+  }
+  .recent-history-item.is-expanded .recent-chip {
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  }
+  .theme-dark .recent-chip {
+    background: rgba(15, 23, 42, 0.65);
+    border-color: rgba(148, 163, 184, 0.2);
+  }
+  .recent-chip:focus-visible {
+    outline: 3px solid rgba(59, 130, 246, 0.35);
+    outline-offset: 2px;
+  }
+  .recent-chip-symbol { font-weight: 700; letter-spacing: 0.02em; font-size: 1rem; }
+  .recent-chip-company { font-size: 0.85rem; color: var(--text-muted); }
+  .recent-chip-group { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .recent-chip-value { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .recent-chip-value-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .recent-chip-value-amount { font-weight: 600; font-size: 0.95rem; }
+  .recent-chip-date { font-size: 0.75rem; color: var(--text-muted); justify-self: end; white-space: nowrap; }
+
+  .recent-chip-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.25rem 0.65rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+  .recent-chip-status--subvaluada   { background: rgba(34,197,94,.18);   color: #166534; }
+  .recent-chip-status--sobrevaluada { background: rgba(220,38,38,.18);   color: #991b1b; }
+  .recent-chip-status--razonable    { background: rgba(100,116,139,.25); color: #475569; }
+  .theme-dark .recent-chip-status--subvaluada   { background: rgba(34,197,94,.22);    color: #bbf7d0; }
+  .theme-dark .recent-chip-status--sobrevaluada { background: rgba(248,113,113,.24); color: #fecaca; }
+  .theme-dark .recent-chip-status--razonable    { background: rgba(148,163,184,.35); color: #e2e8f0; }
+
+  .recent-history-details { margin-top: 0.75rem; }
+  .recent-card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 1.25rem;
+    padding: 1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    color: var(--text-primary);
+    box-shadow: 0 12px 32px rgba(15,23,42,.08);
+  }
+  .theme-dark .recent-card { box-shadow: 0 18px 40px rgba(7,11,28,.45); }
+  .recent-card .recent-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .recent-card .recent-ticker  { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.02em; }
+  .recent-card .recent-date    { font-size: 0.8rem; color: var(--text-muted); }
+  .recent-card .recent-metrics { display: grid; gap: 0.35rem; }
+  .recent-card .recent-metrics .text-muted { font-size: 0.75rem; }
+  .recent-card .recent-actions { margin-top: 0.25rem; }
+
+  .estado-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .estado-pill--subvaluada   { background: rgba(22,163,74,.18);  color: #166534; }
+  .estado-pill--sobrevaluada { background: rgba(220,38,38,.18);  color: #991b1b; }
+  .estado-pill--razonable    { background: rgba(59,130,246,.16); color: #1d4ed8; }
+  .theme-dark .estado-pill--subvaluada   { background: rgba(34,197,94,.22);   color: #bbf7d0; }
+  .theme-dark .estado-pill--sobrevaluada { background: rgba(248,113,113,.24); color: #fecaca; }
+  .theme-dark .estado-pill--razonable    { background: rgba(59,130,246,.3);   color: #bfdbfe; }
+
+  .recent-diff { font-size: 0.85rem; font-weight: 600; }
+  .recent-diff.positive { color: #166534; }
+  .recent-diff.negative { color: #b91c1c; }
+  .recent-diff.neutral  { color: var(--text-muted); }
+  .theme-dark .recent-diff.positive { color: #bbf7d0; }
+  .theme-dark .recent-diff.negative { color: #fca5a5; }
+
+  @media (max-width: 575.98px) {
+    .recent-chip {
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+      padding: 0.85rem;
+    }
+    .recent-chip-group  { grid-column: 1 / -1; }
+    .recent-chip-status { grid-column: 1 / -1; width: fit-content; }
+    .recent-chip-date   { grid-column: 1 / -1; justify-self: start; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+
+    <div class="d-flex align-items-center justify-content-between mb-1">
+      <h2 class="fw-bold mb-0">📋 Historial de análisis</h2>
+    </div>
+    <p class="text-muted mb-4">Todos los escenarios de valoración evaluados.</p>
+
+    {% if records %}
+    <ul class="recent-history-list">
+      {% for record in records %}
+      {% with estado_slug=record.estado|default:''|slugify %}
+      <li class="recent-history-item" data-history-item>
+        <button type="button" class="recent-chip" data-history-open aria-label="Ver detalle del análisis de {{ record.ticker }}">
+          <div class="recent-chip-group">
+            <span class="recent-chip-symbol">{{ record.ticker }}</span>
+            {% if record.company_name %}
+            <span class="recent-chip-company">{{ record.company_name }}</span>
+            {% endif %}
+          </div>
+          {% if record.estado %}
+          <span class="recent-chip-status recent-chip-status--{{ estado_slug }}">{{ record.estado|title }}</span>
+          {% else %}
+          <span class="recent-chip-status recent-chip-status--razonable">Sin determinar</span>
+          {% endif %}
+          <div class="recent-chip-value">
+            <span class="recent-chip-value-label">Valor intrínseco</span>
+            <span class="recent-chip-value-amount">
+              {% if record.valor_intrinseco is not None %}${{ record.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}
+            </span>
+          </div>
+          <div class="recent-chip-value">
+            <span class="recent-chip-value-label">Precio actual</span>
+            <span class="recent-chip-value-amount">
+              {% if record.precio_actual is not None %}${{ record.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}
+            </span>
+          </div>
+          {% with diff=record.diferencia_pct %}
+          <div class="recent-chip-value">
+            {% if diff is not None %}
+            <span class="recent-chip-value-label">Margen</span>
+            <span class="recent-chip-value-amount {% if diff > 0 %}text-success{% elif diff < 0 %}text-danger{% else %}text-muted{% endif %}">
+              {{ diff|floatformat:2 }}%
+            </span>
+            {% endif %}
+          </div>
+          {% endwith %}
+          <span class="recent-chip-date">{{ record.created_at|date:"d/m/Y H:i" }}</span>
+        </button>
+        <div class="recent-history-details d-none" data-history-details>
+          <article class="recent-card">
+            <div class="recent-header">
+              <div>
+                <span class="recent-ticker">{{ record.ticker }}</span>
+                {% if record.company_name %}
+                <div class="text-muted small">{{ record.company_name }}</div>
+                {% endif %}
+              </div>
+              {% with diff=record.diferencia_pct %}
+              {% if diff is not None %}
+              <span class="recent-diff {% if diff > 0 %}positive{% elif diff < 0 %}negative{% else %}neutral{% endif %}">
+                {{ diff|floatformat:2 }}%
+              </span>
+              {% endif %}
+              {% endwith %}
+            </div>
+            <div class="recent-date">{{ record.created_at|date:"d/m/Y H:i" }}</div>
+            <div class="recent-metrics mt-3">
+              <div>
+                <span class="text-muted d-block">Estado</span>
+                {% if record.estado %}
+                {% with estado=record.estado|slugify %}
+                <span class="estado-pill estado-pill--{{ estado }}">{{ record.estado|title }}</span>
+                {% endwith %}
+                {% else %}
+                <span class="text-muted small">Sin determinar</span>
+                {% endif %}
+              </div>
+              <div>
+                <span class="text-muted d-block">Valor intrínseco</span>
+                <span class="fw-semibold">{% if record.valor_intrinseco is not None %}${{ record.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}</span>
+              </div>
+              <div>
+                <span class="text-muted d-block">Precio actual</span>
+                <span class="fw-semibold">{% if record.precio_actual is not None %}${{ record.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}</span>
+              </div>
+              <div class="text-muted small">
+                Método: {{ record.get_metodo_display }} · Fuente: {{ record.fuente_display }}
+              </div>
+            </div>
+            <div class="recent-actions">
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'home' %}?ticker={{ record.ticker }}{% if record.company_name %}&company_name={{ record.company_name|urlencode }}{% endif %}{% if record.company_exchange %}&company_exchange={{ record.company_exchange|urlencode }}{% endif %}">Reanalizar</a>
+            </div>
+          </article>
+        </div>
+      </li>
+      {% endwith %}
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted">Todavía no hay análisis guardados. Realizá tu primer análisis desde la pantalla principal.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+<script>
+(function () {
+  var items = Array.from(document.querySelectorAll('[data-history-item]'));
+
+  function collapseAll() {
+    items.forEach(function (item) {
+      var d = item.querySelector('[data-history-details]');
+      if (d) d.classList.add('d-none');
+      item.classList.remove('is-expanded');
+    });
+  }
+
+  items.forEach(function (item) {
+    var trigger = item.querySelector('[data-history-open]');
+    var detail  = item.querySelector('[data-history-details]');
+    if (!trigger || !detail) return;
+    trigger.addEventListener('click', function () {
+      var willShow = detail.classList.contains('d-none');
+      collapseAll();
+      if (willShow) {
+        detail.classList.remove('d-none');
+        item.classList.add('is-expanded');
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}
