@@ -90,21 +90,27 @@
   .wl-item {
     display: grid;
     grid-template-columns: 1fr 7rem 1fr;
-    align-items: center;
-    gap: 0 0.75rem;
+    grid-template-rows: auto auto;
+    gap: 0.05rem 0.75rem;
     padding: 0.65rem 0;
     border-bottom: 1px solid var(--surface-border, rgba(0,0,0,.06));
   }
   .theme-dark .wl-item { border-bottom-color: rgba(255,255,255,.07); }
   .wl-item:last-child { border-bottom: none; }
-  .wl-item .fw-semibold { color: var(--bs-body-color); }
-  .theme-dark .wl-item .fw-semibold { color: #e2e8f0; }
-  .wl-item .text-muted { color: #6c757d !important; }
-  .theme-dark .wl-item .text-muted { color: #94a3b8 !important; }
-  .wl-item-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+  .wl-item-ticker { grid-column: 1; grid-row: 1; font-weight: 600; color: var(--bs-body-color); }
+  .theme-dark .wl-item-ticker { color: #e2e8f0; }
+  .wl-item-meta { grid-column: 1; grid-row: 2; color: #6c757d; font-size: 0.8rem; }
+  .theme-dark .wl-item-meta { color: #94a3b8; }
+  .wl-item-actions {
+    grid-column: 3; grid-row: 1 / 3;
+    display: flex; gap: 0.4rem;
+    align-self: center; justify-content: flex-end;
+  }
 
   /* Price column */
   .wl-item-price {
+    grid-column: 2; grid-row: 1 / 3;
+    align-self: center;
     font-weight: 600;
     font-size: 0.95rem;
     text-align: right;
@@ -165,9 +171,13 @@
   .wl-new-group-form.show { display: flex; }
 
   @media (max-width: 575.98px) {
-    .wl-item { flex-direction: column; align-items: flex-start; }
-    .wl-item-actions { width: 100%; display: grid !important; grid-template-columns: 1fr 1fr; }
-    .wl-item-actions .btn { width: 100%; }
+    .wl-item {
+      grid-template-columns: 1fr auto auto;
+      gap: 0.15rem 0.4rem;
+    }
+    .wl-item-price { grid-column: 2; grid-row: 1; align-self: center; }
+    .wl-item-actions { grid-column: 3; grid-row: 1; align-self: center; justify-content: flex-start; }
+    .wl-item-meta { grid-column: 1 / 4; grid-row: 2; }
     .wl-new-group-form { flex-direction: column; }
     .wl-new-group-form input,
     .wl-new-group-form button { width: 100%; }
@@ -214,18 +224,13 @@
           <div class="wl-items-list">
             {% for item in group.items.all %}
             <div class="wl-item" data-ticker="{{ item.ticker }}">
-              <div>
-                <div class="fw-semibold">{{ item.ticker }}</div>
-                {% if item.company_name %}
-                <div class="text-muted small">{{ item.company_name }}{% if item.company_exchange %} · {{ item.company_exchange }}{% endif %}</div>
-                {% endif %}
-                <div class="text-muted small">Agregado {{ item.added_at|date:"d/m/Y" }}</div>
-              </div>
+              <div class="wl-item-ticker">{{ item.ticker }}</div>
               <div class="wl-item-price loading" data-price-ticker="{{ item.ticker }}">—</div>
               <div class="wl-item-actions">
                 <a href="{% url 'home' %}?ticker={{ item.ticker }}" class="btn btn-sm btn-outline-primary">Analizar</a>
                 <button class="btn btn-sm btn-outline-danger wl-remove-btn" data-ticker="{{ item.ticker }}">Quitar</button>
               </div>
+              <div class="wl-item-meta">{% if item.company_name %}{{ item.company_name }}{% if item.company_exchange %} · {{ item.company_exchange }}{% endif %} · {% endif %}Agregado {{ item.added_at|date:"d/m/Y" }}</div>
             </div>
             {% empty %}
             <p class="wl-empty-msg small mb-2">Esta watchlist está vacía. Buscá una empresa abajo para agregarla.</p>
@@ -491,18 +496,15 @@
         function buildItemEl(ticker, name, exchange) {
             var div = document.createElement('div');
             div.className = 'wl-item'; div.dataset.ticker = ticker;
-            var meta = name ? (escHtml(name)+(exchange?' · '+escHtml(exchange):'')) : '';
+            var metaStr = (name ? escHtml(name)+(exchange?' · '+escHtml(exchange):'') + ' · ' : '') + 'Agregado ' + today();
             div.innerHTML =
-                '<div>' +
-                    '<div class="fw-semibold">'+escHtml(ticker)+'</div>' +
-                    (meta?'<div class="text-muted small">'+meta+'</div>':'') +
-                    '<div class="text-muted small">Agregado '+today()+'</div>' +
-                '</div>' +
+                '<div class="wl-item-ticker">'+escHtml(ticker)+'</div>' +
                 '<div class="wl-item-price loading" data-price-ticker="'+escHtml(ticker)+'">—</div>' +
                 '<div class="wl-item-actions">' +
                     '<a href="'+HOME_URL+'?ticker='+encodeURIComponent(ticker)+'" class="btn btn-sm btn-outline-primary">Analizar</a>' +
                     '<button class="btn btn-sm btn-outline-danger wl-remove-btn" data-ticker="'+escHtml(ticker)+'">Quitar</button>' +
-                '</div>';
+                '</div>' +
+                '<div class="wl-item-meta">'+metaStr+'</div>';
             attachRemove(div.querySelector('.wl-remove-btn'));
             fetchPricesFor([ticker]);
             return div;
