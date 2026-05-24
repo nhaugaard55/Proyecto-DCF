@@ -11,6 +11,52 @@
     border-color: var(--surface-border) !important;
   }
 
+  /* ── Add search bar ───────────────────────────────────────── */
+  .wl-search-wrapper {
+    position: relative;
+  }
+  .wl-dd {
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    max-height: 14rem;
+    overflow-y: auto;
+    border-radius: 0.5rem;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
+    background: #ffffff;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+  }
+  .theme-dark .wl-dd {
+    background: #131b2d;
+    border-color: rgba(255,255,255,0.1);
+  }
+  .wl-dd.show { display: block; }
+  .wl-dd .dd-item {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.85rem;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    color: var(--bs-body-color);
+    font-size: 0.875rem;
+    transition: background 0.12s;
+  }
+  .wl-dd .dd-item:hover,
+  .wl-dd .dd-item.active { background: rgba(37, 99, 235, 0.08); }
+  .wl-dd .dd-sym { font-weight: 700; margin-right: 0.4rem; }
+  .wl-dd .dd-name { color: var(--bs-secondary-color, #6c757d); font-size: 0.78rem; }
+  .wl-dd .dd-no-results {
+    padding: 0.65rem 0.85rem;
+    color: var(--bs-secondary-color, #6c757d);
+    font-size: 0.85rem;
+  }
+  .wl-feedback { min-height: 1.2rem; }
+
   @media (max-width: 575.98px) {
     .watchlist-card {
       align-items: stretch !important;
@@ -38,8 +84,19 @@
     <h2 class="fw-bold mb-1">★ Watchlist</h2>
     <p class="text-muted mb-4">Tickers guardados para seguimiento rápido.</p>
 
-    {% if watchlist %}
-    <div class="d-flex flex-column gap-3">
+    <!-- ── Buscador para agregar ──────────────────────────────── -->
+    <div class="mb-4">
+      <div class="wl-search-wrapper">
+        <input type="text" id="wl-search-input" class="form-control"
+               placeholder="Buscar empresa para agregar a la watchlist..."
+               autocomplete="off" spellcheck="false">
+        <div class="wl-dd" id="wl-search-dd"></div>
+      </div>
+      <div id="wl-add-feedback" class="wl-feedback mt-2 small text-muted"></div>
+    </div>
+
+    <!-- ── Lista ──────────────────────────────────────────────── -->
+    <div id="wl-list" class="d-flex flex-column gap-3">
       {% for item in watchlist %}
       <div class="watchlist-card p-4 rounded-3 border d-flex align-items-center justify-content-between gap-3">
         <div>
@@ -57,35 +114,190 @@
       </div>
       {% endfor %}
     </div>
-    {% else %}
-    <div class="text-center py-5 text-muted">
-      <div class="fs-1 mb-3">★</div>
-      <p>Tu watchlist está vacía. Analiza una empresa y agrégala desde los botones de acción.</p>
-      <a href="{% url 'home' %}" class="btn btn-primary mt-2">Ir al análisis</a>
+
+    {% if not watchlist %}
+    <div id="wl-empty" class="text-center py-4 text-muted">
+      <p class="mb-0">Tu watchlist está vacía. Buscá una empresa arriba para agregarla.</p>
     </div>
     {% endif %}
+
   </div>
 </div>
 
 <script>
-document.querySelectorAll(".watchlist-remove-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
-        const ticker = btn.dataset.ticker;
-        const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || "";
-        btn.disabled = true;
+(function () {
+    var SEARCH_URL = "{% url 'company_search' %}";
+    var TOGGLE_URL = "{% url 'watchlist_toggle' %}";
+    var HOME_URL   = "{% url 'home' %}";
+    var DEBOUNCE_MS = 180;
+
+    var input    = document.getElementById('wl-search-input');
+    var dd       = document.getElementById('wl-search-dd');
+    var feedback = document.getElementById('wl-add-feedback');
+    var list     = document.getElementById('wl-list');
+    var empty    = document.getElementById('wl-empty');
+
+    var timer    = null;
+    var activeIdx = -1;
+
+    function csrfToken() {
+        return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    }
+
+    function getItems() {
+        return Array.from(dd.querySelectorAll('.dd-item'));
+    }
+
+    function setActive(idx) {
+        getItems().forEach(function (el, i) { el.classList.toggle('active', i === idx); });
+        activeIdx = idx;
+    }
+
+    function hideDd() {
+        dd.classList.remove('show');
+        dd.innerHTML = '';
+        activeIdx = -1;
+    }
+
+    function setFeedback(msg, color) {
+        feedback.textContent = msg;
+        feedback.style.color = color || '';
+        if (msg) setTimeout(function () { if (feedback.textContent === msg) feedback.textContent = ''; }, 3000);
+    }
+
+    function today() {
+        var d = new Date();
+        return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth()+1)).slice(-2) + '/' + d.getFullYear();
+    }
+
+    function buildCard(ticker, name, exchange) {
+        var card = document.createElement('div');
+        card.className = 'watchlist-card p-4 rounded-3 border d-flex align-items-center justify-content-between gap-3';
+        var meta = name ? (name + (exchange ? ' · ' + exchange : '')) : '';
+        card.innerHTML =
+            '<div>' +
+                '<div class="fw-bold fs-5">' + ticker + '</div>' +
+                (meta ? '<div class="text-muted small">' + meta + '</div>' : '') +
+                '<div class="text-muted small">Agregado ' + today() + '</div>' +
+            '</div>' +
+            '<div class="watchlist-card-actions d-flex gap-2">' +
+                '<a href="' + HOME_URL + '?ticker=' + encodeURIComponent(ticker) + '" class="btn btn-sm btn-outline-primary">Analizar</a>' +
+                '<button class="btn btn-sm btn-outline-danger watchlist-remove-btn" data-ticker="' + ticker + '">Quitar</button>' +
+            '</div>';
+        attachRemove(card.querySelector('.watchlist-remove-btn'));
+        return card;
+    }
+
+    function attachRemove(btn) {
+        btn.addEventListener('click', async function () {
+            var ticker = btn.dataset.ticker;
+            btn.disabled = true;
+            try {
+                var resp = await fetch(TOGGLE_URL, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ ticker: ticker }).toString(),
+                });
+                var data = await resp.json();
+                if (data.action === 'removed') {
+                    btn.closest('.watchlist-card').remove();
+                    if (!list.querySelector('.watchlist-card')) {
+                        if (empty) empty.style.display = '';
+                    }
+                }
+            } catch (e) {}
+            btn.disabled = false;
+        });
+    }
+
+    // Attach remove listeners to existing cards
+    document.querySelectorAll('.watchlist-remove-btn').forEach(attachRemove);
+
+    async function addToWatchlist(ticker, name, exchange) {
         try {
-            const resp = await fetch("{% url 'watchlist_toggle' %}", {
-                method: "POST",
-                headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ ticker }).toString(),
+            var resp = await fetch(TOGGLE_URL, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ ticker: ticker, company_name: name || '', company_exchange: exchange || '' }).toString(),
             });
-            const data = await resp.json();
-            if (data.action === "removed") {
-                btn.closest(".d-flex.align-items-center").remove();
+            var data = await resp.json();
+            if (data.action === 'added') {
+                if (empty) empty.style.display = 'none';
+                list.prepend(buildCard(ticker, name, exchange));
+                setFeedback(ticker + ' agregado a la watchlist.', '#22c55e');
+            } else if (data.action === 'removed') {
+                // Was already in list — toggle removed it, so just inform user
+                var existing = list.querySelector('[data-ticker="' + ticker + '"]');
+                if (existing) existing.closest('.watchlist-card').remove();
+                setFeedback(ticker + ' ya estaba en la watchlist y fue quitado.', '#f97316');
+                if (!list.querySelector('.watchlist-card') && empty) empty.style.display = '';
             }
-        } catch (e) {}
-        btn.disabled = false;
+        } catch (e) {
+            setFeedback('Error al agregar. Intentá de nuevo.', '#ef4444');
+        }
+    }
+
+    function renderResults(results) {
+        dd.innerHTML = '';
+        if (!results.length) {
+            dd.innerHTML = '<div class="dd-no-results">Sin resultados</div>';
+            dd.classList.add('show');
+            return;
+        }
+        results.forEach(function (r) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'dd-item';
+            btn.innerHTML = '<span class="dd-sym">' + r.symbol + '</span>' +
+                            '<span class="dd-name">' + r.name + ' · ' + r.exchange + '</span>';
+            btn.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                input.value = '';
+                hideDd();
+                addToWatchlist(r.symbol, r.name, r.exchange);
+            });
+            dd.appendChild(btn);
+        });
+        dd.classList.add('show');
+        activeIdx = -1;
+    }
+
+    function doSearch(q) {
+        if (q.length < 1) { hideDd(); return; }
+        fetch(SEARCH_URL + '?q=' + encodeURIComponent(q) + '&limit=8')
+            .then(function (r) { return r.json(); })
+            .then(function (data) { renderResults(data.results || []); })
+            .catch(function () { hideDd(); });
+    }
+
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        var q = input.value.trim();
+        if (!q) { hideDd(); return; }
+        timer = setTimeout(function () { doSearch(q); }, DEBOUNCE_MS);
     });
-});
+
+    input.addEventListener('keydown', function (e) {
+        var items = getItems();
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActive(Math.min(activeIdx + 1, items.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActive(Math.max(activeIdx - 1, 0));
+        } else if (e.key === 'Enter') {
+            if (activeIdx >= 0 && items[activeIdx]) {
+                e.preventDefault();
+                items[activeIdx].dispatchEvent(new MouseEvent('mousedown'));
+            }
+        } else if (e.key === 'Escape') {
+            hideDd();
+        }
+    });
+
+    input.addEventListener('blur', function () {
+        setTimeout(hideDd, 150);
+    });
+})();
 </script>
 {% endblock %}
