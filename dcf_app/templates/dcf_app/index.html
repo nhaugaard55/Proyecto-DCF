@@ -1870,7 +1870,7 @@
 
     /* ── Loading overlay ─────────────────────────────── */
     #analysis-loading {
-        display: none;
+        display: flex;
         position: fixed;
         inset: 0;
         z-index: 1060;
@@ -1879,8 +1879,11 @@
         -webkit-backdrop-filter: blur(4px);
         align-items: center;
         justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s;
     }
-    #analysis-loading.active { display: flex; }
+    #analysis-loading.active { opacity: 1; pointer-events: auto; }
 
     .loading-card {
         background: var(--surface-card);
@@ -1893,26 +1896,17 @@
         width: 90%;
     }
 
-    .loading-dots {
-        display: flex;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .loading-dots span {
-        width: 10px;
-        height: 10px;
+    .loading-spinner {
+        width: 42px;
+        height: 42px;
+        border: 3.5px solid rgba(59, 130, 246, 0.18);
+        border-top-color: var(--accent);
         border-radius: 50%;
-        background: var(--accent);
-        animation: dotBounce 1.2s infinite ease-in-out;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 1.5rem;
     }
-    .loading-dots span:nth-child(1) { animation-delay: 0s; }
-    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes dotBounce {
-        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-        40%            { transform: scale(1.1); opacity: 1; }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
 
     .loading-steps {
@@ -1930,22 +1924,25 @@
         display: flex;
         align-items: center;
         gap: 0.6rem;
-        transition: color 0.3s;
-    }
-    .loading-steps li.active {
-        color: var(--text-primary);
-        font-weight: 600;
+        transition: color 0.4s;
     }
     .loading-steps li .step-dot {
-        width: 7px; height: 7px;
+        width: 8px; height: 8px;
         border-radius: 50%;
-        background: var(--surface-border);
+        background: #4ade80;
+        box-shadow: 0 0 6px 2px rgba(74,222,128,0.7);
         flex-shrink: 0;
-        transition: background 0.3s;
+        will-change: opacity;
+        animation: dotFade 2s linear infinite;
     }
-    .loading-steps li.active .step-dot { background: var(--accent); }
-    .loading-steps li.done .step-dot   { background: #16a34a; }
-    .loading-steps li.done { color: var(--text-muted); }
+    .loading-steps li:nth-child(1) .step-dot { animation-delay:    0s; }
+    .loading-steps li:nth-child(2) .step-dot { animation-delay: -1.5s; }
+    .loading-steps li:nth-child(3) .step-dot { animation-delay: -1.0s; }
+    .loading-steps li:nth-child(4) .step-dot { animation-delay: -0.5s; }
+    @keyframes dotFade {
+        0%, 20%   { opacity: 1; }
+        30%, 100% { opacity: 0.12; }
+    }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 {% endblock %}
@@ -4705,11 +4702,18 @@ document.addEventListener("DOMContentLoaded", function () {
         if (hiddenTicker.value && typeof showAnalysisLoading === "function") {
             event.preventDefault();
             showAnalysisLoading(hiddenTicker.value);
-            requestAnimationFrame(function () {
-                requestAnimationFrame(function () {
-                    form.submit();
-                });
-            });
+            var formData = new FormData(form);
+            fetch(form.action || window.location.pathname, {
+                method: "POST",
+                body: formData
+            })
+            .then(function (response) { return response.text(); })
+            .then(function (html) {
+                document.open();
+                document.write(html);
+                document.close();
+            })
+            .catch(function () { form.submit(); });
         }
     });
 
@@ -5197,9 +5201,7 @@ document.addEventListener("DOMContentLoaded", function () {
 <!-- ═══ OVERLAY DE CARGA ═══════════════════════════════════════ -->
 <div id="analysis-loading" role="status" aria-live="polite">
   <div class="loading-card">
-    <div class="loading-dots">
-      <span></span><span></span><span></span>
-    </div>
+    <div class="loading-spinner" aria-hidden="true"></div>
     <div class="fw-semibold mb-1" style="font-size:1rem; color:var(--text-primary);">
       Analizando <span id="loading-ticker" style="color:var(--accent);"></span>
     </div>
@@ -5215,35 +5217,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script>
 (function () {
-    var overlay   = document.getElementById("analysis-loading");
-    var tickerEl  = document.getElementById("loading-ticker");
-    var steps     = document.querySelectorAll("#loading-steps li");
-    var stepIndex = 0;
-    var stepTimer = null;
-
-    // Tiempos aproximados de cada paso (ms)
-    var STEP_DELAYS = [1200, 2500, 4000, 6500];
-
-    function activateStep(i) {
-        steps.forEach(function (li, idx) {
-            li.classList.remove("active", "done");
-            if (idx < i)  li.classList.add("done");
-            if (idx === i) li.classList.add("active");
-        });
-    }
-
-    function scheduleSteps() {
-        STEP_DELAYS.forEach(function (delay, i) {
-            setTimeout(function () { activateStep(i); }, delay);
-        });
-    }
+    var overlay  = document.getElementById("analysis-loading");
+    var tickerEl = document.getElementById("loading-ticker");
 
     window.showAnalysisLoading = function (ticker) {
         if (!overlay) return;
         if (tickerEl) tickerEl.textContent = ticker.toUpperCase();
-        steps.forEach(function (li) { li.classList.remove("active", "done"); });
         overlay.classList.add("active");
-        scheduleSteps();
     };
 
     // Si la página carga con error (POST rebotó), ocultar el overlay
