@@ -1877,15 +1877,7 @@
             flex: 1 1 0;
         }
 
-        .results-actions {
-            align-items: stretch;
-            gap: 0.75rem !important;
-        }
-
-        .results-actions form,
-        .results-actions .btn {
-            width: 100%;
-        }
+        .action-pill { width: 100%; justify-content: center; }
 
         .loading-card {
             padding: 1.5rem;
@@ -1899,6 +1891,44 @@
     }
 
     /* ── Loading overlay ─────────────────────────────── */
+    /* Botones de acción (PDF / Watchlist) */
+    .action-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 1.2rem;
+        border-radius: 2rem;
+        font-size: 0.82rem;
+        font-weight: 500;
+        border: 1px solid var(--surface-border);
+        background: transparent;
+        color: var(--text-secondary);
+        text-decoration: none;
+        cursor: pointer;
+        transition: border-color 0.18s, color 0.18s, background 0.18s;
+        line-height: 1.4;
+        white-space: nowrap;
+    }
+    .action-pill:hover {
+        border-color: rgba(148, 163, 184, 0.55);
+        color: var(--text-primary);
+        background: rgba(148, 163, 184, 0.07);
+        text-decoration: none;
+    }
+    .action-pill--active {
+        border-color: rgba(234, 179, 8, 0.45);
+        color: #fbbf24;
+    }
+    .action-pill--active:hover {
+        border-color: rgba(234, 179, 8, 0.7);
+        background: rgba(234, 179, 8, 0.07);
+        color: #fbbf24;
+    }
+    .action-pill:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
     #analysis-loading {
         display: flex;
         position: fixed;
@@ -4426,14 +4456,18 @@
 </section>
 
 {# ---- Botones de acción ---- #}
-<div class="results-actions d-flex flex-wrap justify-content-center gap-3 mt-5 mb-4">
-    <a href="{% url 'dcf_executive_report' ticker %}" class="btn btn-outline-primary btn-lg px-4">⬇ Descargar PDF</a>
+<div class="d-flex flex-wrap justify-content-center gap-3 mt-5 mb-4">
+    <a href="{% url 'dcf_executive_report' ticker %}" class="action-pill">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8M5 7.5l3 3 3-3M2 13h12"/></svg>
+        Descargar PDF
+    </a>
     <button type="button" id="watchlist-btn"
-        class="btn btn-lg px-4 {% if in_watchlist %}btn-warning{% else %}btn-outline-warning{% endif %}"
+        class="action-pill {% if in_watchlist %}action-pill--active{% endif %}"
         data-ticker="{{ ticker }}"
         data-company-name="{{ resultado.nombre|default:'' }}"
         data-company-exchange="{{ company_exchange|default:'' }}">
-        {% if in_watchlist %}★ En watchlist{% else %}☆ Agregar a watchlist{% endif %}
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="{% if in_watchlist %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" id="watchlist-star-icon"><path d="M8 2l1.6 3.6 3.4.5-2.5 2.5.6 3.9L8 10.5l-3.1 2 .6-3.9L3 6.1l3.4-.5L8 2z"/></svg>
+        <span id="watchlist-btn-label">{% if in_watchlist %}En watchlist{% else %}Agregar a watchlist{% endif %}</span>
     </button>
 </div>
 {% elif ticker %}
@@ -5080,14 +5114,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     body: body.toString(),
                 });
                 const data = await resp.json();
+                const starIcon = document.getElementById("watchlist-star-icon");
+                const btnLabel = document.getElementById("watchlist-btn-label");
                 if (data.action === "added") {
-                    watchlistBtn.textContent = "★ En watchlist";
-                    watchlistBtn.classList.remove("btn-outline-warning");
-                    watchlistBtn.classList.add("btn-warning");
+                    watchlistBtn.classList.add("action-pill--active");
+                    if (starIcon) starIcon.setAttribute("fill", "currentColor");
+                    if (btnLabel) btnLabel.textContent = "En watchlist";
                 } else {
-                    watchlistBtn.textContent = "☆ Agregar a watchlist";
-                    watchlistBtn.classList.remove("btn-warning");
-                    watchlistBtn.classList.add("btn-outline-warning");
+                    watchlistBtn.classList.remove("action-pill--active");
+                    if (starIcon) starIcon.setAttribute("fill", "none");
+                    if (btnLabel) btnLabel.textContent = "Agregar a watchlist";
                 }
             } catch (e) { /* silencioso */ }
             watchlistBtn.disabled = false;
