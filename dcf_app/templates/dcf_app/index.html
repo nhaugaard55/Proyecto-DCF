@@ -4576,9 +4576,15 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             const shouldOpen = !panels[step].classList.contains("show");
-            Object.entries(panels).forEach(([panelStep, panel]) => {
-                setPanelVisible(panel, panelStep === step && shouldOpen);
-            });
+            if (mobileQuery.matches) {
+                // On mobile each panel toggles independently — no page jump from closing siblings
+                setPanelVisible(panels[step], shouldOpen);
+            } else {
+                // On desktop only one panel open at a time (they sit in the same row)
+                Object.entries(panels).forEach(([panelStep, panel]) => {
+                    setPanelVisible(panel, panelStep === step && shouldOpen);
+                });
+            }
             syncCards();
         }
 
