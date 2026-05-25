@@ -4,8 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
+from django.urls import reverse
 
+from dcf_app.models import WatchlistGroup, WatchlistItem
 from dcf_core import insider_trading
 from dcf_core.DCF_Main import ejecutar_dcf
 from dcf_core.company_stage import detect_company_stage
@@ -329,6 +331,33 @@ class InsiderTradingTests(SimpleTestCase):
         self.assertEqual(result["resumen"]["valor_ventas_ajustado_usd"], 15_000)
         self.assertEqual(result["resumen"]["ventas_automaticas_usd"], 100_000)
         self.assertEqual(result["resumen"]["porcentaje_ventas_ajustadas_sobre_brutas"], 15)
+
+
+class WatchlistViewTests(TestCase):
+    def test_toggle_without_group_uses_general_watchlist(self) -> None:
+        other_group = WatchlistGroup.objects.create(name="Tecnológicas")
+
+        response = self.client.post(
+            reverse("watchlist_toggle"),
+            {"ticker": "AAPL", "company_name": "Apple Inc.", "company_exchange": "NASDAQ"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        general = WatchlistGroup.objects.get(name="General")
+        self.assertTrue(WatchlistItem.objects.filter(watchlist=general, ticker="AAPL").exists())
+        self.assertFalse(WatchlistItem.objects.filter(watchlist=other_group, ticker="AAPL").exists())
+
+    def test_toggle_with_group_id_uses_selected_watchlist(self) -> None:
+        selected_group = WatchlistGroup.objects.create(name="Dividendos")
+
+        response = self.client.post(
+            reverse("watchlist_toggle"),
+            {"ticker": "KO", "group_id": selected_group.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(WatchlistItem.objects.filter(watchlist=selected_group, ticker="KO").exists())
+        self.assertFalse(WatchlistGroup.objects.filter(name="General").exists())
 
 
 class MultiModelValuationTests(SimpleTestCase):

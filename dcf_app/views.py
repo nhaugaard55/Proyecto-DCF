@@ -563,6 +563,7 @@ def dcf_view(request):
         tradingview_symbol = f"{company_exchange.upper()}:{ticker}"
 
     in_watchlist = WatchlistItem.objects.filter(ticker=ticker).exists() if ticker else False
+    watchlist_groups = _watchlist_groups_for_picker(ticker)
     precio_historico = (resultado or {}).get("precio_historico") if resultado else None
     datos_empresa_context = resultado.get("datos_empresa") if isinstance(resultado, dict) else {}
     if not isinstance(datos_empresa_context, dict):
@@ -573,6 +574,7 @@ def dcf_view(request):
 
     context = {
         "in_watchlist": in_watchlist,
+        "watchlist_groups": watchlist_groups,
         "precio_historico": precio_historico,
         "net_income_ttm_billones": datos_empresa_context.get("net_income_ttm_billones"),
         "payout_ratio_pct": datos_empresa_context.get("payout_ratio_pct"),
@@ -793,7 +795,7 @@ def watchlist_toggle(request):
         if not group:
             return JsonResponse({"error": "Grupo no encontrado"}, status=404)
     else:
-        group = WatchlistGroup.objects.order_by("created_at").first()
+        group = WatchlistGroup.objects.filter(name__iexact="General").order_by("created_at").first()
         if not group:
             group = WatchlistGroup.objects.create(name="General")
 
@@ -810,6 +812,43 @@ def watchlist_toggle(request):
             company_exchange=company_exchange,
         )
         return JsonResponse({"action": "added", "ticker": ticker, "group_id": group.id, "in_watchlist": True})
+
+
+def _watchlist_groups_for_picker(ticker: str) -> list[dict[str, Any]]:
+    """Devuelve las watchlists disponibles para el selector del análisis."""
+
+    symbol = (ticker or "").strip().upper()
+    groups = list(WatchlistGroup.objects.prefetch_related("items").all())
+    picker_groups: list[dict[str, Any]] = []
+    general_group = next((group for group in groups if group.name.strip().lower() == "general"), None)
+
+    def contains(group: WatchlistGroup | None) -> bool:
+        if not symbol or not group:
+            return False
+        return any((item.ticker or "").strip().upper() == symbol for item in group.items.all())
+
+    picker_groups.append(
+        {
+            "id": general_group.id if general_group else "",
+            "name": "General",
+            "contains_ticker": contains(general_group),
+            "is_default": True,
+        }
+    )
+
+    for group in groups:
+        if general_group and group.id == general_group.id:
+            continue
+        picker_groups.append(
+            {
+                "id": group.id,
+                "name": group.name,
+                "contains_ticker": contains(group),
+                "is_default": False,
+            }
+        )
+
+    return picker_groups
 
 
 @require_GET

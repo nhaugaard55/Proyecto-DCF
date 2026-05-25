@@ -2003,6 +2003,73 @@
         opacity: 0.5;
         cursor: not-allowed;
     }
+    .watchlist-picker-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        width: 100%;
+        border: 1px solid var(--surface-border);
+        border-radius: 0.85rem;
+        background: var(--surface-card);
+        color: var(--text-primary);
+        padding: 0.85rem 1rem;
+        text-align: left;
+        transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+    }
+    .watchlist-picker-option:hover,
+    .watchlist-picker-option:focus-visible {
+        border-color: rgba(37, 99, 235, 0.42);
+        background: rgba(37, 99, 235, 0.06);
+        outline: 0;
+    }
+    .watchlist-picker-option-name {
+        display: block;
+        font-weight: 700;
+        line-height: 1.25;
+    }
+    .watchlist-picker-option-meta {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.78rem;
+        line-height: 1.3;
+        margin-top: 0.15rem;
+    }
+    .watchlist-picker-status {
+        flex-shrink: 0;
+        border-radius: 999px;
+        border: 1px solid rgba(37, 99, 235, 0.22);
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--accent);
+        padding: 0.28rem 0.65rem;
+        font-size: 0.72rem;
+        font-weight: 750;
+        white-space: nowrap;
+    }
+    .watchlist-picker-option.is-in-watchlist .watchlist-picker-status {
+        border-color: rgba(234, 179, 8, 0.38);
+        background: rgba(234, 179, 8, 0.12);
+        color: #b45309;
+    }
+    .theme-dark .watchlist-picker-option {
+        background: rgba(15, 23, 42, 0.72);
+        border-color: rgba(59, 130, 246, 0.24);
+    }
+    .theme-dark .watchlist-picker-option:hover,
+    .theme-dark .watchlist-picker-option:focus-visible {
+        border-color: rgba(96, 165, 250, 0.5);
+        background: rgba(37, 99, 235, 0.16);
+    }
+    .theme-dark .watchlist-picker-status {
+        color: #bfdbfe;
+        border-color: rgba(96, 165, 250, 0.32);
+        background: rgba(37, 99, 235, 0.2);
+    }
+    .theme-dark .watchlist-picker-option.is-in-watchlist .watchlist-picker-status {
+        color: #fde68a;
+        border-color: rgba(234, 179, 8, 0.42);
+        background: rgba(234, 179, 8, 0.14);
+    }
 
     #analysis-loading {
         display: flex;
@@ -4640,6 +4707,36 @@
         <span id="watchlist-btn-label">{% if in_watchlist %}En watchlist{% else %}Agregar a watchlist{% endif %}</span>
     </button>
 </div>
+<div class="modal fade" id="watchlist-picker-modal" tabindex="-1" aria-labelledby="watchlist-picker-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--surface-card); color:var(--text-primary); border:1px solid var(--surface-border); border-radius:1rem;">
+            <div class="modal-header" style="border-color:var(--surface-border);">
+                <div>
+                    <h2 class="modal-title h5 mb-1" id="watchlist-picker-title">Elegí una watchlist</h2>
+                    <p class="text-muted small mb-0">Seleccioná dónde guardar o quitar {{ ticker }}.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-grid gap-2" id="watchlist-picker-options">
+                    {% for group in watchlist_groups %}
+                    <button type="button"
+                            class="watchlist-picker-option{% if group.contains_ticker %} is-in-watchlist{% endif %}"
+                            data-watchlist-group-id="{{ group.id }}"
+                            data-watchlist-group-name="{{ group.name }}"
+                            data-watchlist-contains="{% if group.contains_ticker %}true{% else %}false{% endif %}">
+                        <span>
+                            <span class="watchlist-picker-option-name">{{ group.name }}</span>
+                            <span class="watchlist-picker-option-meta">{% if group.is_default %}Watchlist general{% else %}Watchlist creada{% endif %}</span>
+                        </span>
+                        <span class="watchlist-picker-status">{% if group.contains_ticker %}Quitar{% else %}Agregar{% endif %}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% elif ticker %}
 <section class="results-section">
     <div class="row justify-content-center">
@@ -5276,23 +5373,29 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---- Botón watchlist ----
     const watchlistBtn = document.getElementById("watchlist-btn");
     if (watchlistBtn) {
-        watchlistBtn.addEventListener("click", async () => {
+        const watchlistModalEl = document.getElementById("watchlist-picker-modal");
+        const watchlistOptions = Array.from(document.querySelectorAll(".watchlist-picker-option"));
+
+        async function submitWatchlistToggle(groupId, option) {
             const ticker = watchlistBtn.dataset.ticker;
             const companyName = watchlistBtn.dataset.companyName || "";
             const companyExchange = watchlistBtn.dataset.companyExchange || "";
             const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || "";
             watchlistBtn.disabled = true;
+            if (option) option.disabled = true;
             try {
                 const body = new URLSearchParams({ ticker, company_name: companyName, company_exchange: companyExchange });
+                if (groupId) body.set("group_id", groupId);
                 const resp = await fetch("{% url 'watchlist_toggle' %}", {
                     method: "POST",
                     headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/x-www-form-urlencoded" },
                     body: body.toString(),
                 });
                 const data = await resp.json();
+                if (!resp.ok) return;
                 const starIcon = document.getElementById("watchlist-star-icon");
                 const btnLabel = document.getElementById("watchlist-btn-label");
-                if (data.action === "added") {
+                if (data.in_watchlist) {
                     watchlistBtn.classList.add("action-pill--active");
                     if (starIcon) starIcon.setAttribute("fill", "currentColor");
                     if (btnLabel) btnLabel.textContent = "En watchlist";
@@ -5301,8 +5404,36 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (starIcon) starIcon.setAttribute("fill", "none");
                     if (btnLabel) btnLabel.textContent = "Agregar a watchlist";
                 }
+                if (option) {
+                    if (!option.dataset.watchlistGroupId && data.group_id) {
+                        option.dataset.watchlistGroupId = String(data.group_id);
+                    }
+                    const status = option.querySelector(".watchlist-picker-status");
+                    const isAdded = data.action === "added";
+                    option.dataset.watchlistContains = isAdded ? "true" : "false";
+                    option.classList.toggle("is-in-watchlist", isAdded);
+                    if (status) status.textContent = isAdded ? "Quitar" : "Agregar";
+                }
+                if (watchlistModalEl && window.bootstrap && window.bootstrap.Modal) {
+                    window.bootstrap.Modal.getOrCreateInstance(watchlistModalEl).hide();
+                }
             } catch (e) { /* silencioso */ }
             watchlistBtn.disabled = false;
+            if (option) option.disabled = false;
+        }
+
+        watchlistBtn.addEventListener("click", async () => {
+            if (watchlistModalEl && watchlistOptions.length && window.bootstrap && window.bootstrap.Modal) {
+                window.bootstrap.Modal.getOrCreateInstance(watchlistModalEl).show();
+                return;
+            }
+            await submitWatchlistToggle("", null);
+        });
+
+        watchlistOptions.forEach((option) => {
+            option.addEventListener("click", async () => {
+                await submitWatchlistToggle(option.dataset.watchlistGroupId || "", option);
+            });
         });
     }
 
