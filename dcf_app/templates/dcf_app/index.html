@@ -1807,6 +1807,16 @@
             height: 360px !important;
         }
 
+        /* Keep the technical panel rendered (not display:none) so TradingView can preload.
+           Bootstrap's collapse uses display:none; we override with height:0+overflow:hidden
+           so the widget container has real dimensions (width = page width, height = 500px)
+           and can initialize in the background before the user opens the accordion. */
+        #analysis-technical-collapse:not(.show):not(.collapsing) {
+            display: block !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+
         #news-nav-controls {
             width: 100%;
             justify-content: space-between;
@@ -3853,17 +3863,15 @@
                     (function() {
                         var TV_CONTAINER_ID = "tradingview_chart_{{ ticker }}";
                         var TV_SYMBOL = "{{ tradingview_symbol }}";
-                        var TV_PANEL_ID = "analysis-technical-collapse";
-                        var tvInitialized = false;
 
                         function getIsDark() {
-                            var stored = (function() { try { return localStorage.getItem('dcf-ui-theme'); } catch(e) { return null; } })();
+                            var stored; try { stored = localStorage.getItem('dcf-ui-theme'); } catch(e) {}
                             return stored === 'dark' || (!stored && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
                         }
 
                         function initTradingView(isDark) {
                             var container = document.getElementById(TV_CONTAINER_ID);
-                            if (!container) return;
+                            if (!container || typeof TradingView === 'undefined') return;
                             container.innerHTML = '';
                             new TradingView.widget({
                                 "autosize": true,
@@ -3886,22 +3894,16 @@
                                 ],
                                 "container_id": TV_CONTAINER_ID
                             });
-                            tvInitialized = true;
                         }
 
-                        var panel = document.getElementById(TV_PANEL_ID);
-                        if (panel && !panel.classList.contains('show')) {
-                            panel.addEventListener('shown.bs.collapse', function() {
-                                initTradingView(getIsDark());
-                            }, { once: true });
-                        } else {
-                            initTradingView(getIsDark());
-                        }
+                        // Pre-initialize immediately — the CSS keeps the panel as display:block
+                        // with height:0, so the widget has real dimensions and loads in the
+                        // background. When the accordion opens there is zero init delay.
+                        initTradingView(getIsDark());
 
+                        // On theme change, reinitialize with the new theme.
                         window.addEventListener('dcf-theme-changed', function(e) {
-                            if (tvInitialized) {
-                                initTradingView(e.detail.dark);
-                            }
+                            initTradingView(e.detail.dark);
                         });
                     })();
                     </script>
