@@ -129,6 +129,112 @@
   .theme-dark .recent-diff.positive { color: #bbf7d0; }
   .theme-dark .recent-diff.negative { color: #fca5a5; }
 
+  /* ── Search ───────────────────────────────────────────────── */
+  .history-search-wrapper { margin-bottom: 0.75rem; }
+
+  .history-search-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.8rem;
+    transition: border-color 0.2s;
+  }
+  .history-search-input-row:focus-within {
+    border-color: var(--accent, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+  }
+  .history-search-icon { color: var(--text-muted); flex-shrink: 0; }
+  #history-search {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    outline: none;
+    font-family: inherit;
+  }
+  #history-search::placeholder { color: var(--text-muted); }
+  .history-search-clear {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.15rem;
+    line-height: 1;
+    padding: 0 0.1rem;
+    border-radius: 50%;
+    width: 1.4rem;
+    height: 1.4rem;
+    transition: color 0.15s, background 0.15s;
+  }
+  .history-search-clear.visible { display: flex; }
+  .history-search-clear:hover { color: var(--text-primary); background: var(--surface-border); }
+
+  /* Dropdown — in-flow, pushes list down */
+  .history-search-dropdown {
+    list-style: none;
+    margin: 0.35rem 0 0;
+    padding: 0;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-height 0.22s ease, opacity 0.18s ease;
+  }
+  .theme-dark .history-search-dropdown {
+    box-shadow: 0 16px 36px rgba(7, 11, 28, 0.45);
+  }
+  .history-search-dropdown.show {
+    max-height: 18rem;
+    opacity: 1;
+    pointer-events: auto;
+    overflow-y: auto;
+  }
+  .history-dd-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.55rem 1rem;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .history-dd-item:hover,
+  .history-dd-item.active { background: rgba(37, 99, 235, 0.08); }
+  .history-dd-sym { font-weight: 700; }
+  .history-dd-name { color: var(--text-muted); font-size: 0.82rem; flex: 1; }
+  .history-dd-count {
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: rgba(148,163,184,0.18);
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    white-space: nowrap;
+  }
+  .history-dd-no-results {
+    padding: 0.75rem 1rem;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
+
+  /* ── Filter pills ─────────────────────────────────────────── */
   .history-filter-btn {
     font-size: 0.75rem;
     padding: 0.25rem 0.6rem;
@@ -203,7 +309,17 @@
       <h2 class="fw-bold mb-0">Historial de análisis</h2>
     </div>
     <p class="text-muted mb-3">Todos los escenarios de valoración evaluados.</p>
+
     {% if records %}
+    <div class="history-search-wrapper">
+      <div class="history-search-input-row">
+        <svg class="history-search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="history-search" placeholder="Buscar empresa o ticker…" autocomplete="off" aria-label="Buscar en el historial">
+        <button type="button" id="history-search-clear" class="history-search-clear" aria-label="Limpiar búsqueda">&#x2715;</button>
+      </div>
+      <ul class="history-search-dropdown" id="history-search-dropdown" role="listbox" aria-label="Sugerencias"></ul>
+    </div>
+
     <div class="d-flex gap-1 mb-4" role="group" aria-label="Filtrar cantidad de registros">
       <button type="button" class="btn btn-sm btn-outline-secondary history-filter-btn active" data-filter="10">Últimos 10</button>
       <button type="button" class="btn btn-sm btn-outline-secondary history-filter-btn" data-filter="30">Últimos 30</button>
@@ -314,6 +430,7 @@
 (function () {
   var items = Array.from(document.querySelectorAll('[data-history-item]'));
 
+  // ── Accordion ──────────────────────────────────────────────
   function collapseAll() {
     items.forEach(function (item) {
       var d = item.querySelector('[data-history-details]');
@@ -336,36 +453,200 @@
     });
   });
 
-  // Filter buttons
-  var filterBtns = document.querySelectorAll('.history-filter-btn');
-  var activeFilter = 10;
+  // ── Combined visibility (count + search) ───────────────────
+  var activeCount   = 10;
+  var activeCompany = null; // ticker string or null
 
-  function applyFilter(n) {
+  function applyVisibility() {
     collapseAll();
-    items.forEach(function (item, i) {
-      if (n === 'all' || i < n) {
+    var q = (searchInput ? searchInput.value.trim().toLowerCase() : '');
+    var visible = 0;
+    items.forEach(function (item) {
+      var symEl  = item.querySelector('.recent-chip-symbol');
+      var nameEl = item.querySelector('.recent-chip-company');
+      var ticker = symEl  ? symEl.textContent.trim() : '';
+      var name   = nameEl ? nameEl.textContent.trim() : '';
+
+      var matchesSearch;
+      if (activeCompany) {
+        matchesSearch = ticker === activeCompany;
+      } else if (q) {
+        matchesSearch = ticker.toLowerCase().includes(q) || name.toLowerCase().includes(q);
+      } else {
+        matchesSearch = true;
+      }
+
+      // When searching/filtering by company, show all matches ignoring count
+      var withinCount = (activeCompany || q)
+        ? true
+        : (activeCount === 'all' || visible < activeCount);
+
+      if (matchesSearch && withinCount) {
         item.style.display = '';
+        visible++;
       } else {
         item.style.display = 'none';
       }
     });
+  }
+
+  // ── Count filter buttons ───────────────────────────────────
+  var filterBtns = document.querySelectorAll('.history-filter-btn');
+
+  function setCountFilter(n) {
+    activeCount = n;
     filterBtns.forEach(function (btn) {
       var isActive = (n === 'all' && btn.dataset.filter === 'all') ||
                      (btn.dataset.filter !== 'all' && parseInt(btn.dataset.filter) === n);
       btn.classList.toggle('active', isActive);
     });
-    activeFilter = n;
+    applyVisibility();
   }
 
   filterBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
       var val = btn.dataset.filter === 'all' ? 'all' : parseInt(btn.dataset.filter);
-      applyFilter(val);
+      setCountFilter(val);
     });
   });
 
-  // Apply default on load
-  applyFilter(activeFilter);
+  // ── Search autocomplete ────────────────────────────────────
+  var searchInput    = document.getElementById('history-search');
+  var searchClear    = document.getElementById('history-search-clear');
+  var searchDropdown = document.getElementById('history-search-dropdown');
+
+  if (!searchInput || !searchDropdown) {
+    setCountFilter(activeCount);
+    return;
+  }
+
+  // Build unique company index from rendered items
+  var companyMap = {};
+  var companies  = [];
+  items.forEach(function (item) {
+    var symEl  = item.querySelector('.recent-chip-symbol');
+    var nameEl = item.querySelector('.recent-chip-company');
+    if (!symEl) return;
+    var ticker = symEl.textContent.trim();
+    var name   = nameEl ? nameEl.textContent.trim() : '';
+    if (!companyMap[ticker]) {
+      companyMap[ticker] = { ticker: ticker, name: name, count: 0 };
+      companies.push(companyMap[ticker]);
+    }
+    companyMap[ticker].count++;
+  });
+
+  var ddItems      = [];
+  var ddActiveIdx  = -1;
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function closeDd() {
+    searchDropdown.classList.remove('show');
+    searchDropdown.innerHTML = '';
+    ddItems     = [];
+    ddActiveIdx = -1;
+  }
+
+  function setDdActive(idx) {
+    ddActiveIdx = idx;
+    Array.from(searchDropdown.querySelectorAll('.history-dd-item')).forEach(function (el, i) {
+      el.classList.toggle('active', i === idx);
+    });
+  }
+
+  function renderDd(results) {
+    searchDropdown.innerHTML = '';
+    ddActiveIdx = -1;
+    if (!results.length) {
+      var noRes = document.createElement('li');
+      noRes.className = 'history-dd-no-results';
+      noRes.textContent = 'Sin resultados';
+      searchDropdown.appendChild(noRes);
+      ddItems = [];
+      searchDropdown.classList.add('show');
+      return;
+    }
+    ddItems = results;
+    results.forEach(function (r, i) {
+      var li  = document.createElement('li');
+      var btn = document.createElement('button');
+      btn.type      = 'button';
+      btn.className = 'history-dd-item';
+      btn.setAttribute('role', 'option');
+      btn.innerHTML =
+        '<span class="history-dd-sym">' + escHtml(r.ticker) + '</span>' +
+        (r.name ? '<span class="history-dd-name">' + escHtml(r.name) + '</span>' : '') +
+        '<span class="history-dd-count">' + r.count + (r.count === 1 ? ' análisis' : ' análisis') + '</span>';
+      btn.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        selectCompany(r);
+      });
+      li.appendChild(btn);
+      searchDropdown.appendChild(li);
+    });
+    searchDropdown.classList.add('show');
+  }
+
+  function selectCompany(r) {
+    searchInput.value = r.ticker + (r.name ? ' — ' + r.name : '');
+    activeCompany = r.ticker;
+    searchClear.classList.add('visible');
+    closeDd();
+    applyVisibility();
+  }
+
+  function clearSearch() {
+    searchInput.value = '';
+    activeCompany = null;
+    searchClear.classList.remove('visible');
+    closeDd();
+    applyVisibility();
+  }
+
+  searchInput.addEventListener('input', function () {
+    var q = searchInput.value.trim().toLowerCase();
+    activeCompany = null;
+    searchClear.classList.toggle('visible', q.length > 0);
+    if (!q) { closeDd(); applyVisibility(); return; }
+    var results = companies.filter(function (c) {
+      return c.ticker.toLowerCase().includes(q) || c.name.toLowerCase().includes(q);
+    }).slice(0, 8);
+    renderDd(results);
+    applyVisibility();
+  });
+
+  searchInput.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setDdActive(Math.min(ddActiveIdx + 1, ddItems.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setDdActive(Math.max(ddActiveIdx - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (ddActiveIdx >= 0 && ddItems[ddActiveIdx]) {
+        selectCompany(ddItems[ddActiveIdx]);
+      } else if (ddItems.length === 1) {
+        selectCompany(ddItems[0]);
+      }
+    } else if (e.key === 'Escape') {
+      closeDd();
+    }
+  });
+
+  searchClear.addEventListener('click', clearSearch);
+
+  document.addEventListener('click', function (e) {
+    if (!searchDropdown.contains(e.target) && e.target !== searchInput && e.target !== searchClear) {
+      closeDd();
+    }
+  });
+
+  // Apply default count filter on load
+  setCountFilter(activeCount);
 })();
 </script>
 {% endblock %}
