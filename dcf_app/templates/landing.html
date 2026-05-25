@@ -904,7 +904,7 @@
 
     /* ── Landing loading overlay ─────────────────────────── */
     #landing-loading {
-      display: none;
+      display: flex;
       position: fixed;
       inset: 0;
       z-index: 1060;
@@ -913,8 +913,11 @@
       -webkit-backdrop-filter: blur(4px);
       align-items: center;
       justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s;
     }
-    #landing-loading.active { display: flex; }
+    #landing-loading.active { opacity: 1; pointer-events: auto; }
     .ll-card {
       background: var(--surface-card);
       border: 1px solid var(--surface-border);
@@ -922,27 +925,50 @@
       padding: 2.5rem 3rem;
       text-align: center;
       box-shadow: 0 24px 60px rgba(0,0,0,0.2);
-      max-width: 320px;
+      max-width: 340px;
       width: 90%;
     }
-    .ll-dots {
-      display: flex;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-bottom: 1.25rem;
-    }
-    .ll-dots span {
-      width: 10px;
-      height: 10px;
+    .ll-spinner {
+      width: 42px; height: 42px;
+      border: 3.5px solid rgba(59, 130, 246, 0.18);
+      border-top-color: var(--accent);
       border-radius: 50%;
-      background: var(--accent);
-      animation: dotBounce 1.2s infinite ease-in-out;
+      animation: llSpin 0.8s linear infinite;
+      margin: 0 auto 1.5rem;
     }
-    .ll-dots span:nth-child(2) { animation-delay: 0.2s; }
-    .ll-dots span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes dotBounce {
-      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-      40%            { transform: scale(1.1); opacity: 1; }
+    @keyframes llSpin { to { transform: rotate(360deg); } }
+    .ll-steps {
+      list-style: none;
+      padding: 0;
+      margin: 1.25rem 0 0;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .ll-steps li {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .ll-steps li .ll-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 6px 2px rgba(74,222,128,0.7);
+      flex-shrink: 0;
+      will-change: opacity;
+      animation: llDotFade 2s linear infinite;
+    }
+    .ll-steps li:nth-child(1) .ll-dot { animation-delay:    0s; }
+    .ll-steps li:nth-child(2) .ll-dot { animation-delay: -1.5s; }
+    .ll-steps li:nth-child(3) .ll-dot { animation-delay: -1.0s; }
+    .ll-steps li:nth-child(4) .ll-dot { animation-delay: -0.5s; }
+    @keyframes llDotFade {
+      0%, 20%   { opacity: 1; }
+      30%, 100% { opacity: 0.12; }
     }
   </style>
 </head>
@@ -1353,13 +1379,19 @@
 </div><!-- /container -->
 
 <!-- ═══ LOADING OVERLAY ══════════════════════════════════════════ -->
-<div id="landing-loading">
+<div id="landing-loading" role="status" aria-live="polite">
   <div class="ll-card">
-    <div class="ll-dots"><span></span><span></span><span></span></div>
+    <div class="ll-spinner" aria-hidden="true"></div>
     <div class="fw-semibold mb-1" style="font-size:1rem; color:var(--text-primary);">
-      Buscando datos de <span id="ll-ticker" style="color:var(--accent);"></span>
+      Analizando <span id="ll-ticker" style="color:var(--accent);"></span>
     </div>
-    <div style="color:var(--text-muted); font-size:0.88rem;">Esto puede tardar unos segundos…</div>
+    <div class="text-muted small mb-0">Esto puede tardar unos segundos…</div>
+    <ul class="ll-steps">
+      <li><span class="ll-dot"></span>Recopilando datos financieros</li>
+      <li><span class="ll-dot"></span>Calculando WACC y proyecciones</li>
+      <li><span class="ll-dot"></span>Ejecutando modelos de valuación</li>
+      <li><span class="ll-dot"></span>Preparando resultados</li>
+    </ul>
   </div>
 </div>
 
@@ -1485,9 +1517,15 @@
       if (!ticker) return;
       showLoading(ticker);
       var url = '/app/?ticker=' + encodeURIComponent(ticker.toUpperCase());
-      requestAnimationFrame(function () {
-        setTimeout(function () { window.location.href = url; }, 30);
-      });
+      fetch(url)
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+          history.pushState({}, '', url);
+          document.open();
+          document.write(html);
+          document.close();
+        })
+        .catch(function() { window.location.href = url; });
     }
 
     function initSearch(inputId, dropdownId, btnId) {
