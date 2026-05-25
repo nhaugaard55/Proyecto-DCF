@@ -130,14 +130,50 @@
   .theme-dark .recent-diff.negative { color: #fca5a5; }
 
   @media (max-width: 575.98px) {
+    .recent-history-list { gap: 0.5rem; }
+
     .recent-chip {
-      grid-template-columns: 1fr 1fr;
-      gap: 0.65rem;
-      padding: 0.85rem;
+      grid-template-columns: auto auto 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 0.2rem 0.7rem;
+      padding: 0.65rem 0.9rem;
+      align-items: start;
+      border-radius: 0.85rem;
     }
-    .recent-chip-group  { grid-column: 1 / -1; }
-    .recent-chip-status { grid-column: 1 / -1; width: fit-content; }
-    .recent-chip-date   { grid-column: 1 / -1; justify-self: start; }
+
+    .recent-chip-group  { grid-column: 1 / 4; grid-row: 1; }
+    .recent-chip-status { grid-column: 4;     grid-row: 1; justify-self: end; align-self: start; }
+
+    .recent-chip-value--precio { display: none; }
+
+    .recent-chip-value--intrinsico {
+      grid-column: 1; grid-row: 2;
+      flex-direction: row;
+      align-items: center;
+      gap: 0;
+    }
+    .recent-chip-value--intrinsico .recent-chip-value-label { display: none; }
+    .recent-chip-value--intrinsico .recent-chip-value-amount {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .recent-chip-value--margen {
+      grid-column: 2; grid-row: 2;
+      flex-direction: row;
+      align-items: center;
+      gap: 0;
+    }
+    .recent-chip-value--margen .recent-chip-value-label { display: none; }
+    .recent-chip-value--margen .recent-chip-value-amount { font-size: 0.88rem; }
+
+    .recent-chip-date {
+      grid-column: 4; grid-row: 2;
+      justify-self: end;
+      align-self: end;
+      font-size: 0.68rem;
+    }
   }
 </style>
 {% endblock %}
@@ -168,20 +204,20 @@
           {% else %}
           <span class="recent-chip-status recent-chip-status--razonable">Sin determinar</span>
           {% endif %}
-          <div class="recent-chip-value">
+          <div class="recent-chip-value recent-chip-value--intrinsico">
             <span class="recent-chip-value-label">Valor intrínseco</span>
             <span class="recent-chip-value-amount">
               {% if record.valor_intrinseco is not None %}${{ record.valor_intrinseco|floatformat:2 }}{% else %}N/D{% endif %}
             </span>
           </div>
-          <div class="recent-chip-value">
+          <div class="recent-chip-value recent-chip-value--precio">
             <span class="recent-chip-value-label">Precio actual</span>
             <span class="recent-chip-value-amount">
               {% if record.precio_actual is not None %}${{ record.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}
             </span>
           </div>
           {% with diff=record.diferencia_pct %}
-          <div class="recent-chip-value">
+          <div class="recent-chip-value recent-chip-value--margen">
             {% if diff is not None %}
             <span class="recent-chip-value-label">Margen</span>
             <span class="recent-chip-value-amount {% if diff > 0 %}text-success{% elif diff < 0 %}text-danger{% else %}text-muted{% endif %}">
