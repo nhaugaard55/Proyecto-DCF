@@ -956,6 +956,133 @@ def analizar_empresa(
     except Exception:
         revenue_historico_raw = []
 
+    # Revenue and net income with year labels for charts
+    revenue_historico_labeled: list[dict] = []
+    try:
+        if income_stmt is not None and not income_stmt.empty:
+            for _rev_label in ("Total Revenue", "Revenue"):
+                if _rev_label in income_stmt.index:
+                    _rev_s = income_stmt.loc[_rev_label].dropna().head(5)
+                    for _col, _val in _rev_s.items():
+                        _v = to_optional_float(_val)
+                        if _v is not None:
+                            try:
+                                _yr = _col.year if hasattr(_col, 'year') else int(str(_col)[:4])
+                            except Exception:
+                                _yr = None
+                            revenue_historico_labeled.append({"anio": _yr, "valor": to_billions(_v)})
+                    break
+    except Exception:
+        revenue_historico_labeled = []
+
+    net_income_historico_labeled: list[dict] = []
+    try:
+        if income_stmt is not None and not income_stmt.empty and "Net Income" in income_stmt.index:
+            _ni_s = income_stmt.loc["Net Income"].dropna().head(5)
+            for _col, _val in _ni_s.items():
+                _v = to_optional_float(_val)
+                if _v is not None:
+                    try:
+                        _yr = _col.year if hasattr(_col, 'year') else int(str(_col)[:4])
+                    except Exception:
+                        _yr = None
+                    net_income_historico_labeled.append({"anio": _yr, "valor": to_billions(_v)})
+    except Exception:
+        net_income_historico_labeled = []
+
+    # ── Derived metrics for 6-category data accordion ─────────────────────
+    _fcf_ttm_raw = fcf[0] if fcf else None
+    _ta_final = total_assets_val if total_assets_val is not None else to_optional_float(info.get("totalAssets"))
+    _tl_final = total_liab_val if total_liab_val is not None else to_optional_float(info.get("totalLiab"))
+
+    roa_raw = to_optional_float(info.get("returnOnAssets"))
+    current_ratio_raw = to_optional_float(info.get("currentRatio"))
+    fifty_two_week_high = to_optional_float(info.get("fiftyTwoWeekHigh"))
+
+    p_fcf_raw = (equity / _fcf_ttm_raw) if (_fcf_ttm_raw and _fcf_ttm_raw > 0 and equity) else None
+    fcf_per_share = (_fcf_ttm_raw / acciones) if (_fcf_ttm_raw is not None and acciones) else None
+    fcf_yield_pct = (_fcf_ttm_raw / equity * 100) if (_fcf_ttm_raw is not None and equity) else None
+
+    _ew = equity + debt
+    equity_weight_pct = (equity / _ew * 100) if _ew else None
+    debt_weight_pct = (debt / _ew * 100) if _ew else None
+    kd_after_tax_pct = (cost_of_debt * (1 - tax_rate) * 100) if (cost_of_debt is not None and tax_rate is not None) else None
+
+    _cap_total = equity + total_debt
+    capital_bar_equity_pct = (equity / _cap_total * 100) if _cap_total else None
+    capital_bar_debt_pct = (total_debt / _cap_total * 100) if _cap_total else None
+
+    patrimonio_neto = (_ta_final - _tl_final) if (_ta_final is not None and _tl_final is not None) else None
+
+    gross_margin_pct = (gross_profit_raw / revenue_raw * 100) if (gross_profit_raw is not None and revenue_raw) else None
+    ebitda_margin_pct = (ebitda_val / revenue_raw * 100) if (ebitda_val is not None and revenue_raw) else None
+    net_margin_pct_ttm = (net_income_ttm / revenue_raw * 100) if (net_income_ttm is not None and revenue_raw) else None
+
+    roe_val = to_optional_float(roe)
+    roe_pct = (roe_val * 100) if roe_val is not None else None
+    roa_pct = (roa_raw * 100) if roa_raw is not None else None
+    debt_to_capital_pct = debt_to_capital * 100
+
+    gross_margin_historico_labeled: list[dict] = []
+    ebitda_margin_historico_labeled_pct: list[dict] = []
+    net_margin_historico_labeled_pct: list[dict] = []
+    try:
+        if income_stmt is not None and not income_stmt.empty:
+            _rev_row2 = None
+            for _rev_lbl2 in ("Total Revenue", "Revenue"):
+                if _rev_lbl2 in income_stmt.index:
+                    _rev_row2 = income_stmt.loc[_rev_lbl2].dropna().head(5)
+                    break
+            _gp_row = income_stmt.loc["Gross Profit"].dropna().head(5) if "Gross Profit" in income_stmt.index else None
+            _ni_row2 = income_stmt.loc["Net Income"].dropna().head(5) if "Net Income" in income_stmt.index else None
+            _ebitda_row = None
+            for _eb_lbl in ("EBITDA", "Reconciled EBITDA", "Normalized EBITDA"):
+                if _eb_lbl in income_stmt.index:
+                    _ebitda_row = income_stmt.loc[_eb_lbl].dropna().head(5)
+                    break
+            if _rev_row2 is not None:
+                for _col2, _rev_val2 in _rev_row2.items():
+                    _rv2 = to_optional_float(_rev_val2)
+                    if not _rv2:
+                        continue
+                    try:
+                        _yr2 = _col2.year if hasattr(_col2, 'year') else int(str(_col2)[:4])
+                    except Exception:
+                        _yr2 = None
+                    if _gp_row is not None and _col2 in _gp_row.index:
+                        _gv2 = to_optional_float(_gp_row[_col2])
+                        if _gv2 is not None:
+                            gross_margin_historico_labeled.append({"anio": _yr2, "valor": round(_gv2 / _rv2 * 100, 1)})
+                    if _ebitda_row is not None and _col2 in _ebitda_row.index:
+                        _ev2 = to_optional_float(_ebitda_row[_col2])
+                        if _ev2 is not None:
+                            ebitda_margin_historico_labeled_pct.append({"anio": _yr2, "valor": round(_ev2 / _rv2 * 100, 1)})
+                    if _ni_row2 is not None and _col2 in _ni_row2.index:
+                        _nv2 = to_optional_float(_ni_row2[_col2])
+                        if _nv2 is not None:
+                            net_margin_historico_labeled_pct.append({"anio": _yr2, "valor": round(_nv2 / _rv2 * 100, 1)})
+    except Exception:
+        gross_margin_historico_labeled = []
+        ebitda_margin_historico_labeled_pct = []
+        net_margin_historico_labeled_pct = []
+
+    # Sort chronologically (oldest → newest) for table display
+    gross_margin_historico_labeled.sort(key=lambda x: x.get("anio") or 0)
+    ebitda_margin_historico_labeled_pct.sort(key=lambda x: x.get("anio") or 0)
+    net_margin_historico_labeled_pct.sort(key=lambda x: x.get("anio") or 0)
+
+    def _margin_trend(historico, ttm_val):
+        if not historico or ttm_val is None:
+            return None
+        prev = historico[-1].get("valor")
+        if prev is None:
+            return None
+        return "up" if ttm_val > prev else ("down" if ttm_val < prev else None)
+
+    gross_margin_trend = _margin_trend(gross_margin_historico_labeled, gross_margin_pct)
+    ebitda_margin_trend = _margin_trend(ebitda_margin_historico_labeled_pct, ebitda_margin_pct)
+    net_margin_trend = _margin_trend(net_margin_historico_labeled_pct, net_margin_pct_ttm)
+
     datos_empresa = {
         "nombre": nombre,
         "sector": sector,
@@ -1019,6 +1146,8 @@ def analizar_empresa(
         "eps_growth_5y": eps_growth_5y,
         "eps_growth_5y_fuente": eps_growth_5y_fuente,
         "revenue_historico": revenue_historico_raw,
+        "revenue_historico_labeled": revenue_historico_labeled,
+        "net_income_historico_labeled": net_income_historico_labeled,
         "beta": beta,
         "beta_aviso": beta_aviso,
         "tasa_impositiva": tax_rate,
@@ -1034,6 +1163,31 @@ def analizar_empresa(
         "cost_of_debt_anios": detalles_metricas.get("cost_of_debt", {}).get("años"),
         "payout_ratio": payout_ratio,
         "payout_ratio_pct": payout_ratio * 100 if payout_ratio is not None else None,
+        "roa_raw": roa_raw,
+        "roa_pct": roa_pct,
+        "current_ratio_raw": current_ratio_raw,
+        "fifty_two_week_high": fifty_two_week_high,
+        "p_fcf_raw": p_fcf_raw,
+        "fcf_per_share": fcf_per_share,
+        "fcf_yield_pct": fcf_yield_pct,
+        "roe_pct": roe_pct,
+        "debt_to_capital_pct": debt_to_capital_pct,
+        "equity_weight_pct": equity_weight_pct,
+        "debt_weight_pct": debt_weight_pct,
+        "kd_after_tax_pct": kd_after_tax_pct,
+        "g_terminal_pct": G_TERMINAL * 100,
+        "capital_bar_equity_pct": capital_bar_equity_pct,
+        "capital_bar_debt_pct": capital_bar_debt_pct,
+        "patrimonio_neto_billones": to_billions(patrimonio_neto),
+        "gross_margin_pct": gross_margin_pct,
+        "ebitda_margin_pct": ebitda_margin_pct,
+        "net_margin_pct": net_margin_pct_ttm,
+        "gross_margin_historico_labeled": gross_margin_historico_labeled,
+        "ebitda_margin_historico_labeled_pct": ebitda_margin_historico_labeled_pct,
+        "net_margin_historico_labeled_pct": net_margin_historico_labeled_pct,
+        "gross_margin_trend": gross_margin_trend,
+        "ebitda_margin_trend": ebitda_margin_trend,
+        "net_margin_trend": net_margin_trend,
     }
 
     metricas = {
