@@ -175,25 +175,96 @@ def _build_chart_data(resultado):
             'fcf_historico_series': [],
             'fcf_proyectado_labels': [],
             'fcf_proyectado_series': [],
+            'revenue_historico_labels': [],
+            'revenue_historico_series': [],
+            'net_income_historico_labels': [],
+            'net_income_historico_series': [],
+            'data_fcf_labels': [],
+            'data_fcf_series': [],
+            'data_rev_labels': [],
+            'data_rev_series': [],
+            'data_ni_labels': [],
+            'data_ni_series': [],
+            'data_gm_labels': [],
+            'data_gm_series': [],
+            'data_nm_labels': [],
+            'data_nm_series': [],
         }
 
     if isinstance(resultado, dict):
         historico_entries = resultado.get('fcf_historico')
         proyectado_entries = resultado.get('fcf_proyectado')
+        datos_emp = resultado.get('datos_empresa') or {}
     else:
         historico_entries = getattr(resultado, 'fcf_historico', None)
         proyectado_entries = getattr(resultado, 'fcf_proyectado', None)
+        datos_emp = getattr(resultado, 'datos_empresa', None) or {}
 
     historico_labels, historico_series = _extract_chart_series(historico_entries)
     proyectado_labels, proyectado_series = _extract_chart_series(proyectado_entries)
 
-    has_data = bool(historico_labels or proyectado_labels)
+    if isinstance(datos_emp, dict):
+        rev_entries = datos_emp.get('revenue_historico_labeled')
+        ni_entries = datos_emp.get('net_income_historico_labeled')
+    else:
+        rev_entries = getattr(datos_emp, 'revenue_historico_labeled', None)
+        ni_entries = getattr(datos_emp, 'net_income_historico_labeled', None)
+
+    rev_labels, rev_series = _extract_chart_series(rev_entries)
+    ni_labels, ni_series = _extract_chart_series(ni_entries)
+
+    if isinstance(datos_emp, dict):
+        gm_entries = datos_emp.get('gross_margin_historico_labeled')
+        nm_entries = datos_emp.get('net_margin_historico_labeled_pct')
+    else:
+        gm_entries = getattr(datos_emp, 'gross_margin_historico_labeled', None)
+        nm_entries = getattr(datos_emp, 'net_margin_historico_labeled_pct', None)
+    gm_labels, gm_series = _extract_chart_series(gm_entries)
+    nm_labels, nm_series = _extract_chart_series(nm_entries)
+
+    # TTM values to append as the most-current data point
+    _get = (lambda k: datos_emp.get(k) if isinstance(datos_emp, dict) else getattr(datos_emp, k, None))
+    fcf_ttm_b = _clean_numeric(_get('fcf_ttm_billones'))
+    rev_ttm_b = _clean_numeric(_get('revenue_ttm_billones'))
+    ni_ttm_b  = _clean_numeric(_get('net_income_ttm_billones'))
+    gm_ttm    = _clean_numeric(_get('gross_margin_pct'))
+    nm_ttm    = _clean_numeric(_get('net_margin_pct'))
+
+    def _with_ttm(labels, series, ttm_val):
+        lbls = list(reversed(labels))
+        vals = list(reversed(series))
+        if ttm_val is not None and lbls:
+            lbls = lbls + ['TTM']
+            vals = vals + [ttm_val]
+        return lbls, vals
+
+    data_fcf_labels, data_fcf_series = _with_ttm(historico_labels, historico_series, fcf_ttm_b)
+    data_rev_labels, data_rev_series = _with_ttm(rev_labels, rev_series, rev_ttm_b)
+    data_ni_labels,  data_ni_series  = _with_ttm(ni_labels,  ni_series,  ni_ttm_b)
+    data_gm_labels,  data_gm_series  = _with_ttm(gm_labels,  gm_series,  gm_ttm)
+    data_nm_labels,  data_nm_series  = _with_ttm(nm_labels,  nm_series,  nm_ttm)
+
+    has_data = bool(historico_labels or proyectado_labels or rev_labels or ni_labels)
     return {
         'has_resultado': has_data,
         'fcf_historico_labels': historico_labels,
         'fcf_historico_series': historico_series,
         'fcf_proyectado_labels': proyectado_labels,
         'fcf_proyectado_series': proyectado_series,
+        'revenue_historico_labels': list(reversed(rev_labels)),
+        'revenue_historico_series': list(reversed(rev_series)),
+        'net_income_historico_labels': list(reversed(ni_labels)),
+        'net_income_historico_series': list(reversed(ni_series)),
+        'data_fcf_labels': data_fcf_labels,
+        'data_fcf_series': data_fcf_series,
+        'data_rev_labels': data_rev_labels,
+        'data_rev_series': data_rev_series,
+        'data_ni_labels': data_ni_labels,
+        'data_ni_series': data_ni_series,
+        'data_gm_labels': data_gm_labels,
+        'data_gm_series': data_gm_series,
+        'data_nm_labels': data_nm_labels,
+        'data_nm_series': data_nm_series,
     }
 
 
