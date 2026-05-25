@@ -4011,8 +4011,8 @@
             </div>
             {% endif %}{% endwith %}{% endif %}
 
-            {# ── Informativo: Altman Z-Score — visible desde etapa 5 ── #}
-            {% if multi_model and multi_model.stage_context.stage >= 5 and multi_model.altman %}{% with az=multi_model.altman %}
+            {# ── Informativo: Altman Z-Score — visible cuando el cálculo está disponible ── #}
+            {% if multi_model and multi_model.altman %}{% with az=multi_model.altman %}
             <div class="accordion-item rounded-3 mb-2 overflow-hidden" style="border:1px solid var(--surface-border);">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-altman" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">

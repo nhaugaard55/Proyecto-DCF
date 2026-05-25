@@ -3,9 +3,11 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from pathlib import Path
 from typing import Any, cast
 from urllib.parse import urlencode
 
+from django.contrib.staticfiles import finders
 from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -624,6 +626,228 @@ def _render_pdf(template_name: str, context: dict) -> bytes | None:
     return output.getvalue()
 
 
+def _pdf_float(value: Any) -> float | None:
+    if value in (None, "", "N/D"):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _pdf_money(value: Any, decimals: int = 0) -> str:
+    number = _pdf_float(value)
+    if number is None:
+        return "N/D"
+    sign = "-" if number < 0 else ""
+    number_abs = abs(number)
+    if number_abs >= 1_000_000_000_000:
+        return f"{sign}${number_abs / 1_000_000_000_000:.2f}T"
+    if number_abs >= 1_000_000_000:
+        return f"{sign}${number_abs / 1_000_000_000:.2f}B"
+    if number_abs >= 1_000_000:
+        return f"{sign}${number_abs / 1_000_000:.2f}M"
+    if number_abs >= 1_000:
+        return f"{sign}${number_abs / 1_000:.0f}k"
+    return f"{sign}${number_abs:.{decimals}f}"
+
+
+def _pdf_price(value: Any) -> str:
+    number = _pdf_float(value)
+    if number is None:
+        return "N/D"
+    return f"${number:,.2f}"
+
+
+def _pdf_pct(value: Any, decimals: int = 1, signed: bool = False) -> str:
+    number = _pdf_float(value)
+    if number is None:
+        return "N/D"
+    sign = "+" if signed and number > 0 else ""
+    return f"{sign}{number:.{decimals}f}%"
+
+
+def _pdf_ratio(value: Any, decimals: int = 2) -> str:
+    number = _pdf_float(value)
+    if number is None:
+        return "N/D"
+    return f"{number:.{decimals}f}x"
+
+
+def _pdf_text(value: Any, fallback: str = "N/D") -> str:
+    text = str(value or "").strip()
+    return text if text else fallback
+
+
+def _build_pdf_stage_segments(company_stage: dict | None) -> list[dict[str, Any]]:
+    labels = ["Startup", "Hyper", "Break Even", "Op. Lev.", "Capital", "Decline"]
+    active = int((company_stage or {}).get("stage") or 0)
+    return [{"num": idx, "label": label, "active": idx == active} for idx, label in enumerate(labels, start=1)]
+
+
+def _pdf_score_label(score: Any) -> str:
+    value = _pdf_float(score)
+    if value is None:
+        return "Sin score disponible"
+    if value < 3.5:
+        return "Evitar / riesgo alto"
+    if value < 6.5:
+        return "Mantener / neutral"
+    if value < 8:
+        return "Atractiva"
+    return "Alta convicción"
+
+
+def _pdf_stage_description(company_stage: dict | None) -> str:
+    stage = int((company_stage or {}).get("stage") or 0)
+    descriptions = {
+        1: "Empresa en fase inicial: prioridad en validación del modelo de negocio y acceso a capital.",
+        2: "Empresa en hipercrecimiento: el foco está en expansión de ingresos, aun con presión sobre márgenes.",
+        3: "Empresa cercana al punto de equilibrio: la transición a rentabilidad sostenible es el factor clave.",
+        4: "Empresa en fase de escala operativa: el crecimiento debería traducirse en mayor eficiencia y márgenes.",
+        5: "Empresa madura con retorno de capital: la calidad del flujo de caja y la disciplina de capital son centrales.",
+        6: "Empresa en declive o reestructuración: conviene monitorear caída de ingresos, márgenes y solvencia.",
+    }
+    return descriptions.get(stage, "Etapa no disponible: interpretar el análisis con cautela por falta de señales suficientes.")
+
+
+def _pdf_valid_model_range(modelos: dict[str, dict]) -> dict[str, Any]:
+    values: list[float] = []
+    for model in modelos.values():
+        if not model.get("aplicable"):
+            continue
+        value = _pdf_float(model.get("valor"))
+        if value is not None and value > 0:
+            values.append(value)
+    if not values:
+        return {
+            "minimum": None,
+            "maximum": None,
+            "count": 0,
+            "range_display": "N/D",
+        }
+    ordered = sorted(values)
+    return {
+        "minimum": ordered[0],
+        "maximum": ordered[-1],
+        "count": len(ordered),
+        "range_display": f"{_pdf_price(ordered[0])} - {_pdf_price(ordered[-1])}",
+    }
+
+
+def _pdf_confidence_level(consenso: dict[str, Any], model_count: int, datos_empresa: dict[str, Any], precio_actual: Any) -> str:
+    dr = _pdf_float(consenso.get("disagreement_ratio"))
+    dr_pct = dr * 100 if dr is not None and dr <= 3 else dr
+    has_core_data = _pdf_float(precio_actual) is not None and (
+        _pdf_float(datos_empresa.get("revenue_ttm")) is not None
+        or _pdf_float(datos_empresa.get("fcf_ttm")) is not None
+    )
+    if model_count < 3 or (dr_pct is not None and dr_pct > 100) or not has_core_data:
+        return "Baja"
+    if model_count < 5 or (dr_pct is not None and dr_pct > 60):
+        return "Media"
+    return "Alta"
+
+
+def _pdf_dispersion_warning(consenso: dict[str, Any]) -> dict[str, str] | None:
+    dr = _pdf_float(consenso.get("disagreement_ratio"))
+    if dr is None:
+        return None
+    dr_pct = dr * 100 if dr <= 3 else dr
+    if dr_pct > 100:
+        return {
+            "level": "strong",
+            "title": "Dispersión extrema",
+            "text": "Dispersión extrema. El consenso debe interpretarse con alta cautela.",
+        }
+    if dr_pct > 60:
+        return {
+            "level": "warning",
+            "title": "Alta dispersión entre modelos",
+            "text": (
+                "Alta dispersión entre modelos. El consenso puede estar afectado por outliers "
+                "o diferencias importantes entre metodologías. Revisar la tabla de modelos antes "
+                "de usar este valor como referencia."
+            ),
+        }
+    return None
+
+
+def _build_pdf_investment_thesis(
+    consenso: dict[str, Any],
+    datos_empresa: dict[str, Any],
+    metricas: dict[str, Any],
+    altman_z: dict[str, Any],
+    insider_data: dict[str, Any],
+) -> list[str]:
+    bullets: list[str] = []
+    upside = _pdf_float(consenso.get("upside_pct"))
+    roe = _pdf_float(datos_empresa.get("roe_pct"))
+    margin = _pdf_float(datos_empresa.get("net_margin_pct"))
+    cagr_fcf = _pdf_float(metricas.get("crecimiento_pct"))
+    dr = _pdf_float(consenso.get("disagreement_ratio"))
+    dr_pct = (dr * 100 if dr is not None and dr <= 3 else dr)
+
+    if upside is not None:
+        if upside >= 20:
+            bullets.append("El consenso de modelos sugiere potencial de revalorización frente al precio actual.")
+        elif upside < 0:
+            bullets.append("El consenso de modelos sugiere que el precio actual ya incorpora expectativas exigentes.")
+        else:
+            bullets.append("El consenso de modelos muestra un potencial moderado frente al precio actual.")
+    if roe is not None and roe >= 15:
+        bullets.append("La compañía muestra alta rentabilidad sobre capital.")
+    if margin is not None and margin >= 15:
+        bullets.append("Los márgenes muestran buena calidad relativa del negocio.")
+    if cagr_fcf is not None and cagr_fcf < 5:
+        bullets.append("El crecimiento del FCF muestra señales de desaceleración o baja expansión.")
+    if dr_pct is not None and dr_pct > 60:
+        bullets.append("Existe alta dispersión entre modelos, por lo que el consenso debe interpretarse con cautela.")
+    if (altman_z.get("zona_code") or "") == "distress":
+        bullets.append("La solvencia requiere monitoreo por señales de fragilidad financiera.")
+    if (insider_data.get("score_sentimiento") or "").lower() == "bajista":
+        bullets.append("La actividad insider reciente no aporta una señal positiva clara.")
+
+    if not bullets:
+        bullets.append("El reporte combina valuación, calidad financiera, solvencia y señales de mercado para contextualizar el precio actual.")
+    return bullets[:4]
+
+
+def _build_pdf_sources(resultado: dict[str, Any], insider_data: dict[str, Any], analyst_data: dict[str, Any]) -> list[str]:
+    sources: list[str] = []
+
+    def add(value: Any) -> None:
+        for part in str(value or "").replace(",", " ").split():
+            normalized = part.strip()
+            if not normalized:
+                continue
+            label_map = {
+                "fmp": "FMP",
+                "yfinance": "yfinance",
+                "yf": "yfinance",
+                "finnhub": "Finnhub",
+                "marketaux": "MarketAux",
+            }
+            label = label_map.get(normalized.lower(), normalized)
+            if label not in sources:
+                sources.append(label)
+
+    add(resultado.get("fuente_datos"))
+    add(resultado.get("noticias_fuente"))
+    add(insider_data.get("fuente"))
+    add(analyst_data.get("fuente"))
+    if not sources:
+        return ["datos de terceros"]
+    return sources
+
+
+def _pdf_logo_uri() -> str | None:
+    logo_path = finders.find("dcf_app/img/intrinsic-logo.png")
+    if not logo_path:
+        return None
+    return Path(logo_path).as_uri()
+
+
 def dcf_executive_report_view(request, ticker: str):
     ticker = (ticker or "").strip().upper()
 
@@ -652,17 +876,24 @@ def dcf_executive_report_view(request, ticker: str):
 
     modelos = (multi_model or {}).get("modelos") or {}
     consenso = (multi_model or {}).get("consenso") or {}
+    precio_actual = _pdf_float(resultado.get("precio_actual"))
     modelos_consenso = [
         {
             "nombre": modelos[key].get("nombre"),
             "valor": modelos[key].get("valor"),
+            "valor_display": _pdf_price(modelos[key].get("valor")),
             "peso_pct": modelos[key].get("peso_pct") or 0,
+            "upside_pct": modelos[key].get("upside_pct"),
+            "upside_display": _pdf_pct(modelos[key].get("upside_pct"), signed=True),
+            "bar_width": min(100, abs(_pdf_float(modelos[key].get("upside_pct")) or 0)),
+            "bar_class": "positive" if (_pdf_float(modelos[key].get("upside_pct")) or 0) >= 0 else "negative",
         }
         for key in consenso.get("modelos_usados_keys", [])
         if key in modelos
     ]
     modelos_consenso.sort(key=lambda m: m["peso_pct"], reverse=True)
-    modelos_consenso = modelos_consenso[:8]
+    modelos_consenso_filtrados = [m for m in modelos_consenso if (m.get("peso_pct") or 0) >= 5][:6]
+    modelos_consenso = modelos_consenso_filtrados or modelos_consenso[:6]
 
     score_final = (multi_model or {}).get("score_final") or {}
     componentes_score = score_final.get("componentes") or {}
@@ -678,11 +909,12 @@ def dcf_executive_report_view(request, ticker: str):
         componentes.append({
             "nombre": etiquetas_componentes[key],
             "puntos": item.get("puntos"),
+            "puntos_display": "N/D" if item.get("puntos") is None else f"{float(item.get('puntos')):.1f}/10",
             "peso": item.get("peso"),
             "detalle": item.get("detalle"),
         })
 
-    altman_z = modelos.get("altman_z") or {}
+    altman_z = (multi_model or {}).get("altman") or modelos.get("altman_z") or {}
     az_zona_code = altman_z.get("zona_code") or ""
     az_zona_textos = {
         "safe": "Alta probabilidad de solvencia a largo plazo.",
@@ -691,17 +923,111 @@ def dcf_executive_report_view(request, ticker: str):
     }
     az_zona_text = az_zona_textos.get(az_zona_code, "Sin datos disponibles.")
 
+    datos_empresa = resultado.get("datos_empresa") if isinstance(resultado, dict) else {}
+    if not isinstance(datos_empresa, dict):
+        datos_empresa = {}
+    metricas = resultado.get("metricas") if isinstance(resultado, dict) else {}
+    if not isinstance(metricas, dict):
+        metricas = {}
+
+    try:
+        insider_data = get_insider_trading(ticker)
+    except Exception:
+        insider_data = {"disponible": False}
+
+    try:
+        analyst_data = get_analyst_estimates(ticker, precio_actual=precio_actual)
+    except Exception:
+        analyst_data = {"disponible": False}
+
+    precio_objetivo = analyst_data.get("precio_objetivo") if isinstance(analyst_data, dict) else {}
+    if not isinstance(precio_objetivo, dict):
+        precio_objetivo = {}
+
+    consenso_precio = consenso.get("precio")
+    consenso_upside = consenso.get("upside_pct")
+    score_value = score_final.get("score")
+    score_display = f"{float(score_value):.1f}/10" if score_value is not None else "N/D"
+    insider_sentiment = _pdf_text(insider_data.get("score_sentimiento"))
+    analyst_consensus = _pdf_text(analyst_data.get("recomendacion_consenso"))
+    valid_model_range = _pdf_valid_model_range(modelos)
+    investment_thesis = _build_pdf_investment_thesis(consenso, datos_empresa, metricas, altman_z, insider_data)
+    dispersion_warning = _pdf_dispersion_warning(consenso)
+    generated_at = timezone.now()
+    insider_summary = insider_data.get("resumen") if isinstance(insider_data, dict) else {}
+    if not isinstance(insider_summary, dict):
+        insider_summary = {}
+    insider_ratio = _pdf_float(insider_summary.get("ratio_compras"))
+    insider_ratio_pct = insider_ratio * 100 if insider_ratio is not None and insider_ratio <= 1 else insider_ratio
+    insider_message = _pdf_text(insider_data.get("mensaje"), "Sin actividad relevante reportada en la ventana analizada.")
+
+    pdf_summary = {
+        "logo_uri": _pdf_logo_uri(),
+        "company_name": _pdf_text(resultado.get("nombre"), ticker),
+        "sector": _pdf_text(resultado.get("sector") or datos_empresa.get("sector")),
+        "precio_actual": _pdf_price(precio_actual),
+        "consenso": _pdf_price(consenso_precio),
+        "upside": _pdf_pct(consenso_upside, signed=True),
+        "score": score_display,
+        "score_label": _pdf_score_label(score_value),
+        "confidence": _pdf_confidence_level(consenso, valid_model_range["count"], datos_empresa, precio_actual),
+        "recomendacion": _pdf_text(score_final.get("recomendacion"), "Mantener"),
+        "stage_segments": _build_pdf_stage_segments(company_stage),
+        "stage_line": (
+            f"Etapa {(company_stage or {}).get('stage', 'N/D')} · "
+            f"{(company_stage or {}).get('stage_name', 'N/D')} · "
+            f"Conf. {(company_stage or {}).get('confidence', 'N/D')}"
+            if company_stage else "Etapa no disponible"
+        ),
+        "stage_description": _pdf_stage_description(company_stage),
+        "revenue": datos_empresa.get("revenue_ttm_display") or _pdf_money(datos_empresa.get("revenue_ttm")),
+        "net_margin": _pdf_pct(datos_empresa.get("net_margin_pct")),
+        "fcf": datos_empresa.get("fcf_ttm_display") or _pdf_money(datos_empresa.get("fcf_ttm")),
+        "cagr_fcf": _pdf_pct(metricas.get("crecimiento_pct")),
+        "roe": _pdf_pct(datos_empresa.get("roe_pct")),
+        "altman": "N/D" if altman_z.get("z_score") is None else f"{float(altman_z.get('z_score')):.1f}",
+        "altman_zona": _pdf_text(altman_z.get("zona") or az_zona_text),
+        "debt_cap": _pdf_pct(datos_empresa.get("debt_to_capital_pct")),
+        "current_ratio": _pdf_ratio(datos_empresa.get("current_ratio_raw")),
+        "insider_sentiment": insider_sentiment if insider_sentiment == "N/D" else insider_sentiment.capitalize(),
+        "insider_purchases": _pdf_money(insider_summary.get("valor_compras_usd")),
+        "insider_sales": _pdf_money(insider_summary.get("valor_ventas_usd")),
+        "insider_buy_ratio": _pdf_pct(insider_ratio_pct, decimals=0),
+        "insider_message": insider_message,
+        "analyst_target": _pdf_price(precio_objetivo.get("medio")),
+        "analyst_consensus": analyst_consensus if analyst_consensus == "N/D" else analyst_consensus.capitalize(),
+        "analyst_count": _pdf_text(precio_objetivo.get("num_analistas")),
+        "consensus_price": _pdf_price(consenso_precio),
+        "consensus_upside": _pdf_pct(consenso_upside, signed=True),
+        "model_range": valid_model_range["range_display"],
+        "model_count": valid_model_range["count"],
+        "data_price_timestamp": _pdf_text(resultado.get("precio_fecha") or resultado.get("precio_actual_fecha"), "Fuente: datos de terceros"),
+        "data_financials_period": _pdf_text(datos_empresa.get("ultimo_periodo") or datos_empresa.get("periodo_financiero"), "Fuente: datos de terceros"),
+        "generated_at": timezone.localtime(generated_at).strftime("%d/%m/%Y %H:%M"),
+        "sources": ", ".join(_build_pdf_sources(resultado, insider_data, analyst_data)),
+    }
+
+    consensus_bar_width = min(100, abs(_pdf_float(consenso_upside) or 0))
+    consensus_bar_class = "positive" if (_pdf_float(consenso_upside) or 0) >= 0 else "negative"
+
     context = {
         "resultado": resultado,
         "ticker": ticker,
-        "generado": timezone.now(),
+        "generado": generated_at,
         "multi_model": multi_model,
         "company_stage": company_stage,
+        "pdf_summary": pdf_summary,
+        "investment_thesis": investment_thesis,
+        "dispersion_warning": dispersion_warning,
         "score_final": score_final,
         "componentes_score": componentes,
         "modelos_consenso": modelos_consenso,
+        "consensus_bar_width": consensus_bar_width,
+        "consensus_bar_class": consensus_bar_class,
         "altman_z": altman_z,
         "az_zona_text": az_zona_text,
+        "insider_trading": insider_data,
+        "analyst_estimates": analyst_data,
     }
 
     try:

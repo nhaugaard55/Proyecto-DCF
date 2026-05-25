@@ -3,374 +3,515 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  @page { size: A4; margin: 10mm 10mm 10mm 10mm; }
-  body { margin: 0; padding: 0; }
+  @page {
+    size: A4;
+    margin: 10mm;
+    background: #f5f7fb;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: #f5f7fb;
+    color: #111827;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10.4px;
+    line-height: 1.36;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  td, th { vertical-align: top; }
+
+  .page {
+    background: #ffffff;
+    border: 1px solid #dbe3ef;
+  }
+
+  .header {
+    background: #07172d;
+    color: #ffffff;
+  }
+
+  .header td {
+    padding: 18px 22px;
+  }
+
+  .brand-logo {
+    height: 55px;
+    max-width: 330px;
+    object-fit: contain;
+  }
+
+  .brand-text {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: .01em;
+  }
+
+  .company-title {
+    font-size: 15px;
+    font-weight: 800;
+    text-align: right;
+  }
+
+  .meta {
+    color: #b7c4d7;
+    font-size: 9.2px;
+    margin-top: 5px;
+    text-align: right;
+  }
+
+  .content {
+    padding: 17px 20px 15px;
+  }
+
+  .eyebrow {
+    color: #607089;
+    font-size: 8.4px;
+    font-weight: 800;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+  }
+
+  .value {
+    display: block;
+    margin-top: 4px;
+    color: #08172d;
+    font-size: 17px;
+    font-weight: 800;
+  }
+
+  .subtle {
+    color: #617089;
+  }
+
+  .summary {
+    border-bottom: 1px solid #dce4f0;
+    padding-bottom: 14px;
+  }
+
+  .summary td {
+    padding-right: 18px;
+  }
+
+  .summary td:last-child {
+    padding-right: 0;
+  }
+
+  .score-value {
+    color: #08172d;
+    font-size: 24px;
+    font-weight: 800;
+  }
+
+  .pill {
+    display: inline-block;
+    margin-top: 5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #eaf1ff;
+    color: #174ea6;
+    font-size: 8.7px;
+    font-weight: 800;
+  }
+
+  .score-scale {
+    margin-top: 6px;
+    color: #6b778d;
+    font-size: 8.4px;
+  }
+
+  .stage {
+    margin-top: 13px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #dce4f0;
+  }
+
+  .stage-line {
+    color: #08172d;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .stage-description {
+    margin-top: 4px;
+    color: #53627a;
+  }
+
+  .stage-grid {
+    margin-top: 9px;
+  }
+
+  .stage-grid td {
+    border-bottom: 2px solid #d8e0ec;
+    color: #7b8799;
+    padding: 4px 2px;
+    text-align: center;
+    font-size: 8.4px;
+  }
+
+  .stage-grid .active {
+    border-bottom-color: #1f6feb;
+    color: #0f3f8c;
+    font-weight: 800;
+  }
+
+  .section {
+    margin-top: 14px;
+  }
+
+  .section-title {
+    color: #07172d;
+    font-size: 11.2px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    margin: 0 0 8px;
+    text-transform: uppercase;
+  }
+
+  .thesis {
+    padding: 2px 0 1px;
+  }
+
+  .thesis ul {
+    margin: 0;
+    padding-left: 14px;
+  }
+
+  .thesis li {
+    margin: 4px 0;
+    color: #243044;
+  }
+
+  .warning {
+    margin-top: 11px;
+    padding: 8px 10px;
+    border-left: 3px solid #f59e0b;
+    background: #fff7ed;
+    color: #7c2d12;
+  }
+
+  .warning.strong {
+    border-left-color: #dc2626;
+    background: #fef2f2;
+    color: #7f1d1d;
+  }
+
+  .model-table {
+    border-top: 1px solid #dce4f0;
+  }
+
+  .model-table th {
+    padding: 7px 6px;
+    border-bottom: 1px solid #dce4f0;
+    color: #607089;
+    font-size: 8.3px;
+    letter-spacing: .08em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .model-table td {
+    padding: 6px 6px;
+    border-bottom: 1px solid #edf1f7;
+  }
+
+  .num {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .bar-track {
+    display: inline-block;
+    width: 48px;
+    height: 6px;
+    margin-right: 5px;
+    border-radius: 999px;
+    background: #e7edf6;
+    vertical-align: 1px;
+  }
+
+  .bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: #16833f;
+  }
+
+  .bar-fill.negative { background: #c2410c; }
+
+  .valuation-summary {
+    margin-top: 7px;
+    color: #243044;
+  }
+
+  .valuation-summary td {
+    padding: 3px 0;
+  }
+
+  .info-grid {
+    margin-top: 12px;
+  }
+
+  .info-grid td {
+    width: 25%;
+    padding-right: 12px;
+  }
+
+  .info-grid td:last-child {
+    padding-right: 0;
+  }
+
+  .info-card {
+    border-top: 2px solid #1f6feb;
+    padding-top: 8px;
+  }
+
+  .mini-title {
+    color: #07172d;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .07em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .line {
+    margin: 3px 0;
+    color: #344257;
+  }
+
+  .score-breakdown {
+    border-top: 1px solid #dce4f0;
+    padding-top: 9px;
+  }
+
+  .score-table td {
+    width: 25%;
+    padding-right: 10px;
+  }
+
+  .score-table td:last-child {
+    padding-right: 0;
+  }
+
+  .score-item {
+    color: #344257;
+  }
+
+  .score-item strong {
+    display: block;
+    color: #07172d;
+    font-size: 12px;
+  }
+
+  .source-box {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #dce4f0;
+    color: #607089;
+    font-size: 8.4px;
+  }
+
+  .footer {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #dce4f0;
+    color: #5c687c;
+    font-size: 8.7px;
+  }
 </style>
 </head>
 <body>
-
-<!-- ═══ WRAPPER ═══════════════════════════════════════════════════════ -->
-<table width="100%" cellpadding="0" cellspacing="0"
-  style="font-family: Helvetica, sans-serif; font-size: 14px;
-         color: #0f1923; border-collapse: collapse;">
-<tr><td>
-
-  <!-- ═══ HEADER ══════════════════════════════════════════════════════ -->
-  <table width="100%" cellpadding="0" cellspacing="0"
-    style="background-color: #0f1923;">
-  <tr>
-    <td style="padding: 24px 28px; background-color: #0f1923;">
-      <span style="font-size: 30px; font-weight: bold; color: #ffffff;">
-        {{ resultado.nombre }} ({{ ticker }})
-      </span><br>
-      <span style="font-size: 14px; color: #94a3b8;">
-        Análisis de valuación &middot; {{ generado|date:"d/m/Y" }}
-      </span>
-    </td>
-    <td style="padding: 24px 28px; text-align: right;
-      vertical-align: bottom; background-color: #0f1923;">
-      <span style="font-size: 13px; color: #64748b;">
-        Fuente: FMP + Yahoo Finance<br>
-        {% if company_stage %}Etapa {{ company_stage.stage }} &mdash; {{ company_stage.stage_name }}{% endif %}
-      </span>
-    </td>
-  </tr>
+<div class="page">
+  <table class="header">
+    <tr>
+      <td style="width:52%;">
+        {% if pdf_summary.logo_uri %}
+          <img class="brand-logo" src="{{ pdf_summary.logo_uri }}" alt="Intrinsic.com">
+        {% else %}
+          <div class="brand-text">Intrinsic.com</div>
+        {% endif %}
+      </td>
+      <td style="width:48%;">
+        <div class="company-title">{{ ticker }} - {{ pdf_summary.company_name }}</div>
+        <div class="meta">{{ generado|date:"d/m/Y" }} · {{ pdf_summary.sector }}</div>
+      </td>
+    </tr>
   </table>
 
-  <!-- ═══ MÉTRICAS CLAVE ═══════════════════════════════════════════════ -->
-  {% with consenso=multi_model.consenso score=score_final %}
-  <table width="100%" cellpadding="0" cellspacing="0"
-    style="background-color: #f8fafc; border-bottom: 3px solid #1a56db;
-           margin-bottom: 20px;">
-  <tr>
-    <!-- Precio actual -->
-    <td width="25%" style="padding: 20px 22px;
-      border-right: 1px solid #e2e8f0; text-align: center;
-      background-color: #f8fafc; vertical-align: top;">
-      <div style="font-size: 13px; color: #64748b; font-weight: bold;
-        text-transform: uppercase; letter-spacing: 0.05em;
-        margin-bottom: 8px;">Precio actual</div>
-      <div style="font-size: 40px; font-weight: bold; color: #0f1923;">
-        {% if resultado.precio_actual is not None %}
-          ${{ resultado.precio_actual|floatformat:2 }}
-        {% else %}
-          <span style="color: #94a3b8;">N/D</span>
-        {% endif %}
-      </div>
-    </td>
-    <!-- Precio consenso -->
-    <td width="25%" style="padding: 20px 22px;
-      border-right: 1px solid #e2e8f0; text-align: center;
-      background-color: #f8fafc; vertical-align: top;">
-      <div style="font-size: 13px; color: #64748b; font-weight: bold;
-        text-transform: uppercase; letter-spacing: 0.05em;
-        margin-bottom: 8px;">Precio consenso</div>
-      <div style="font-size: 40px; font-weight: bold; color: #1a56db;">
-        {% if consenso.precio is not None %}
-          ${{ consenso.precio|floatformat:2 }}
-        {% else %}
-          <span style="color: #94a3b8;">N/D</span>
-        {% endif %}
-      </div>
-    </td>
-    <!-- Upside estimado -->
-    <td width="25%" style="padding: 20px 22px;
-      border-right: 1px solid #e2e8f0; text-align: center;
-      background-color: #f8fafc; vertical-align: top;">
-      <div style="font-size: 13px; color: #64748b; font-weight: bold;
-        text-transform: uppercase; letter-spacing: 0.05em;
-        margin-bottom: 8px;">Upside estimado</div>
-      {% if consenso.upside_pct is not None %}
-        <div style="font-size: 40px; font-weight: bold;
-          color: {% if consenso.upside_pct >= 0 %}#0e7f4f{% else %}#b91c1c{% endif %};">
-          {% if consenso.upside_pct >= 0 %}+{% endif %}{{ consenso.upside_pct|floatformat:1 }}%
-        </div>
-      {% else %}
-        <div style="font-size: 40px; color: #94a3b8;">N/D</div>
-      {% endif %}
-    </td>
-    <!-- Score final -->
-    <td width="25%" style="padding: 20px 22px;
-      text-align: center; background-color: #f8fafc; vertical-align: top;">
-      <div style="font-size: 13px; color: #64748b; font-weight: bold;
-        text-transform: uppercase; letter-spacing: 0.05em;
-        margin-bottom: 8px;">Score final</div>
-      {% if score.score is not None %}
-        <div style="font-size: 40px; font-weight: bold; color: #0f1923;
-          margin-bottom: 6px;">
-          {{ score.score|floatformat:1 }}<span style="font-size: 20px;
-            color: #64748b; font-weight: normal;"> / 10</span>
-        </div>
-        <div style="font-size: 15px; font-weight: bold; color: #ffffff;
-          padding: 5px 14px; margin-top: 4px;
-          background-color: {% if score.recomendacion == 'Comprar' %}#166534{% elif score.recomendacion == 'Vender' %}#991b1b{% else %}#92400e{% endif %};">
-          {{ score.recomendacion|upper|default:"N/D" }}
-        </div>
-      {% else %}
-        <div style="font-size: 40px; color: #94a3b8;">N/D</div>
-      {% endif %}
-    </td>
-  </tr>
-  </table>
-  {% endwith %}
+  <div class="content">
+    <table class="summary">
+      <tr>
+        <td style="width:25%;">
+          <div class="eyebrow">Score</div>
+          <div class="score-value">{{ pdf_summary.score }}</div>
+          <span class="pill">{{ pdf_summary.score_label }}</span>
+          <div class="score-scale">0&ndash;3: débil · 4&ndash;6: neutral · 7&ndash;10: atractivo</div>
+        </td>
+        <td style="width:17%;">
+          <div class="eyebrow">Confidence</div>
+          <span class="value">{{ pdf_summary.confidence }}</span>
+        </td>
+        <td style="width:19%;">
+          <div class="eyebrow">Precio actual</div>
+          <span class="value">{{ pdf_summary.precio_actual }}</span>
+        </td>
+        <td style="width:21%;">
+          <div class="eyebrow">Consenso</div>
+          <span class="value">{{ pdf_summary.consenso }}</span>
+        </td>
+        <td style="width:18%;">
+          <div class="eyebrow">Upside</div>
+          <span class="value">{{ pdf_summary.upside }}</span>
+        </td>
+      </tr>
+    </table>
 
-  <!-- ═══ DOS COLUMNAS ═════════════════════════════════════════════════ -->
-  <table width="100%" cellpadding="0" cellspacing="0"
-    style="margin-bottom: 14px;">
-  <tr>
-
-    <!-- ─── COLUMNA IZQUIERDA (54%) ──────────────────────────────────── -->
-    <td width="54%" style="vertical-align: top; padding-right: 18px;">
-
-      <!-- Etapa empresarial -->
-      <div style="background-color: #f1f5f9; padding: 8px 14px;
-        font-size: 13px; font-weight: bold; color: #475569;
-        border-left: 4px solid #1a56db; margin-bottom: 12px;
-        text-transform: uppercase; letter-spacing: 0.05em;">
-        Etapa Empresarial
-      </div>
-
-      {% if company_stage %}
-        <table cellpadding="0" cellspacing="0" style="margin-bottom: 6px;">
+    <div class="stage">
+      <div class="stage-line">{{ pdf_summary.stage_line }}</div>
+      <div class="stage-description">{{ pdf_summary.stage_description }}</div>
+      <table class="stage-grid">
         <tr>
-          <td style="background-color: #1e3a5f; color: #ffffff;
-            font-size: 18px; font-weight: bold; padding: 8px 18px;">
-            Etapa {{ company_stage.stage }} &mdash; {{ company_stage.stage_name }}
-          </td>
+          {% for segment in pdf_summary.stage_segments %}
+            <td class="{% if segment.active %}active{% endif %}">
+              {{ segment.num }} {{ segment.label }}
+            </td>
+          {% endfor %}
         </tr>
-        </table>
-        <div style="font-size: 14px; color: #64748b; margin-bottom: 16px;">
-          Confianza: {{ company_stage.confidence|default:"N/D" }}
-        </div>
-        <table width="100%" cellpadding="0" cellspacing="0"
-          style="font-size: 14px; margin-bottom: 22px; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 10px 8px; font-weight: bold; color: #475569;
-              font-size: 13px; background-color: #f1f5f9;
-              border-bottom: 1px solid #e2e8f0;">Señal</td>
-            <td style="padding: 10px 8px; font-weight: bold; color: #475569;
-              font-size: 13px; text-align: right; background-color: #f1f5f9;
-              border-bottom: 1px solid #e2e8f0;">Valor</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 8px; color: #475569;
-              border-bottom: 1px solid #f1f5f9;">Tendencia FCF</td>
-            <td style="padding: 10px 8px; text-align: right; font-weight: bold;
-              border-bottom: 1px solid #f1f5f9;">
-              {{ company_stage.signals.fcf_trend|default:"N/D" }}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 8px; color: #475569;
-              background-color: #f8fafc; border-bottom: 1px solid #f1f5f9;">
-              Crecimiento de ingresos</td>
-            <td style="padding: 10px 8px; text-align: right; font-weight: bold;
-              background-color: #f8fafc; border-bottom: 1px solid #f1f5f9;">
-              {{ company_stage.signals.revenue_growth|default:"N/D" }}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 8px; color: #475569;
-              border-bottom: 1px solid #f1f5f9;">Margen neto</td>
-            <td style="padding: 10px 8px; text-align: right; font-weight: bold;
-              border-bottom: 1px solid #f1f5f9;">
-              {{ company_stage.signals.net_margin|default:"N/D" }}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 8px; color: #475569;
-              background-color: #f8fafc; border-bottom: 1px solid #f1f5f9;">
-              CAGR FCF</td>
-            <td style="padding: 10px 8px; text-align: right; font-weight: bold;
-              background-color: #f8fafc; border-bottom: 1px solid #f1f5f9;">
-              {{ company_stage.signals.fcf_cagr|default:"N/D" }}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 8px; color: #475569;">Dividendos</td>
-            <td style="padding: 10px 8px; text-align: right; font-weight: bold;">
-              {% if company_stage.signals.has_dividends %}Sí{% else %}No{% endif %}
-            </td>
-          </tr>
-        </table>
-      {% else %}
-        <p style="font-size: 14px; color: #94a3b8; margin-bottom: 22px;">
-          No disponible</p>
-      {% endif %}
-
-      <!-- Componentes del score -->
-      <div style="background-color: #f1f5f9; padding: 8px 14px;
-        font-size: 13px; font-weight: bold; color: #475569;
-        border-left: 4px solid #1a56db; margin-bottom: 12px;
-        text-transform: uppercase; letter-spacing: 0.05em;">
-        Componentes del Score
-      </div>
-      <table width="100%" cellpadding="0" cellspacing="0"
-        style="font-size: 14px; border-collapse: collapse;">
-        <tr>
-          <td style="padding: 10px 8px; font-weight: bold; color: #475569;
-            font-size: 13px; background-color: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;">Componente</td>
-          <td style="padding: 10px 8px; font-weight: bold; color: #475569;
-            font-size: 13px; text-align: center; background-color: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;">Pts</td>
-          <td style="padding: 10px 8px; font-weight: bold; color: #475569;
-            font-size: 13px; background-color: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;">Detalle</td>
-        </tr>
-        {% for comp in componentes_score %}
-        <tr>
-          <td style="padding: 10px 8px; color: #475569;
-            border-bottom: 1px solid #f1f5f9;
-            {% if forloop.counter|divisibleby:2 %}background-color: #f8fafc;{% endif %}">
-            {{ comp.nombre }}
-          </td>
-          <td style="padding: 10px 8px; text-align: center; font-weight: bold;
-            color: #1a56db; border-bottom: 1px solid #f1f5f9;
-            {% if forloop.counter|divisibleby:2 %}background-color: #f8fafc;{% endif %}">
-            {% if comp.puntos is not None %}{{ comp.puntos|floatformat:1 }}{% else %}<span style="color: #94a3b8;">N/D</span>{% endif %}
-          </td>
-          <td style="padding: 10px 8px; color: #64748b; font-size: 13px;
-            border-bottom: 1px solid #f1f5f9;
-            {% if forloop.counter|divisibleby:2 %}background-color: #f8fafc;{% endif %}">
-            {{ comp.detalle|default:"—" }}
-          </td>
-        </tr>
-        {% endfor %}
       </table>
+    </div>
 
-    </td>
+    <div class="section thesis">
+      <div class="section-title">Investment Thesis</div>
+      <ul>
+        {% for item in investment_thesis %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </div>
 
-    <!-- ─── SEPARADOR ─────────────────────────────────────────────────── -->
-    <td width="2%" style="border-right: 1px solid #e2e8f0;"></td>
-
-    <!-- ─── COLUMNA DERECHA (44%) ─────────────────────────────────────── -->
-    <td width="44%" style="vertical-align: top; padding-left: 18px;">
-
-      <!-- Valuación multi-modelo -->
-      <div style="background-color: #f1f5f9; padding: 8px 14px;
-        font-size: 13px; font-weight: bold; color: #475569;
-        border-left: 4px solid #1a56db; margin-bottom: 12px;
-        text-transform: uppercase; letter-spacing: 0.05em;">
-        Valuación Multi-Modelo
+    {% if dispersion_warning %}
+      <div class="warning {% if dispersion_warning.level == 'strong' %}strong{% endif %}">
+        <strong>{{ dispersion_warning.title }}.</strong> {{ dispersion_warning.text }}
       </div>
-      <table width="100%" cellpadding="0" cellspacing="0"
-        style="font-size: 14px; border-collapse: collapse; margin-bottom: 22px;">
+    {% endif %}
+
+    <div class="section">
+      <div class="section-title">Valuación multi-modelo</div>
+      <table class="model-table">
         <tr>
-          <td style="padding: 10px 8px; font-weight: bold; color: #475569;
-            font-size: 13px; background-color: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;">Modelo</td>
-          <td style="padding: 10px 8px; font-weight: bold; color: #475569;
-            font-size: 13px; text-align: right; background-color: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;">Valor</td>
-          <td style="padding: 10px 8px; font-weight: bold; color: #475569;
-            font-size: 13px; text-align: right; background-color: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;">Peso</td>
+          <th style="width:36%;">Modelo</th>
+          <th class="num" style="width:18%;">Valor</th>
+          <th class="num" style="width:14%;">Peso</th>
+          <th style="width:32%;">vs Actual</th>
         </tr>
-        {% for m in modelos_consenso %}
+        {% for modelo in modelos_consenso %}
         <tr>
-          <td style="padding: 10px 8px; color: #475569;
-            border-bottom: 1px solid #f1f5f9;
-            {% if forloop.counter|divisibleby:2 %}background-color: #f8fafc;{% endif %}">
-            {{ m.nombre }}
-          </td>
-          <td style="padding: 10px 8px; text-align: right; font-weight: bold;
-            border-bottom: 1px solid #f1f5f9;
-            {% if forloop.counter|divisibleby:2 %}background-color: #f8fafc;{% endif %}">
-            {% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span style="color: #94a3b8;">N/D</span>{% endif %}
-          </td>
-          <td style="padding: 10px 8px; text-align: right; color: #64748b;
-            border-bottom: 1px solid #f1f5f9;
-            {% if forloop.counter|divisibleby:2 %}background-color: #f8fafc;{% endif %}">
-            {{ m.peso_pct|floatformat:1 }}%
+          <td>{{ modelo.nombre }}</td>
+          <td class="num">{{ modelo.valor_display }}</td>
+          <td class="num">{{ modelo.peso_pct|floatformat:1 }}%</td>
+          <td>
+            <span class="bar-track">
+              <span class="bar-fill {{ modelo.bar_class }}" style="width:{{ modelo.bar_width }}%;"></span>
+            </span>
+            {{ modelo.upside_display }}
           </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="3" style="padding: 10px 8px; color: #94a3b8;">
-            Sin modelos en consenso
-          </td>
+          <td colspan="4">Sin modelos suficientes para mostrar.</td>
         </tr>
         {% endfor %}
-        {% with consenso=multi_model.consenso %}
-        {% if consenso.precio is not None %}
-        <tr>
-          <td style="padding: 10px 10px; font-weight: bold; color: #ffffff;
-            background-color: #1a56db; border-top: 2px solid #1a56db;">
-            Consenso
-          </td>
-          <td style="padding: 10px 10px; text-align: right; font-weight: bold;
-            color: #ffffff; background-color: #1a56db;
-            border-top: 2px solid #1a56db;">
-            ${{ consenso.precio|floatformat:2 }}
-          </td>
-          <td style="padding: 10px 10px; text-align: right; color: #ffffff;
-            background-color: #1a56db; border-top: 2px solid #1a56db;">
-            100%
-          </td>
-        </tr>
-        {% endif %}
-        {% endwith %}
       </table>
+      <table class="valuation-summary">
+        <tr>
+          <td><strong>Consenso ponderado:</strong> {{ pdf_summary.consensus_price }}</td>
+          <td class="num"><strong>Rango modelos:</strong> {{ pdf_summary.model_range }}</td>
+        </tr>
+      </table>
+    </div>
 
-      <!-- Altman Z-Score -->
-      <div style="background-color: #f1f5f9; padding: 8px 14px;
-        font-size: 13px; font-weight: bold; color: #475569;
-        border-left: 4px solid #1a56db; margin-bottom: 12px;
-        text-transform: uppercase; letter-spacing: 0.05em;">
-        Altman Z-Score &mdash; Solvencia
-      </div>
-      {% if altman_z.disponible %}
-        <table width="100%" cellpadding="0" cellspacing="0"
-          style="font-size: 16px;">
-          <tr>
-            <td style="padding: 8px 0; vertical-align: middle;">
-              <span style="font-size: 36px; font-weight: bold; color: #0f1923;">
-                Z = {{ altman_z.z_score|floatformat:2 }}
-              </span>
+    <table class="info-grid section">
+      <tr>
+        <td>
+          <div class="info-card">
+            <div class="mini-title">Fundamentals</div>
+            <div class="line">Revenue: <strong>{{ pdf_summary.revenue }}</strong></div>
+            <div class="line">Margen neto: <strong>{{ pdf_summary.net_margin }}</strong></div>
+            <div class="line">FCF: <strong>{{ pdf_summary.fcf }}</strong></div>
+            <div class="line">CAGR FCF: <strong>{{ pdf_summary.cagr_fcf }}</strong></div>
+            <div class="line">ROE: <strong>{{ pdf_summary.roe }}</strong></div>
+          </div>
+        </td>
+        <td>
+          <div class="info-card">
+            <div class="mini-title">Solvencia</div>
+            <div class="line">Altman Z: <strong>{{ pdf_summary.altman }}</strong></div>
+            <div class="line">{{ pdf_summary.altman_zona }}</div>
+            <div class="line">Debt/Capital: <strong>{{ pdf_summary.debt_cap }}</strong></div>
+            <div class="line">Current ratio: <strong>{{ pdf_summary.current_ratio }}</strong></div>
+          </div>
+        </td>
+        <td>
+          <div class="info-card">
+            <div class="mini-title">Insider Trading</div>
+            <div class="line">Sentimiento: <strong>{{ pdf_summary.insider_sentiment }}</strong></div>
+            <div class="line">Compras: <strong>{{ pdf_summary.insider_purchases }}</strong></div>
+            <div class="line">Ventas: <strong>{{ pdf_summary.insider_sales }}</strong></div>
+            <div class="line">Ratio compras: <strong>{{ pdf_summary.insider_buy_ratio }}</strong></div>
+          </div>
+        </td>
+        <td>
+          <div class="info-card">
+            <div class="mini-title">Analyst Consensus</div>
+            <div class="line">Target: <strong>{{ pdf_summary.analyst_target }}</strong></div>
+            <div class="line">Consenso: <strong>{{ pdf_summary.analyst_consensus }}</strong></div>
+            <div class="line">Analistas: <strong>{{ pdf_summary.analyst_count }}</strong></div>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="section score-breakdown">
+      <div class="section-title">Score Breakdown</div>
+      <table class="score-table">
+        <tr>
+          {% for comp in componentes_score %}
+            <td>
+              <div class="score-item">
+                <strong>{{ comp.puntos_display }}</strong>
+                {{ comp.nombre }}
+              </div>
             </td>
-            <td style="padding: 8px 0; text-align: right; vertical-align: middle;">
-              <span style="font-size: 14px; font-weight: bold; color: #ffffff;
-                padding: 6px 14px;
-                background-color: {% if altman_z.zona_code == 'safe' %}#166534{% elif altman_z.zona_code == 'grey' %}#92400e{% else %}#991b1b{% endif %};">
-                {% if altman_z.zona_code == 'safe' %}Zona Segura
-                {% elif altman_z.zona_code == 'grey' %}Zona Gris
-                {% else %}Zona Peligro{% endif %}
-              </span>
-            </td>
-          </tr>
-          <tr>
-            <td colspan="2" style="font-size: 13px; color: #64748b;
-              padding-top: 6px;">
-              {{ az_zona_text }}
-            </td>
-          </tr>
-        </table>
-      {% else %}
-        <p style="font-size: 14px; color: #94a3b8; margin: 0;">
-          No disponible para esta empresa.
-        </p>
-      {% endif %}
+          {% empty %}
+            <td>Sin desglose disponible.</td>
+          {% endfor %}
+        </tr>
+      </table>
+    </div>
 
-    </td>
-  </tr>
-  </table>
+    <div class="source-box">
+      <strong>Datos actualizados:</strong>
+      Precio: {{ pdf_summary.data_price_timestamp }} ·
+      Financials: {{ pdf_summary.data_financials_period }} ·
+      Reporte generado: {{ pdf_summary.generated_at }} ·
+      Fuentes: {{ pdf_summary.sources }}
+    </div>
 
-  <!-- ═══ FOOTER ══════════════════════════════════════════════════════ -->
-  <table width="100%" cellpadding="0" cellspacing="0"
-    style="border-top: 1px solid #e2e8f0; margin-top: 18px;">
-  <tr>
-    <td style="padding-top: 12px; text-align: center;
-      font-size: 13px; color: #94a3b8;">
-      Score orientativo. No constituye asesoramiento financiero.
-      Siempre realiza tu propio análisis.<br>
-      Generado por DCF Analyzer &middot; dcfanalyzer.com
-    </td>
-  </tr>
-  </table>
-
-</td></tr>
-</table>
-
+    <div class="footer">
+      Reporte generado automáticamente por Intrinsic.com utilizando modelos cuantitativos y datos de terceros.
+      La información se presenta únicamente con fines educativos e informativos y no constituye asesoramiento
+      financiero, recomendación de inversión ni oferta de compra o venta de valores.
+    </div>
+  </div>
+</div>
 </body>
 </html>
