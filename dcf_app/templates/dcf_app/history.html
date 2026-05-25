@@ -129,6 +129,23 @@
   .theme-dark .recent-diff.positive { color: #bbf7d0; }
   .theme-dark .recent-diff.negative { color: #fca5a5; }
 
+  .history-filter-btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .history-filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .history-filter-btn:not(.active):hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: transparent;
+  }
+
   @media (max-width: 575.98px) {
     .recent-history-list { gap: 0.5rem; }
 
@@ -185,7 +202,15 @@
     <div class="d-flex align-items-center justify-content-between mb-1">
       <h2 class="fw-bold mb-0">Historial de análisis</h2>
     </div>
-    <p class="text-muted mb-4">Todos los escenarios de valoración evaluados.</p>
+    <p class="text-muted mb-3">Todos los escenarios de valoración evaluados.</p>
+    {% if records %}
+    <div class="d-flex gap-1 mb-4" role="group" aria-label="Filtrar cantidad de registros">
+      <button type="button" class="btn btn-sm btn-outline-secondary history-filter-btn active" data-filter="10">Últimos 10</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary history-filter-btn" data-filter="30">Últimos 30</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary history-filter-btn" data-filter="90">Últimos 90</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary history-filter-btn" data-filter="all">Todos</button>
+    </div>
+    {% endif %}
 
     {% if records %}
     <ul class="recent-history-list">
@@ -310,6 +335,37 @@
       }
     });
   });
+
+  // Filter buttons
+  var filterBtns = document.querySelectorAll('.history-filter-btn');
+  var activeFilter = 10;
+
+  function applyFilter(n) {
+    collapseAll();
+    items.forEach(function (item, i) {
+      if (n === 'all' || i < n) {
+        item.style.display = '';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+    filterBtns.forEach(function (btn) {
+      var isActive = (n === 'all' && btn.dataset.filter === 'all') ||
+                     (btn.dataset.filter !== 'all' && parseInt(btn.dataset.filter) === n);
+      btn.classList.toggle('active', isActive);
+    });
+    activeFilter = n;
+  }
+
+  filterBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var val = btn.dataset.filter === 'all' ? 'all' : parseInt(btn.dataset.filter);
+      applyFilter(val);
+    });
+  });
+
+  // Apply default on load
+  applyFilter(activeFilter);
 })();
 </script>
 {% endblock %}
