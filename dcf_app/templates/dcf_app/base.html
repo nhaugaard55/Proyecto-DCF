@@ -537,6 +537,17 @@
                         applyTheme(next);
                     });
                 }
+
+                // Restore last analysis URL on back buttons
+                var backLinks = document.querySelectorAll("[data-back-to-analysis]");
+                if (backLinks.length) {
+                    try {
+                        var lastUrl = sessionStorage.getItem("lastAnalysisUrl");
+                        if (lastUrl) {
+                            backLinks.forEach(function(link) { link.href = lastUrl; });
+                        }
+                    } catch(e) {}
+                }
             });
         })();
     </script>

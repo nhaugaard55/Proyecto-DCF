@@ -5244,4 +5244,23 @@ document.addEventListener("DOMContentLoaded", function () {
     {% endif %}
 })();
 </script>
+
+{% if resultado and ticker %}
+<script>
+(function() {
+    var wBtn = document.getElementById('watchlist-btn');
+    if (!wBtn) return;
+    var ticker = wBtn.dataset.ticker;
+    if (!ticker) return;
+    try {
+        var url = '/app/?ticker=' + encodeURIComponent(ticker);
+        var cn = wBtn.dataset.companyName;
+        var ce = wBtn.dataset.companyExchange;
+        if (cn) url += '&company_name=' + encodeURIComponent(cn);
+        if (ce) url += '&company_exchange=' + encodeURIComponent(ce);
+        sessionStorage.setItem('lastAnalysisUrl', url);
+    } catch(e) {}
+})();
+</script>
+{% endif %}
 {% endblock %}
