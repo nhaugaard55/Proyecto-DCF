@@ -1979,6 +1979,25 @@
     }
 
     @media (min-width: 768px) {
+        .theme-dark #modelos-accordion > .accordion-item > .accordion-header > .accordion-button::after {
+            background: none !important;
+            border-right: 2.5px solid #e2e8f0 !important;
+            border-bottom: 2.5px solid #e2e8f0 !important;
+            filter: none !important;
+            opacity: 1 !important;
+            transform: rotate(45deg) !important;
+            width: 0.85rem !important;
+            height: 0.85rem !important;
+        }
+
+        .theme-dark #modelos-accordion > .accordion-item > .accordion-header > .accordion-button:hover::after {
+            border-color: #ffffff !important;
+        }
+
+        .theme-dark #modelos-accordion > .accordion-item > .accordion-header > .accordion-button:not(.collapsed)::after {
+            transform: rotate(-135deg) !important;
+        }
+
         .theme-dark #analysis-insider-accordion > .accordion-item > .accordion-header > .accordion-button::after,
         .theme-dark #analysis-analyst-accordion > .accordion-item > .accordion-header > .accordion-button::after,
         .theme-dark #analysis-news-accordion > .accordion-item > .accordion-header > .accordion-button::after {
