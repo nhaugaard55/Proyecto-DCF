@@ -191,8 +191,13 @@
 
     <div class="d-flex align-items-center justify-content-between mb-1">
       <h2 class="fw-bold mb-0">★ Watchlist</h2>
+      {% if not watchlist_requires_login %}
       <button class="btn btn-primary btn-sm" id="btn-new-group">+ Nueva watchlist</button>
+      {% endif %}
     </div>
+    {% if watchlist_requires_login %}
+    <p class="text-muted mb-4">Iniciá sesión o registrate para guardar tu watchlist de forma persistente.</p>
+    {% else %}
     <p class="text-muted mb-4">Organizá tus empresas en watchlists por categorías.</p>
 
     <!-- Nueva watchlist inline form -->
@@ -202,6 +207,7 @@
       <button class="btn btn-primary btn-sm" id="btn-create-group">Crear</button>
       <button class="btn btn-outline-secondary btn-sm" id="btn-cancel-group">Cancelar</button>
     </div>
+    {% endif %}
 
     <!-- Grupos -->
     <div id="wl-groups" class="d-flex flex-column gap-3">
@@ -248,7 +254,11 @@
       {% empty %}
       <div id="wl-no-groups" class="text-center py-5 text-muted">
         <div class="fs-1 mb-3">★</div>
+        {% if watchlist_requires_login %}
+        <p>Iniciá sesión para guardar empresas en tu watchlist.</p>
+        {% else %}
         <p>No tenés watchlists todavía. Creá una con el botón de arriba.</p>
+        {% endif %}
       </div>
       {% endfor %}
 
@@ -301,6 +311,8 @@
     var btnCancel = document.getElementById('btn-cancel-group');
     var groupsEl  = document.getElementById('wl-groups');
     var noGroups  = document.getElementById('wl-no-groups');
+
+    if (!btnNew || !form || !nameInput || !btnCreate || !btnCancel) return;
 
     btnNew.addEventListener('click', function () { form.classList.add('show'); nameInput.focus(); });
     btnCancel.addEventListener('click', function () { form.classList.remove('show'); nameInput.value = ''; });

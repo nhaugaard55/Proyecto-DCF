@@ -4,16 +4,21 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
+from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from dcf_app.models import WatchlistGroup, WatchlistItem
+from dcf_app import views
+from dcf_app.models import AnalysisRecord, WatchlistGroup, WatchlistItem
 from dcf_core import insider_trading
 from dcf_core.DCF_Main import ejecutar_dcf
 from dcf_core.company_stage import detect_company_stage
 from dcf_core.finanzas import seleccionar_metodo_crecimiento
 from dcf_core.fmp import FMPClientError
 from dcf_core.multi_model_valuation import calcular_score_final, _modelo_reverse_dcf, run_all_models
+
+
+User = get_user_model()
 
 
 def _sample_financials() -> dict:
@@ -334,8 +339,21 @@ class InsiderTradingTests(SimpleTestCase):
 
 
 class WatchlistViewTests(TestCase):
+    def setUp(self) -> None:
+        self.user_a = User.objects.create_user(
+            username="user-a",
+            email="user-a@example.com",
+            password="test-pass-123",
+        )
+        self.user_b = User.objects.create_user(
+            username="user-b",
+            email="user-b@example.com",
+            password="test-pass-123",
+        )
+
     def test_toggle_without_group_uses_general_watchlist(self) -> None:
-        other_group = WatchlistGroup.objects.create(name="Tecnológicas")
+        self.client.force_login(self.user_a)
+        other_group = WatchlistGroup.objects.create(user=self.user_a, name="Tecnológicas")
 
         response = self.client.post(
             reverse("watchlist_toggle"),
@@ -343,12 +361,13 @@ class WatchlistViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        general = WatchlistGroup.objects.get(name="General")
+        general = WatchlistGroup.objects.get(user=self.user_a, name="General")
         self.assertTrue(WatchlistItem.objects.filter(watchlist=general, ticker="AAPL").exists())
         self.assertFalse(WatchlistItem.objects.filter(watchlist=other_group, ticker="AAPL").exists())
 
     def test_toggle_with_group_id_uses_selected_watchlist(self) -> None:
-        selected_group = WatchlistGroup.objects.create(name="Dividendos")
+        self.client.force_login(self.user_a)
+        selected_group = WatchlistGroup.objects.create(user=self.user_a, name="Dividendos")
 
         response = self.client.post(
             reverse("watchlist_toggle"),
@@ -357,7 +376,118 @@ class WatchlistViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(WatchlistItem.objects.filter(watchlist=selected_group, ticker="KO").exists())
-        self.assertFalse(WatchlistGroup.objects.filter(name="General").exists())
+        self.assertFalse(WatchlistGroup.objects.filter(user=self.user_a, name="General").exists())
+
+    def test_user_does_not_see_other_users_watchlist(self) -> None:
+        group_a = WatchlistGroup.objects.create(user=self.user_a, name="A")
+        group_b = WatchlistGroup.objects.create(user=self.user_b, name="B")
+        WatchlistItem.objects.create(watchlist=group_a, ticker="AAPL")
+        WatchlistItem.objects.create(watchlist=group_b, ticker="MSFT")
+
+        self.client.force_login(self.user_a)
+        response = self.client.get(reverse("watchlist"))
+
+        self.assertContains(response, "AAPL")
+        self.assertNotContains(response, "MSFT")
+
+    def test_authenticated_user_creates_own_general_watchlist(self) -> None:
+        self.client.force_login(self.user_a)
+
+        response = self.client.post(reverse("watchlist_toggle"), {"ticker": "NVDA"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(WatchlistGroup.objects.filter(user=self.user_a, name="General").exists())
+        self.assertFalse(WatchlistGroup.objects.filter(user=self.user_b, name="General").exists())
+
+    def test_anonymous_user_does_not_see_legacy_watchlists(self) -> None:
+        legacy_group = WatchlistGroup.objects.create(name="Legacy")
+        WatchlistItem.objects.create(watchlist=legacy_group, ticker="LEG")
+
+        response = self.client.get(reverse("watchlist"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "LEG")
+        self.assertContains(response, "Iniciá sesión para guardar empresas en tu watchlist.")
+
+    def test_anonymous_user_cannot_save_watchlist(self) -> None:
+        response = self.client.post(reverse("watchlist_toggle"), {"ticker": "AAPL"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["requires_login"], True)
+        self.assertFalse(WatchlistItem.objects.exists())
+
+    def test_watchlist_status_is_scoped_to_user(self) -> None:
+        group_b = WatchlistGroup.objects.create(user=self.user_b, name="B")
+        WatchlistItem.objects.create(watchlist=group_b, ticker="MSFT")
+
+        self.client.force_login(self.user_a)
+        response = self.client.get(reverse("watchlist_status"), {"ticker": "MSFT"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["in_watchlist"], False)
+
+    def test_user_cannot_modify_other_users_group(self) -> None:
+        group_b = WatchlistGroup.objects.create(user=self.user_b, name="B")
+
+        self.client.force_login(self.user_a)
+        response = self.client.post(reverse("watchlist_toggle"), {"ticker": "MSFT", "group_id": group_b.id})
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(WatchlistItem.objects.exists())
+
+
+class HistoryViewTests(TestCase):
+    def setUp(self) -> None:
+        self.user_a = User.objects.create_user(username="history-a", password="test-pass-123")
+        self.user_b = User.objects.create_user(username="history-b", password="test-pass-123")
+
+    def _record(self, ticker: str, user=None) -> AnalysisRecord:
+        return AnalysisRecord.objects.create(
+            user=user,
+            ticker=ticker,
+            company_name=f"{ticker} Inc.",
+            metodo=AnalysisRecord.METODO_CAGR,
+        )
+
+    def test_user_does_not_see_other_users_history(self) -> None:
+        self._record("AAPL", user=self.user_a)
+        self._record("MSFT", user=self.user_b)
+
+        self.client.force_login(self.user_a)
+        response = self.client.get(reverse("history"))
+
+        self.assertContains(response, "AAPL")
+        self.assertNotContains(response, "MSFT")
+
+    def test_anonymous_history_does_not_expose_global_records(self) -> None:
+        self._record("LEGACY", user=None)
+
+        response = self.client.get(reverse("history"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "LEGACY")
+        self.assertContains(response, "Todavía no hay análisis guardados")
+
+    def test_guardar_analisis_can_store_authenticated_user(self) -> None:
+        views._guardar_analisis(
+            user=self.user_a,
+            ticker="AAPL",
+            company_name="Apple Inc.",
+            company_exchange="NASDAQ",
+            resultado={
+                "nombre": "Apple Inc.",
+                "sector": "Technology",
+                "fuente_datos": "fmp",
+                "valor_intrinseco": 100,
+                "precio_actual": 90,
+                "diferencia_pct": 11.11,
+                "estado": "SUBVALUADA",
+                "datos_empresa": {"metodo_crecimiento_codigo": AnalysisRecord.METODO_CAGR},
+            },
+        )
+
+        record = AnalysisRecord.objects.get(ticker="AAPL")
+        self.assertEqual(record.user, self.user_a)
 
 
 class MultiModelValuationTests(SimpleTestCase):

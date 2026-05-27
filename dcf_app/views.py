@@ -277,6 +277,7 @@ RECENT_HISTORY_FETCH_LIMIT = 25
 
 def _guardar_analisis(
     *,
+    user=None,
     ticker: str,
     company_name: str,
     company_exchange: str,
@@ -299,6 +300,7 @@ def _guardar_analisis(
 
     ventana_reciente = timezone.now() - timedelta(minutes=5)
     duplicado = AnalysisRecord.objects.filter(
+        user=user,
         ticker=ticker,
         metodo=metodo,
         fuente_utilizada=fuente_utilizada,
@@ -312,6 +314,7 @@ def _guardar_analisis(
         return None
 
     return AnalysisRecord.objects.create(
+        user=user,
         ticker=ticker,
         company_name=nombre_empresa,
         company_exchange=company_exchange,
@@ -452,6 +455,7 @@ def dcf_view(request):
                 resultado = None
             else:
                 _guardar_analisis(
+                    user=request.user if request.user.is_authenticated else None,
                     ticker=ticker,
                     company_name=company_name,
                     company_exchange=company_exchange,
@@ -564,8 +568,12 @@ def dcf_view(request):
     if company_exchange and ticker:
         tradingview_symbol = f"{company_exchange.upper()}:{ticker}"
 
-    in_watchlist = WatchlistItem.objects.filter(ticker=ticker).exists() if ticker else False
-    watchlist_groups = _watchlist_groups_for_picker(ticker)
+    in_watchlist = (
+        WatchlistItem.objects.filter(watchlist__user=request.user, ticker=ticker).exists()
+        if ticker and request.user.is_authenticated
+        else False
+    )
+    watchlist_groups = _watchlist_groups_for_picker(request, ticker)
     precio_historico = (resultado or {}).get("precio_historico") if resultado else None
     datos_empresa_context = resultado.get("datos_empresa") if isinstance(resultado, dict) else {}
     if not isinstance(datos_empresa_context, dict):
@@ -1095,10 +1103,51 @@ def search_companies_view(request):
 # Watchlist
 # ---------------------------------------------------------------------------
 
+def _requires_login_response() -> JsonResponse:
+    return JsonResponse({
+        "ok": False,
+        "requires_login": True,
+        "message": "Iniciá sesión para guardar tu watchlist.",
+    })
+
+
+def get_user_watchlist_groups(request):
+    """Watchlist groups visible to the current authenticated user."""
+    if not request.user.is_authenticated:
+        return WatchlistGroup.objects.none()
+    return WatchlistGroup.objects.filter(user=request.user)
+
+
+def get_or_create_default_watchlist(request):
+    """Return the user's General watchlist, creating it if necessary."""
+    if not request.user.is_authenticated:
+        return None
+    group = (
+        WatchlistGroup.objects
+        .filter(user=request.user, name__iexact="General")
+        .order_by("created_at")
+        .first()
+    )
+    if group:
+        return group
+    return WatchlistGroup.objects.create(user=request.user, name="General")
+
+
+def user_can_access_watchlist_group(request, group: WatchlistGroup | None) -> bool:
+    return bool(
+        group
+        and request.user.is_authenticated
+        and group.user_id == request.user.id
+    )
+
+
 def watchlist_view(request):
     """Página principal de la watchlist con grupos."""
-    groups = WatchlistGroup.objects.prefetch_related("items").all()
-    return render(request, "dcf_app/watchlist.html", {"groups": groups})
+    groups = get_user_watchlist_groups(request).prefetch_related("items")
+    return render(request, "dcf_app/watchlist.html", {
+        "groups": groups,
+        "watchlist_requires_login": not request.user.is_authenticated,
+    })
 
 
 @require_POST
@@ -1113,22 +1162,23 @@ def watchlist_toggle(request):
     company_exchange = (request.POST.get("company_exchange") or "").strip()
     group_id = request.POST.get("group_id") or None
 
+    if not request.user.is_authenticated:
+        return _requires_login_response()
+
     if not ticker:
         return JsonResponse({"error": "Ticker requerido"}, status=400)
 
     if group_id:
-        group = WatchlistGroup.objects.filter(id=group_id).first()
-        if not group:
+        group = get_user_watchlist_groups(request).filter(id=group_id).first()
+        if not user_can_access_watchlist_group(request, group):
             return JsonResponse({"error": "Grupo no encontrado"}, status=404)
     else:
-        group = WatchlistGroup.objects.filter(name__iexact="General").order_by("created_at").first()
-        if not group:
-            group = WatchlistGroup.objects.create(name="General")
+        group = get_or_create_default_watchlist(request)
 
     item = WatchlistItem.objects.filter(watchlist=group, ticker=ticker).first()
     if item:
         item.delete()
-        in_watchlist = WatchlistItem.objects.filter(ticker=ticker).exists()
+        in_watchlist = WatchlistItem.objects.filter(watchlist__user=request.user, ticker=ticker).exists()
         return JsonResponse({"action": "removed", "ticker": ticker, "in_watchlist": in_watchlist})
     else:
         WatchlistItem.objects.create(
@@ -1140,11 +1190,14 @@ def watchlist_toggle(request):
         return JsonResponse({"action": "added", "ticker": ticker, "group_id": group.id, "in_watchlist": True})
 
 
-def _watchlist_groups_for_picker(ticker: str) -> list[dict[str, Any]]:
+def _watchlist_groups_for_picker(request, ticker: str) -> list[dict[str, Any]]:
     """Devuelve las watchlists disponibles para el selector del análisis."""
 
+    if not request.user.is_authenticated:
+        return []
+
     symbol = (ticker or "").strip().upper()
-    groups = list(WatchlistGroup.objects.prefetch_related("items").all())
+    groups = list(get_user_watchlist_groups(request).prefetch_related("items"))
     picker_groups: list[dict[str, Any]] = []
     general_group = next((group for group in groups if group.name.strip().lower() == "general"), None)
 
@@ -1181,31 +1234,35 @@ def _watchlist_groups_for_picker(ticker: str) -> list[dict[str, Any]]:
 def watchlist_status(request):
     """Devuelve si un ticker está en cualquier grupo de la watchlist."""
     ticker = (request.GET.get("ticker") or "").strip().upper()
-    if not ticker:
+    if not ticker or not request.user.is_authenticated:
         return JsonResponse({"in_watchlist": False})
-    in_watchlist = WatchlistItem.objects.filter(ticker=ticker).exists()
+    in_watchlist = WatchlistItem.objects.filter(watchlist__user=request.user, ticker=ticker).exists()
     return JsonResponse({"in_watchlist": in_watchlist, "ticker": ticker})
 
 
 @require_POST
 def watchlist_group_create(request):
     """Crea un nuevo grupo de watchlist."""
+    if not request.user.is_authenticated:
+        return _requires_login_response()
     name = (request.POST.get("name") or "").strip()
     if not name:
         return JsonResponse({"error": "Nombre requerido"}, status=400)
     if len(name) > 100:
         name = name[:100]
-    group = WatchlistGroup.objects.create(name=name)
+    group = WatchlistGroup.objects.create(user=request.user, name=name)
     return JsonResponse({"id": group.id, "name": group.name})
 
 
 @require_POST
 def watchlist_group_delete(request):
     """Elimina un grupo y todos sus items."""
+    if not request.user.is_authenticated:
+        return _requires_login_response()
     group_id = request.POST.get("group_id") or None
     if not group_id:
         return JsonResponse({"error": "group_id requerido"}, status=400)
-    deleted, _ = WatchlistGroup.objects.filter(id=group_id).delete()
+    deleted, _ = get_user_watchlist_groups(request).filter(id=group_id).delete()
     if not deleted:
         return JsonResponse({"error": "Grupo no encontrado"}, status=404)
     return JsonResponse({"action": "deleted", "group_id": group_id})
@@ -1214,11 +1271,13 @@ def watchlist_group_delete(request):
 @require_POST
 def watchlist_group_rename(request):
     """Renombra un grupo de watchlist."""
+    if not request.user.is_authenticated:
+        return _requires_login_response()
     group_id = request.POST.get("group_id") or None
     name = (request.POST.get("name") or "").strip()
     if not group_id or not name:
         return JsonResponse({"error": "group_id y name requeridos"}, status=400)
-    updated = WatchlistGroup.objects.filter(id=group_id).update(name=name[:100])
+    updated = get_user_watchlist_groups(request).filter(id=group_id).update(name=name[:100])
     if not updated:
         return JsonResponse({"error": "Grupo no encontrado"}, status=404)
     return JsonResponse({"action": "renamed", "group_id": group_id, "name": name[:100]})
@@ -1249,5 +1308,8 @@ def watchlist_prices_view(request):
 
 
 def history_view(request):
-    records = list(AnalysisRecord.objects.all())
+    if request.user.is_authenticated:
+        records = list(AnalysisRecord.objects.filter(user=request.user))
+    else:
+        records = []
     return render(request, "dcf_app/history.html", {"records": records})

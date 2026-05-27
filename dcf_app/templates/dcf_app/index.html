@@ -5459,6 +5459,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 const data = await resp.json();
                 if (!resp.ok) return;
+                if (data.requires_login) {
+                    alert(data.message || "Iniciá sesión para guardar tu watchlist.");
+                    return;
+                }
                 const starIcon = document.getElementById("watchlist-star-icon");
                 const btnLabel = document.getElementById("watchlist-btn-label");
                 if (data.in_watchlist) {
