@@ -339,16 +339,20 @@ class InsiderTradingTests(SimpleTestCase):
 
 
 class WatchlistViewTests(TestCase):
+    password = "test-pass-123"
+
     def setUp(self) -> None:
         self.user_a = User.objects.create_user(
             username="user-a",
             email="user-a@example.com",
-            password="test-pass-123",
+            password=self.password,
+            first_name="User",
         )
         self.user_b = User.objects.create_user(
             username="user-b",
             email="user-b@example.com",
-            password="test-pass-123",
+            password=self.password,
+            first_name="Other",
         )
 
     def test_toggle_without_group_uses_general_watchlist(self) -> None:
@@ -435,11 +439,52 @@ class WatchlistViewTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertFalse(WatchlistItem.objects.exists())
 
+    def test_user_cannot_rename_or_delete_other_users_group(self) -> None:
+        group_b = WatchlistGroup.objects.create(user=self.user_b, name="B")
+
+        self.client.force_login(self.user_a)
+        rename_response = self.client.post(
+            reverse("watchlist_group_rename"),
+            {"group_id": group_b.id, "name": "Renamed"},
+        )
+        delete_response = self.client.post(reverse("watchlist_group_delete"), {"group_id": group_b.id})
+
+        group_b.refresh_from_db()
+        self.assertEqual(rename_response.status_code, 404)
+        self.assertEqual(delete_response.status_code, 404)
+        self.assertEqual(group_b.name, "B")
+
+    def test_watchlist_persists_after_logout_and_login(self) -> None:
+        self.client.force_login(self.user_a)
+        self.client.post(reverse("watchlist_toggle"), {"ticker": "AAPL", "company_name": "Apple Inc."})
+        self.client.post(reverse("accounts:logout"))
+
+        login_response = self.client.post(
+            reverse("accounts:login"),
+            {"email": "USER-A@example.com", "password": self.password},
+        )
+        watchlist_response = self.client.get(reverse("watchlist"))
+
+        self.assertRedirects(login_response, "/")
+        self.assertContains(watchlist_response, "AAPL")
+
 
 class HistoryViewTests(TestCase):
+    password = "test-pass-123"
+
     def setUp(self) -> None:
-        self.user_a = User.objects.create_user(username="history-a", password="test-pass-123")
-        self.user_b = User.objects.create_user(username="history-b", password="test-pass-123")
+        self.user_a = User.objects.create_user(
+            username="history-a",
+            email="history-a@example.com",
+            password=self.password,
+            first_name="History",
+        )
+        self.user_b = User.objects.create_user(
+            username="history-b",
+            email="history-b@example.com",
+            password=self.password,
+            first_name="Other",
+        )
 
     def _record(self, ticker: str, user=None) -> AnalysisRecord:
         return AnalysisRecord.objects.create(
@@ -488,6 +533,87 @@ class HistoryViewTests(TestCase):
 
         record = AnalysisRecord.objects.get(ticker="AAPL")
         self.assertEqual(record.user, self.user_a)
+
+    def test_guardar_analisis_ignores_invalid_or_empty_result(self) -> None:
+        self.assertIsNone(
+            views._guardar_analisis(
+                user=self.user_a,
+                ticker="",
+                company_name="",
+                company_exchange="",
+                resultado={"nombre": "Invalid"},
+            )
+        )
+        self.assertIsNone(
+            views._guardar_analisis(
+                user=self.user_a,
+                ticker="AAPL",
+                company_name="Apple Inc.",
+                company_exchange="NASDAQ",
+                resultado=None,
+            )
+        )
+        self.assertFalse(AnalysisRecord.objects.exists())
+
+    def test_guardar_analisis_does_not_duplicate_recent_same_analysis(self) -> None:
+        payload = {
+            "nombre": "Apple Inc.",
+            "sector": "Technology",
+            "fuente_datos": "fmp",
+            "valor_intrinseco": 100,
+            "precio_actual": 90,
+            "diferencia_pct": 11.11,
+            "estado": "SUBVALUADA",
+            "datos_empresa": {"metodo_crecimiento_codigo": AnalysisRecord.METODO_CAGR},
+        }
+
+        first = views._guardar_analisis(
+            user=self.user_a,
+            ticker="AAPL",
+            company_name="Apple Inc.",
+            company_exchange="NASDAQ",
+            resultado=payload,
+        )
+        second = views._guardar_analisis(
+            user=self.user_a,
+            ticker="AAPL",
+            company_name="Apple Inc.",
+            company_exchange="NASDAQ",
+            resultado=payload,
+        )
+
+        self.assertIsNotNone(first)
+        self.assertIsNone(second)
+        self.assertEqual(AnalysisRecord.objects.filter(user=self.user_a, ticker="AAPL").count(), 1)
+
+    def test_history_persists_after_logout_and_login(self) -> None:
+        self.client.force_login(self.user_a)
+        views._guardar_analisis(
+            user=self.user_a,
+            ticker="AAPL",
+            company_name="Apple Inc.",
+            company_exchange="NASDAQ",
+            resultado={
+                "nombre": "Apple Inc.",
+                "sector": "Technology",
+                "fuente_datos": "fmp",
+                "valor_intrinseco": 100,
+                "precio_actual": 90,
+                "diferencia_pct": 11.11,
+                "estado": "SUBVALUADA",
+                "datos_empresa": {"metodo_crecimiento_codigo": AnalysisRecord.METODO_CAGR},
+            },
+        )
+        self.client.post(reverse("accounts:logout"))
+
+        login_response = self.client.post(
+            reverse("accounts:login"),
+            {"email": "HISTORY-A@example.com", "password": self.password},
+        )
+        history_response = self.client.get(reverse("history"))
+
+        self.assertRedirects(login_response, "/")
+        self.assertContains(history_response, "AAPL")
 
 
 class MultiModelValuationTests(SimpleTestCase):
