@@ -252,14 +252,29 @@
         </div>
       </div>
       {% empty %}
+      {% if watchlist_requires_login %}
+      <div id="wl-no-groups" class="persist-cta-card">
+        <div class="persist-cta-icon" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/></svg>
+        </div>
+        <h3 class="persist-cta-title">Tu watchlist aparecerá acá</h3>
+        <p class="persist-cta-copy">Creá una cuenta gratis para guardar empresas, organizarlas por estrategia y volver a consultarlas cuando quieras.</p>
+        <ul class="persist-cta-list">
+          <li>watchlists persistentes</li>
+          <li>empresas organizadas por grupo</li>
+          <li>acceso desde cualquier dispositivo</li>
+        </ul>
+        <div class="persist-cta-actions">
+          <a class="persist-cta-primary" href="{% url 'accounts:register' %}">Crear cuenta</a>
+          <a class="persist-cta-secondary" href="{% url 'accounts:login' %}">Iniciar sesión</a>
+        </div>
+      </div>
+      {% else %}
       <div id="wl-no-groups" class="text-center py-5 text-muted">
         <div class="fs-1 mb-3">★</div>
-        {% if watchlist_requires_login %}
-        <p>Iniciá sesión para guardar empresas en tu watchlist.</p>
-        {% else %}
         <p>No tenés watchlists todavía. Creá una con el botón de arriba.</p>
-        {% endif %}
       </div>
+      {% endif %}
       {% endfor %}
 
     </div>

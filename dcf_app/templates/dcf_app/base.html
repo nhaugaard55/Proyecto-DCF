@@ -148,10 +148,107 @@
             gap: 0.55rem;
         }
 
-        .nav-user-greeting {
-            color: rgba(248, 250, 252, 0.9);
-            font-size: 0.88rem;
-            font-weight: 600;
+        .nav-user-menu {
+            position: relative;
+        }
+
+        .nav-user-trigger {
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #f8fafc;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0.24rem 0.62rem 0.24rem 0.28rem;
+            font-size: 0.86rem;
+            font-weight: 750;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .nav-user-trigger.dropdown-toggle::after {
+            display: none;
+        }
+
+        .nav-user-trigger:hover,
+        .nav-user-trigger:focus-visible,
+        .nav-user-trigger[aria-expanded="true"] {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.45);
+            transform: translateY(-1px);
+        }
+
+        .nav-user-avatar {
+            width: 1.85rem;
+            height: 1.85rem;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2563eb, #0891b2);
+            color: #ffffff;
+            font-size: 0.82rem;
+            font-weight: 850;
+            box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28);
+            text-transform: uppercase;
+        }
+
+        .nav-user-chevron {
+            opacity: 0.74;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .nav-user-trigger[aria-expanded="true"] .nav-user-chevron {
+            opacity: 1;
+            transform: rotate(180deg);
+        }
+
+        .nav-user-dropdown {
+            border: 1px solid rgba(96, 165, 250, 0.22);
+            border-radius: 1rem;
+            background: rgba(15, 23, 42, 0.96);
+            box-shadow: 0 22px 55px rgba(2, 6, 23, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            padding: 0.45rem;
+            min-width: 13rem;
+            margin-top: 0.6rem !important;
+            backdrop-filter: blur(18px);
+        }
+
+        .nav-user-dropdown .dropdown-item,
+        .nav-user-dropdown .dropdown-logout-btn {
+            border: 0;
+            border-radius: 0.75rem;
+            background: transparent;
+            color: rgba(226, 232, 240, 0.9);
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            width: 100%;
+            padding: 0.62rem 0.7rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: background 0.16s ease, color 0.16s ease;
+        }
+
+        .nav-user-dropdown .dropdown-item:hover,
+        .nav-user-dropdown .dropdown-item:focus-visible,
+        .nav-user-dropdown .dropdown-logout-btn:hover,
+        .nav-user-dropdown .dropdown-logout-btn:focus-visible {
+            background: rgba(96, 165, 250, 0.13);
+            color: #ffffff;
+        }
+
+        .nav-user-dropdown .dropdown-divider {
+            border-color: rgba(148, 163, 184, 0.16);
+            margin: 0.35rem 0;
+        }
+
+        .nav-user-dropdown .dropdown-logout-btn {
+            color: #fecaca;
+        }
+
+        .nav-user-label {
             white-space: nowrap;
         }
 
@@ -402,23 +499,36 @@
         }
 
         .auth-page-shell {
-            min-height: min(760px, calc(100vh - 14rem));
+            min-height: min(820px, calc(100vh - 12rem));
             display: grid;
             place-items: center;
-            padding: 1rem 0;
+            padding: 1.25rem 0;
+            animation: authFadeIn 0.28s ease-out;
         }
 
         .auth-card {
-            width: min(100%, 29rem);
+            width: min(100%, 31.5rem);
             border: 1px solid rgba(96, 165, 250, 0.22);
-            border-radius: 1.25rem;
+            border-radius: 1.5rem;
             background:
-                linear-gradient(135deg, rgba(37, 99, 235, 0.16), rgba(14, 165, 233, 0.05)),
+                radial-gradient(circle at 0 0, rgba(96, 165, 250, 0.22), transparent 34%),
+                linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(14, 165, 233, 0.05)),
                 rgba(15, 23, 42, 0.88);
             box-shadow: 0 24px 60px rgba(2, 6, 23, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.06);
             color: #e2e8f0;
-            padding: clamp(1.35rem, 4vw, 2rem);
+            padding: clamp(1.35rem, 4vw, 2.15rem);
             backdrop-filter: blur(18px);
+        }
+
+        .auth-logo-link {
+            display: inline-flex;
+            align-items: center;
+            margin-bottom: 1.35rem;
+        }
+
+        .auth-logo {
+            height: 2.35rem;
+            width: auto;
         }
 
         .auth-eyebrow {
@@ -458,10 +568,10 @@
         .auth-input {
             width: 100%;
             border: 1px solid rgba(96, 165, 250, 0.28);
-            border-radius: 0.85rem;
+            border-radius: 0.95rem;
             background: rgba(15, 23, 42, 0.72);
             color: #f8fafc;
-            padding: 0.72rem 0.85rem;
+            padding: 0.82rem 0.9rem;
             outline: none;
             transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
         }
@@ -502,11 +612,33 @@
             font-weight: 800;
             padding: 0.82rem 1rem;
             box-shadow: 0 18px 34px rgba(37, 99, 235, 0.26);
+            transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
         }
 
         .auth-submit:hover,
         .auth-submit:focus-visible {
             filter: brightness(1.08);
+            transform: translateY(-1px);
+            box-shadow: 0 22px 42px rgba(37, 99, 235, 0.32);
+        }
+
+        .auth-submit:disabled {
+            cursor: wait;
+            opacity: 0.74;
+            transform: none;
+        }
+
+        .auth-submit.is-loading::after {
+            content: "";
+            width: 0.9rem;
+            height: 0.9rem;
+            margin-left: 0.55rem;
+            border: 2px solid rgba(255, 255, 255, 0.45);
+            border-top-color: #ffffff;
+            border-radius: 999px;
+            display: inline-block;
+            vertical-align: -0.12rem;
+            animation: authSpin 0.8s linear infinite;
         }
 
         .auth-switch {
@@ -536,6 +668,181 @@
         .auth-home-link:hover,
         .auth-home-link:focus-visible {
             color: #ffffff;
+        }
+
+        .auth-benefits {
+            border: 1px solid rgba(96, 165, 250, 0.18);
+            border-radius: 1.1rem;
+            background: rgba(15, 23, 42, 0.45);
+            display: grid;
+            gap: 0.55rem;
+            margin: 1rem 0 1.25rem;
+            padding: 0.85rem;
+        }
+
+        .auth-benefit {
+            color: rgba(226, 232, 240, 0.86);
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            font-size: 0.88rem;
+            font-weight: 650;
+        }
+
+        .auth-benefit::before {
+            content: "✓";
+            border-radius: 999px;
+            background: rgba(34, 197, 94, 0.16);
+            color: #86efac;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.25rem;
+            height: 1.25rem;
+            flex: 0 0 auto;
+            font-weight: 900;
+        }
+
+        .persist-cta-card {
+            border: 1px solid rgba(96, 165, 250, 0.22);
+            border-radius: 1.35rem;
+            background:
+                radial-gradient(circle at 0 0, rgba(37, 99, 235, 0.18), transparent 34%),
+                var(--surface-card);
+            box-shadow: 0 20px 46px rgba(15, 23, 42, 0.1);
+            padding: clamp(1.35rem, 4vw, 2rem);
+            text-align: center;
+            animation: authFadeIn 0.24s ease-out;
+        }
+
+        .theme-dark .persist-cta-card {
+            box-shadow: 0 24px 60px rgba(2, 6, 23, 0.36);
+        }
+
+        .persist-cta-icon {
+            width: 3.1rem;
+            height: 3.1rem;
+            border-radius: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2563eb, #0891b2);
+            color: #ffffff;
+            box-shadow: 0 18px 34px rgba(37, 99, 235, 0.26);
+            margin-bottom: 1rem;
+        }
+
+        .persist-cta-title {
+            color: var(--text-primary);
+            font-size: clamp(1.35rem, 4vw, 1.8rem);
+            font-weight: 850;
+            line-height: 1.1;
+            margin-bottom: 0.55rem;
+        }
+
+        .persist-cta-copy {
+            color: var(--text-muted);
+            max-width: 34rem;
+            margin: 0 auto 1.1rem;
+        }
+
+        .persist-cta-list {
+            color: var(--text-secondary);
+            display: grid;
+            gap: 0.45rem;
+            list-style: none;
+            margin: 0 auto 1.25rem;
+            max-width: 24rem;
+            padding: 0;
+            text-align: left;
+        }
+
+        .persist-cta-list li {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            font-weight: 650;
+        }
+
+        .persist-cta-list li::before {
+            content: "✓";
+            color: #22c55e;
+            font-weight: 900;
+        }
+
+        .persist-cta-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.7rem;
+            justify-content: center;
+        }
+
+        .persist-cta-primary,
+        .persist-cta-secondary {
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 2.65rem;
+            padding: 0.68rem 1.1rem;
+            font-weight: 800;
+            text-decoration: none;
+            transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+        }
+
+        .persist-cta-primary {
+            background: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 14px 30px rgba(37, 99, 235, 0.26);
+        }
+
+        .persist-cta-primary:hover,
+        .persist-cta-primary:focus-visible {
+            background: #1d4ed8;
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .persist-cta-secondary {
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            color: var(--text-primary);
+        }
+
+        .persist-cta-secondary:hover,
+        .persist-cta-secondary:focus-visible {
+            border-color: rgba(96, 165, 250, 0.55);
+            background: rgba(96, 165, 250, 0.1);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        .auth-cta-modal .modal-content {
+            border: 1px solid rgba(96, 165, 250, 0.24);
+            border-radius: 1.4rem;
+            background:
+                radial-gradient(circle at 0 0, rgba(37, 99, 235, 0.24), transparent 35%),
+                rgba(15, 23, 42, 0.96);
+            box-shadow: 0 28px 70px rgba(2, 6, 23, 0.5);
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+
+        .auth-cta-modal .modal-body {
+            padding: clamp(1.35rem, 4vw, 2rem);
+        }
+
+        .auth-cta-modal .btn-close {
+            filter: invert(1) grayscale(1);
+            opacity: 0.72;
+        }
+
+        @keyframes authFadeIn {
+            from { opacity: 0; transform: translateY(0.35rem); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes authSpin {
+            to { transform: rotate(360deg); }
         }
 
         .form-control,
@@ -662,8 +969,20 @@
                 align-items: stretch !important;
             }
 
-            .nav-user-greeting {
-                text-align: center;
+            .nav-user-menu,
+            .nav-user-trigger {
+                width: 100%;
+            }
+
+            .nav-user-trigger {
+                justify-content: center;
+            }
+
+            .nav-user-dropdown {
+                width: 100%;
+                position: static !important;
+                transform: none !important;
+                margin-top: 0.4rem !important;
             }
 
             .nav-controls {
@@ -703,18 +1022,35 @@
             </a>
             <div class="collapse nav-actions-panel ms-sm-auto d-sm-flex justify-content-sm-end align-items-sm-center flex-sm-row flex-wrap" id="main-nav-actions">
                 {% if request.user.is_authenticated %}
-                    <span class="nav-user-greeting">Hola, {{ request.user.first_name|default:request.user.email|default:request.user.username }}</span>
+                    <div class="dropdown nav-user-menu">
+                        <button class="nav-user-trigger dropdown-toggle" type="button" id="nav-user-menu" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="nav-user-avatar">{{ request.user.first_name|default:request.user.email|default:request.user.username|first }}</span>
+                            <span class="nav-user-label">Hola, {{ request.user.first_name|default:request.user.email|default:request.user.username }}</span>
+                            <svg class="nav-user-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end nav-user-dropdown" aria-labelledby="nav-user-menu">
+                            <a class="dropdown-item" href="{% url 'accounts:home' %}">
+                                <span>Mi cuenta</span>
+                            </a>
+                            <a class="dropdown-item" href="{% url 'watchlist' %}">
+                                <span>Watchlist</span>
+                            </a>
+                            <a class="dropdown-item" href="{% url 'history' %}">
+                                <span>Historial</span>
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-logout-btn">Cerrar sesión</button>
+                            </form>
+                        </div>
+                    </div>
                 {% endif %}
                 {% block nav_actions %}{% endblock %}
                 <div class="nav-auth-actions d-flex align-items-center flex-wrap">
-                    {% if request.user.is_authenticated %}
-                        <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
-                            {% csrf_token %}
-                            <button type="submit" class="nav-logout-btn">Cerrar sesión</button>
-                        </form>
-                    {% else %}
+                    {% if not request.user.is_authenticated %}
                         <a href="{% url 'accounts:login' %}" class="nav-auth-link">Iniciar sesión</a>
-                        <a href="{% url 'accounts:register' %}" class="nav-auth-link nav-auth-link--primary">Registrarse</a>
+                        <a href="{% url 'accounts:register' %}" class="nav-auth-link nav-auth-link--primary">Crear cuenta</a>
                     {% endif %}
                 </div>
             </div>
@@ -737,6 +1073,30 @@
         <p class="mb-1">Basado en estimaciones. Los valores son orientativos.</p>
         <p class="mb-0" style="max-width:720px;margin:0 auto;">La información presentada en este sitio es únicamente con fines educativos e informativos y no constituye una recomendación de inversión, asesoramiento financiero ni una oferta de compra o venta de activos. Cada usuario es responsable de sus decisiones de inversión. Se recomienda consultar con un asesor financiero profesional antes de tomar cualquier decisión.</p>
     </footer>
+    <div class="modal fade auth-cta-modal" id="auth-persistence-modal" tabindex="-1" aria-labelledby="auth-persistence-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    <div class="persist-cta-icon" aria-hidden="true">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V7l4-4h10l4 4v12a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                    </div>
+                    <h2 class="persist-cta-title" id="auth-persistence-title">Guardá tus análisis y watchlists</h2>
+                    <p class="persist-cta-copy">Creá una cuenta gratis para mantener tu información sincronizada y lista para volver cuando quieras.</p>
+                    <ul class="persist-cta-list">
+                        <li>guardar watchlists</li>
+                        <li>historial persistente</li>
+                        <li>acceder desde cualquier dispositivo</li>
+                        <li>futuras herramientas premium</li>
+                    </ul>
+                    <div class="persist-cta-actions">
+                        <a class="persist-cta-primary" href="{% url 'accounts:register' %}">Crear cuenta</a>
+                        <a class="persist-cta-secondary" href="{% url 'accounts:login' %}">Iniciar sesión</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         (function () {
@@ -785,6 +1145,26 @@
                         applyTheme(next);
                     });
                 }
+
+                document.querySelectorAll("[data-auth-cta]").forEach(function (trigger) {
+                    trigger.addEventListener("click", function (event) {
+                        event.preventDefault();
+                        var modal = document.getElementById("auth-persistence-modal");
+                        if (modal && window.bootstrap && window.bootstrap.Modal) {
+                            window.bootstrap.Modal.getOrCreateInstance(modal).show();
+                        }
+                    });
+                });
+
+                document.querySelectorAll(".auth-card form").forEach(function (form) {
+                    form.addEventListener("submit", function () {
+                        var button = form.querySelector(".auth-submit");
+                        if (button) {
+                            button.disabled = true;
+                            button.classList.add("is-loading");
+                        }
+                    });
+                });
 
                 // Restore last analysis URL on back buttons
                 var backLinks = document.querySelectorAll("[data-back-to-analysis]");

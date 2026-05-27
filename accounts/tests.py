@@ -106,7 +106,7 @@ class AccountsAuthTests(TestCase):
     def test_navbar_changes_for_guest_and_authenticated_user(self):
         guest_response = self.client.get('/')
         self.assertContains(guest_response, 'Iniciar sesión')
-        self.assertContains(guest_response, 'Registrarse')
+        self.assertContains(guest_response, 'Crear cuenta')
 
         user = User.objects.create_user(
             username='case-user',
@@ -118,3 +118,4 @@ class AccountsAuthTests(TestCase):
         authed_response = self.client.get('/')
         self.assertContains(authed_response, 'Hola, Test')
         self.assertContains(authed_response, 'Cerrar sesión')
+        self.assertContains(authed_response, 'Mi cuenta')

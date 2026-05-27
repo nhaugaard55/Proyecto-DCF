@@ -411,7 +411,7 @@ class WatchlistViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "LEG")
-        self.assertContains(response, "Iniciá sesión para guardar empresas en tu watchlist.")
+        self.assertContains(response, "Tu watchlist aparecerá acá")
 
     def test_anonymous_user_cannot_save_watchlist(self) -> None:
         response = self.client.post(reverse("watchlist_toggle"), {"ticker": "AAPL"})
@@ -511,7 +511,7 @@ class HistoryViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "LEGACY")
-        self.assertContains(response, "Todavía no hay análisis guardados")
+        self.assertContains(response, "Tu historial aparecerá acá")
 
     def test_guardar_analisis_can_store_authenticated_user(self) -> None:
         views._guardar_analisis(

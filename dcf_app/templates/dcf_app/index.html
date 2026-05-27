@@ -1,8 +1,10 @@
 {% extends "dcf_app/base.html" %}
 
 {% block nav_actions %}
+{% if not request.user.is_authenticated %}
 <a href="{% url 'history' %}" class="btn btn-outline-light btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:5px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Historial</a>
 <a href="{% url 'watchlist' %}" class="btn btn-outline-light btn-sm">★ Watchlist</a>
+{% endif %}
 {% endblock %}
 
 {% block extra_head %}
@@ -5460,7 +5462,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 const data = await resp.json();
                 if (!resp.ok) return;
                 if (data.requires_login) {
-                    alert(data.message || "Iniciá sesión para guardar tu watchlist.");
+                    const modal = document.getElementById("auth-persistence-modal");
+                    if (modal && window.bootstrap && window.bootstrap.Modal) {
+                        window.bootstrap.Modal.getOrCreateInstance(modal).show();
+                    }
                     return;
                 }
                 const starIcon = document.getElementById("watchlist-star-icon");

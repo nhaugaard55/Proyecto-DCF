@@ -3,9 +3,13 @@
 {% block content %}
 <section class="auth-page-shell">
     <div class="auth-card">
-        <div class="auth-eyebrow">Intrinsic account</div>
-        <h1 class="auth-title">Iniciar sesión</h1>
-        <p class="auth-subtitle">Accedé a tu cuenta para preparar la futura sincronización de watchlist e historial.</p>
+        {% load static %}
+        <a class="auth-logo-link" href="{% url 'landing' %}" aria-label="Intrinsic">
+            <img class="auth-logo" src="{% static 'dcf_app/img/intrinsic-logo.png' %}" alt="Intrinsic">
+        </a>
+        <div class="auth-eyebrow">Acceso seguro</div>
+        <h1 class="auth-title">Iniciá sesión</h1>
+        <p class="auth-subtitle">Volvé a tus análisis, watchlists y preferencias guardadas en Intrinsic.</p>
 
         <form method="post" novalidate>
             {% csrf_token %}

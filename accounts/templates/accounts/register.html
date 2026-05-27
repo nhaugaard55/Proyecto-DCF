@@ -3,9 +3,19 @@
 {% block content %}
 <section class="auth-page-shell">
     <div class="auth-card">
-        <div class="auth-eyebrow">Intrinsic account</div>
-        <h1 class="auth-title">Crear cuenta</h1>
-        <p class="auth-subtitle">Tu cuenta permitirá asociar datos persistentes a tu usuario en próximos pasos.</p>
+        {% load static %}
+        <a class="auth-logo-link" href="{% url 'landing' %}" aria-label="Intrinsic">
+            <img class="auth-logo" src="{% static 'dcf_app/img/intrinsic-logo.png' %}" alt="Intrinsic">
+        </a>
+        <div class="auth-eyebrow">Cuenta gratuita</div>
+        <h1 class="auth-title">Creá tu cuenta</h1>
+        <p class="auth-subtitle">Guardá tu historial y organizá empresas para retomar tus análisis desde cualquier dispositivo.</p>
+
+        <div class="auth-benefits" aria-label="Beneficios de crear cuenta">
+            <div class="auth-benefit">Watchlists persistentes</div>
+            <div class="auth-benefit">Historial de análisis</div>
+            <div class="auth-benefit">Base lista para futuras herramientas premium</div>
+        </div>
 
         <form method="post" novalidate>
             {% csrf_token %}

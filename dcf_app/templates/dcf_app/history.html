@@ -420,7 +420,26 @@
       {% endfor %}
     </ul>
     {% else %}
-    <p class="text-muted">Todavía no hay análisis guardados. Realizá tu primer análisis desde la pantalla principal.</p>
+      {% if not request.user.is_authenticated %}
+      <div class="persist-cta-card">
+        <div class="persist-cta-icon" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        </div>
+        <h3 class="persist-cta-title">Tu historial aparecerá acá</h3>
+        <p class="persist-cta-copy">Creá una cuenta gratis para guardar tus análisis recientes, watchlists y preferencias.</p>
+        <ul class="persist-cta-list">
+          <li>análisis recientes</li>
+          <li>watchlists</li>
+          <li>preferencias</li>
+        </ul>
+        <div class="persist-cta-actions">
+          <a class="persist-cta-primary" href="{% url 'accounts:register' %}">Crear cuenta</a>
+          <a class="persist-cta-secondary" href="{% url 'accounts:login' %}">Iniciar sesión</a>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-muted">Todavía no hay análisis guardados. Realizá tu primer análisis desde la pantalla principal.</p>
+      {% endif %}
     {% endif %}
 
   </div>
