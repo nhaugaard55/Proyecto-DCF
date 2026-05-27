@@ -1,0 +1,35 @@
+{% extends "dcf_app/base.html" %}
+
+{% block content %}
+<section class="auth-page-shell">
+    <div class="auth-card">
+        <div class="auth-eyebrow">Intrinsic account</div>
+        <h1 class="auth-title">Iniciar sesión</h1>
+        <p class="auth-subtitle">Accedé a tu cuenta para preparar la futura sincronización de watchlist e historial.</p>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="auth-alert">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% for field in form %}
+                <div class="auth-field">
+                    <label class="auth-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <ul class="auth-error-list">
+                            {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            {% endfor %}
+
+            <button class="auth-submit" type="submit">Entrar</button>
+        </form>
+
+        <p class="auth-switch">¿No tenés cuenta? <a href="{% url 'accounts:register' %}">Registrate</a></p>
+        <a class="auth-home-link" href="{% url 'landing' %}">Volver al inicio</a>
+    </div>
+</section>
+{% endblock %}

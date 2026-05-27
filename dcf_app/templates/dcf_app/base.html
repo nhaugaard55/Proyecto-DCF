@@ -144,6 +144,64 @@
             gap: 0.75rem;
         }
 
+        .nav-auth-actions {
+            gap: 0.55rem;
+        }
+
+        .nav-user-greeting {
+            color: rgba(248, 250, 252, 0.9);
+            font-size: 0.88rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .nav-auth-link,
+        .nav-logout-btn {
+            border-radius: 999px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            padding: 0.36rem 0.75rem;
+        }
+
+        .nav-auth-link {
+            border: 1px solid rgba(255, 255, 255, 0.32);
+            color: #f8fafc;
+            text-decoration: none;
+            transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+
+        .nav-auth-link:hover,
+        .nav-auth-link:focus-visible {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.52);
+            color: #ffffff;
+        }
+
+        .nav-auth-link--primary {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
+        }
+
+        .nav-auth-link--primary:hover,
+        .nav-auth-link--primary:focus-visible {
+            background: #1d4ed8;
+            border-color: #60a5fa;
+        }
+
+        .nav-logout-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            color: #f8fafc;
+        }
+
+        .nav-logout-btn:hover,
+        .nav-logout-btn:focus-visible {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.48);
+        }
+
         .nav-controls {
             gap: 0.6rem;
         }
@@ -323,6 +381,143 @@
             color: rgba(226, 232, 240, 0.85) !important;
         }
 
+        .auth-page-shell {
+            min-height: min(760px, calc(100vh - 14rem));
+            display: grid;
+            place-items: center;
+            padding: 1rem 0;
+        }
+
+        .auth-card {
+            width: min(100%, 29rem);
+            border: 1px solid rgba(96, 165, 250, 0.22);
+            border-radius: 1.25rem;
+            background:
+                linear-gradient(135deg, rgba(37, 99, 235, 0.16), rgba(14, 165, 233, 0.05)),
+                rgba(15, 23, 42, 0.88);
+            box-shadow: 0 24px 60px rgba(2, 6, 23, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            color: #e2e8f0;
+            padding: clamp(1.35rem, 4vw, 2rem);
+            backdrop-filter: blur(18px);
+        }
+
+        .auth-eyebrow {
+            color: #93c5fd;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .auth-title {
+            color: #f8fafc;
+            font-size: clamp(1.65rem, 5vw, 2.15rem);
+            font-weight: 800;
+            letter-spacing: 0;
+            line-height: 1.08;
+            margin: 0.45rem 0 0.55rem;
+        }
+
+        .auth-subtitle {
+            color: rgba(203, 213, 225, 0.78);
+            font-size: 0.95rem;
+            margin-bottom: 1.35rem;
+        }
+
+        .auth-field {
+            margin-bottom: 1rem;
+        }
+
+        .auth-label {
+            color: rgba(226, 232, 240, 0.9);
+            font-size: 0.84rem;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+        }
+
+        .auth-input {
+            width: 100%;
+            border: 1px solid rgba(96, 165, 250, 0.28);
+            border-radius: 0.85rem;
+            background: rgba(15, 23, 42, 0.72);
+            color: #f8fafc;
+            padding: 0.72rem 0.85rem;
+            outline: none;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .auth-input:focus {
+            border-color: rgba(96, 165, 250, 0.72);
+            background: rgba(15, 23, 42, 0.92);
+            box-shadow: 0 0 0 0.22rem rgba(37, 99, 235, 0.18);
+        }
+
+        .auth-input::placeholder {
+            color: rgba(148, 163, 184, 0.78);
+        }
+
+        .auth-error-list {
+            color: #fecaca;
+            font-size: 0.82rem;
+            margin: 0.42rem 0 0;
+            padding-left: 1rem;
+        }
+
+        .auth-alert {
+            border: 1px solid rgba(248, 113, 113, 0.36);
+            border-radius: 0.85rem;
+            background: rgba(127, 29, 29, 0.28);
+            color: #fecaca;
+            padding: 0.7rem 0.85rem;
+            font-size: 0.86rem;
+            margin-bottom: 1rem;
+        }
+
+        .auth-submit {
+            width: 100%;
+            border: 0;
+            border-radius: 0.95rem;
+            background: linear-gradient(135deg, #2563eb, #0891b2);
+            color: #ffffff;
+            font-weight: 800;
+            padding: 0.82rem 1rem;
+            box-shadow: 0 18px 34px rgba(37, 99, 235, 0.26);
+        }
+
+        .auth-submit:hover,
+        .auth-submit:focus-visible {
+            filter: brightness(1.08);
+        }
+
+        .auth-switch {
+            color: rgba(203, 213, 225, 0.76);
+            font-size: 0.9rem;
+            margin-top: 1.15rem;
+            text-align: center;
+        }
+
+        .auth-switch a {
+            color: #93c5fd;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .auth-home-link {
+            display: inline-flex;
+            justify-content: center;
+            width: 100%;
+            margin-top: 0.75rem;
+            color: rgba(203, 213, 225, 0.78);
+            font-size: 0.86rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .auth-home-link:hover,
+        .auth-home-link:focus-visible {
+            color: #ffffff;
+        }
+
         .form-control,
         .form-select {
             background-color: var(--input-bg);
@@ -413,7 +608,9 @@
             }
 
             .nav-actions-panel .btn,
-            .nav-actions-panel .theme-toggle-btn {
+            .nav-actions-panel .theme-toggle-btn,
+            .nav-actions-panel .nav-auth-link,
+            .nav-actions-panel .nav-logout-btn {
                 width: 100%;
                 justify-content: center;
                 padding-left: 0.65rem;
@@ -427,9 +624,26 @@
             }
 
             .nav-actions-panel .btn:hover,
-            .nav-actions-panel .btn:focus-visible {
+            .nav-actions-panel .btn:focus-visible,
+            .nav-actions-panel .nav-auth-link:hover,
+            .nav-actions-panel .nav-auth-link:focus-visible,
+            .nav-actions-panel .nav-logout-btn:hover,
+            .nav-actions-panel .nav-logout-btn:focus-visible {
                 background-color: rgba(255, 255, 255, 0.14);
                 color: #fff;
+            }
+
+            .nav-auth-actions,
+            .nav-auth-actions form {
+                width: 100%;
+            }
+
+            .nav-auth-actions {
+                align-items: stretch !important;
+            }
+
+            .nav-user-greeting {
+                text-align: center;
             }
 
             .nav-controls {
@@ -469,6 +683,18 @@
             </a>
             <div class="collapse nav-actions-panel ms-sm-auto d-sm-flex justify-content-sm-end align-items-sm-center flex-sm-row flex-wrap" id="main-nav-actions">
                 {% block nav_actions %}{% endblock %}
+                <div class="nav-auth-actions d-flex align-items-center flex-wrap">
+                    {% if request.user.is_authenticated %}
+                        <span class="nav-user-greeting">Hola, {{ request.user.first_name|default:request.user.email|default:request.user.username }}</span>
+                        <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="nav-logout-btn">Cerrar sesión</button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'accounts:login' %}" class="nav-auth-link">Iniciar sesión</a>
+                        <a href="{% url 'accounts:register' %}" class="nav-auth-link nav-auth-link--primary">Registrarse</a>
+                    {% endif %}
+                </div>
             </div>
             <div class="nav-controls d-flex align-items-center ms-2">
                 <button type="button" class="theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema">

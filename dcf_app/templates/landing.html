@@ -135,6 +135,48 @@
       padding: 0.35rem 1rem;
     }
     .landing-cta-mobile { display: none; }
+    .landing-auth-actions {
+      gap: 0.55rem;
+    }
+    .landing-auth-link,
+    .landing-logout-btn {
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      padding: 0.35rem 0.85rem;
+    }
+    .landing-auth-link {
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #f8fafc;
+      text-decoration: none;
+    }
+    .landing-auth-link:hover,
+    .landing-auth-link:focus-visible {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.55);
+      color: #fff;
+    }
+    .landing-auth-link--primary {
+      background: #2563eb;
+      border-color: #2563eb;
+      box-shadow: 0 10px 24px rgba(37,99,235,0.28);
+    }
+    .landing-user-greeting {
+      color: rgba(248,250,252,0.9);
+      font-size: 0.88rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .landing-logout-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #f8fafc;
+    }
+    .landing-logout-btn:hover,
+    .landing-logout-btn:focus-visible {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.55);
+    }
 
     /* ── HERO ─────────────────────────────────────────────────── */
     .hero-section {
@@ -992,6 +1034,18 @@
       <a href="#modelos" class="nav-link-item d-none d-md-inline">Modelos</a>
       <a href="#precios" class="nav-link-item d-none d-md-inline">Precios</a>
       <a href="/app/" class="btn btn-sm landing-cta"><span class="landing-cta-desktop">Empezar gratis</span><span class="landing-cta-mobile">Empezar</span></a>
+      <div class="landing-auth-actions d-flex align-items-center flex-wrap">
+        {% if request.user.is_authenticated %}
+          <span class="landing-user-greeting">Hola, {{ request.user.first_name|default:request.user.email|default:request.user.username }}</span>
+          <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
+            {% csrf_token %}
+            <button type="submit" class="landing-logout-btn">Cerrar sesión</button>
+          </form>
+        {% else %}
+          <a href="{% url 'accounts:login' %}" class="landing-auth-link">Iniciar sesión</a>
+          <a href="{% url 'accounts:register' %}" class="landing-auth-link landing-auth-link--primary">Registrarse</a>
+        {% endif %}
+      </div>
       <button class="theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema">
         <svg class="ti-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
         <svg class="ti-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
