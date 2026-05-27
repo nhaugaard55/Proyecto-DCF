@@ -127,14 +127,6 @@
     .theme-toggle-btn .ti-sun { display: none; }
     .theme-dark .theme-toggle-btn .ti-sun { display: inline-block; }
     .theme-dark .theme-toggle-btn .ti-moon { display: none; }
-    .landing-cta {
-      background: var(--accent);
-      color: #fff;
-      font-weight: 600;
-      border-radius: 999px;
-      padding: 0.35rem 1rem;
-    }
-    .landing-cta-mobile { display: none; }
     .landing-auth-actions {
       gap: 0.55rem;
     }
@@ -691,16 +683,6 @@
         line-height: 1;
       }
 
-      .landing-cta {
-        flex: 0 0 auto;
-        padding: 0.45rem 0.85rem !important;
-        line-height: 1.1;
-        white-space: nowrap;
-      }
-
-      .landing-cta-desktop { display: none; }
-      .landing-cta-mobile { display: inline; }
-
       #theme-icon {
         line-height: 1;
       }
@@ -1030,13 +1012,14 @@
       <img class="brand-logo" src="{% static 'dcf_app/img/intrinsic-logo.png' %}" alt="Intrinsic">
     </a>
     <div class="d-flex align-items-center gap-3 flex-wrap">
+      {% if request.user.is_authenticated %}
+        <span class="landing-user-greeting">Hola, {{ request.user.first_name|default:request.user.email|default:request.user.username }}</span>
+      {% endif %}
       <a href="#features" class="nav-link-item d-none d-md-inline">Funcionalidades</a>
       <a href="#modelos" class="nav-link-item d-none d-md-inline">Modelos</a>
       <a href="#precios" class="nav-link-item d-none d-md-inline">Precios</a>
-      <a href="/app/" class="btn btn-sm landing-cta"><span class="landing-cta-desktop">Empezar gratis</span><span class="landing-cta-mobile">Empezar</span></a>
       <div class="landing-auth-actions d-flex align-items-center flex-wrap">
         {% if request.user.is_authenticated %}
-          <span class="landing-user-greeting">Hola, {{ request.user.first_name|default:request.user.email|default:request.user.username }}</span>
           <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
             {% csrf_token %}
             <button type="submit" class="landing-logout-btn">Cerrar sesión</button>

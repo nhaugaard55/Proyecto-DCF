@@ -155,6 +155,26 @@
             white-space: nowrap;
         }
 
+        .nav-actions-panel .btn {
+            border-radius: 999px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            padding: 0.36rem 0.75rem;
+        }
+
+        .nav-actions-panel .btn-outline-light {
+            border-color: rgba(255, 255, 255, 0.32);
+            color: #f8fafc;
+            transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+
+        .nav-actions-panel .btn-outline-light:hover,
+        .nav-actions-panel .btn-outline-light:focus-visible {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.52);
+            color: #ffffff;
+        }
+
         .nav-auth-link,
         .nav-logout-btn {
             border-radius: 999px;
@@ -682,10 +702,12 @@
                 <img class="brand-logo" src="{% static 'dcf_app/img/intrinsic-logo.png' %}" alt="Intrinsic">
             </a>
             <div class="collapse nav-actions-panel ms-sm-auto d-sm-flex justify-content-sm-end align-items-sm-center flex-sm-row flex-wrap" id="main-nav-actions">
+                {% if request.user.is_authenticated %}
+                    <span class="nav-user-greeting">Hola, {{ request.user.first_name|default:request.user.email|default:request.user.username }}</span>
+                {% endif %}
                 {% block nav_actions %}{% endblock %}
                 <div class="nav-auth-actions d-flex align-items-center flex-wrap">
                     {% if request.user.is_authenticated %}
-                        <span class="nav-user-greeting">Hola, {{ request.user.first_name|default:request.user.email|default:request.user.username }}</span>
                         <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
                             {% csrf_token %}
                             <button type="submit" class="nav-logout-btn">Cerrar sesión</button>
