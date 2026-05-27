@@ -5281,17 +5281,16 @@ document.addEventListener("DOMContentLoaded", function () {
             const precioData = JSON.parse(precioDataEl.textContent);
             const valorIntrinseco = {% if multi_model and multi_model.consenso and multi_model.consenso.precio is not None %}{{ multi_model.consenso.precio }}{% else %}null{% endif %};
             const labelIntrinseco = "Valor consenso";
-            const _storedTheme = (() => { try { return localStorage.getItem("dcf-ui-theme"); } catch(e) { return null; } })();
-            const isDark = _storedTheme === "dark" || (!_storedTheme && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
+            const isDark = document.documentElement.classList.contains("theme-dark");
             const isMobileChart = window.matchMedia("(max-width: 575.98px)").matches;
             const gridColor = isDark
-                ? "rgba(255,255,255,0.08)"
-                : (isMobileChart ? "rgba(71,85,105,0.20)" : "rgba(71,85,105,0.14)");
+                ? (isMobileChart ? "rgba(226,232,240,0.18)" : "rgba(255,255,255,0.08)")
+                : (isMobileChart ? "rgba(71,85,105,0.22)" : "rgba(71,85,105,0.14)");
             const axisBorderColor = isDark
-                ? "rgba(226,232,240,0.22)"
-                : (isMobileChart ? "rgba(71,85,105,0.42)" : "rgba(71,85,105,0.30)");
+                ? (isMobileChart ? "rgba(226,232,240,0.36)" : "rgba(226,232,240,0.22)")
+                : (isMobileChart ? "rgba(71,85,105,0.38)" : "rgba(71,85,105,0.30)");
             const textColor = isDark
-                ? "#e2e8f0"
+                ? (isMobileChart ? "#cbd5e1" : "#e2e8f0")
                 : (isMobileChart ? "#475569" : "#334155");
             new Chart(precioHistoricoEl, {
                 type: "line",
@@ -5360,7 +5359,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 pointStyle: "line",
                                 pointStyleWidth: isMobileChart ? 18 : 24,
                                 boxWidth: isMobileChart ? 18 : 24,
-                                font: { size: isMobileChart ? 11 : 12 },
+                                font: { size: isMobileChart ? 12 : 12, weight: isMobileChart ? "600" : "400" },
                             }
                         },
                         tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}` } },
