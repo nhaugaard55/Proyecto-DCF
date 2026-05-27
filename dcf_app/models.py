@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.db import models
 
 
@@ -11,6 +12,13 @@ class AnalysisRecord(models.Model):
         (METODO_PROMEDIO, "Promedio año a año"),
     ]
 
+    user = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="analysis_records",
+    )
     ticker = models.CharField(max_length=16)
     company_name = models.CharField(max_length=255)
     company_exchange = models.CharField(max_length=64, blank=True)
@@ -46,6 +54,13 @@ class AnalysisRecord(models.Model):
 class WatchlistGroup(models.Model):
     """Watchlist con nombre creada por el usuario."""
 
+    user = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="watchlist_groups",
+    )
     name = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
 
