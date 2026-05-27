@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
+from dcf_app.models import AnalysisRecord, WatchlistGroup, WatchlistItem
+
 
 User = get_user_model()
 
@@ -119,3 +121,47 @@ class AccountsAuthTests(TestCase):
         self.assertContains(authed_response, 'Hola, Test')
         self.assertContains(authed_response, 'Cerrar sesión')
         self.assertContains(authed_response, 'Mi cuenta')
+
+    def test_account_home_requires_login(self):
+        response = self.client.get('/accounts/')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response['Location'])
+
+    def test_account_home_shows_user_profile_and_usage(self):
+        user = User.objects.create_user(
+            username='account-user',
+            email='account@example.com',
+            password=self.password,
+            first_name='Nicolas',
+            last_name='Haugaard',
+        )
+        group = WatchlistGroup.objects.create(user=user, name='General')
+        WatchlistItem.objects.create(watchlist=group, ticker='AAPL', company_name='Apple Inc.')
+        WatchlistItem.objects.create(watchlist=group, ticker='MSFT', company_name='Microsoft')
+        AnalysisRecord.objects.create(
+            user=user,
+            ticker='AAPL',
+            company_name='Apple Inc.',
+            metodo=AnalysisRecord.METODO_CAGR,
+        )
+        AnalysisRecord.objects.create(
+            user=user,
+            ticker='MSFT',
+            company_name='Microsoft',
+            metodo=AnalysisRecord.METODO_CAGR,
+        )
+
+        self.client.force_login(user)
+        response = self.client.get('/accounts/')
+
+        self.assertContains(response, 'Nicolas Haugaard')
+        self.assertContains(response, 'account@example.com')
+        self.assertContains(response, 'Free Beta')
+        self.assertContains(response, 'Watchlists creadas')
+        self.assertContains(response, 'Empresas en watchlist')
+        self.assertContains(response, 'Análisis guardados')
+        self.assertContains(response, 'Último análisis realizado')
+        self.assertContains(response, 'MSFT')
+        self.assertContains(response, '>1<', html=False)
+        self.assertContains(response, '>2<', html=False)

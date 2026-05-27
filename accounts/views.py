@@ -3,12 +3,23 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
+from dcf_app.models import AnalysisRecord, WatchlistGroup, WatchlistItem
+
 from .forms import EmailLoginForm, RegisterForm
 
 
 @login_required
 def account_home(request):
-    return render(request, 'accounts/account_home.html')
+    user = request.user
+    latest_analysis = AnalysisRecord.objects.filter(user=user).order_by('-created_at').first()
+    watchlist_groups = WatchlistGroup.objects.filter(user=user)
+    stats = {
+        'analysis_count': AnalysisRecord.objects.filter(user=user).count(),
+        'watchlist_group_count': watchlist_groups.count(),
+        'watchlist_item_count': WatchlistItem.objects.filter(watchlist__user=user).count(),
+        'latest_analysis': latest_analysis,
+    }
+    return render(request, 'accounts/account_home.html', {'stats': stats})
 
 
 def register_view(request):

@@ -1,1 +1,333 @@
-Mi cuenta - Intrinsic
+{% extends "dcf_app/base.html" %}
+
+{% block extra_head %}
+<style>
+  .account-shell {
+    display: grid;
+    gap: 1.25rem;
+    animation: authFadeIn 0.26s ease-out;
+  }
+
+  .account-hero {
+    border: 1px solid rgba(96, 165, 250, 0.22);
+    border-radius: 1.5rem;
+    background:
+      radial-gradient(circle at 0 0, rgba(37, 99, 235, 0.2), transparent 34%),
+      var(--surface-card);
+    box-shadow: 0 22px 55px rgba(15, 23, 42, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: clamp(1.25rem, 4vw, 2rem);
+  }
+
+  .theme-dark .account-hero,
+  .theme-dark .account-card {
+    box-shadow: 0 24px 60px rgba(2, 6, 23, 0.32);
+  }
+
+  .account-avatar {
+    width: clamp(4rem, 12vw, 5.25rem);
+    height: clamp(4rem, 12vw, 5.25rem);
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #2563eb, #0891b2);
+    color: #fff;
+    font-size: clamp(1.35rem, 4vw, 1.8rem);
+    font-weight: 850;
+    text-transform: uppercase;
+    box-shadow: 0 18px 36px rgba(37, 99, 235, 0.28);
+    flex: 0 0 auto;
+  }
+
+  .account-name {
+    color: var(--text-primary);
+    font-size: clamp(1.55rem, 4vw, 2.15rem);
+    font-weight: 850;
+    line-height: 1.08;
+    margin: 0;
+  }
+
+  .account-email {
+    color: var(--text-secondary);
+    font-weight: 650;
+    margin-top: 0.35rem;
+    word-break: break-word;
+  }
+
+  .account-member {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    margin-top: 0.15rem;
+  }
+
+  .account-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-card {
+    border: 1px solid rgba(96, 165, 250, 0.18);
+    border-radius: 1.25rem;
+    background: var(--surface-card);
+    padding: clamp(1.05rem, 3vw, 1.4rem);
+  }
+
+  .account-card-label {
+    color: #60a5fa;
+    font-size: 0.72rem;
+    font-weight: 850;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.65rem;
+  }
+
+  .account-card-title {
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 850;
+    margin-bottom: 0.4rem;
+  }
+
+  .account-card-copy {
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+
+  .account-badge {
+    border-radius: 999px;
+    background: rgba(34, 197, 94, 0.15);
+    color: #16a34a;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 850;
+    letter-spacing: 0.04em;
+  }
+
+  .theme-dark .account-badge {
+    color: #86efac;
+  }
+
+  .account-disabled-btn,
+  .account-action-btn {
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.45rem;
+    padding: 0.62rem 0.95rem;
+    font-weight: 800;
+  }
+
+  .account-disabled-btn {
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    color: var(--text-muted);
+    background: rgba(148, 163, 184, 0.08);
+    cursor: not-allowed;
+  }
+
+  .account-action-btn {
+    border: 1px solid rgba(96, 165, 250, 0.34);
+    background: rgba(96, 165, 250, 0.1);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+
+  .account-action-btn:hover,
+  .account-action-btn:focus-visible {
+    background: rgba(96, 165, 250, 0.16);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+  }
+
+  .account-metrics {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .account-metric {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem;
+  }
+
+  .account-metric-label {
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    font-weight: 700;
+  }
+
+  .account-metric-value {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 850;
+    text-align: right;
+  }
+
+  .account-limits-list,
+  .account-security-list {
+    color: var(--text-secondary);
+    display: grid;
+    gap: 0.6rem;
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+  }
+
+  .account-limits-list li,
+  .account-security-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-weight: 650;
+  }
+
+  .account-limits-list li::before,
+  .account-security-list li::before {
+    content: "✓";
+    color: #22c55e;
+    font-weight: 900;
+  }
+
+  .account-small-note {
+    color: var(--text-muted);
+    font-size: 0.83rem;
+    margin: 0;
+  }
+
+  .account-security-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .account-logout-btn {
+    border: 1px solid rgba(248, 113, 113, 0.34);
+    border-radius: 999px;
+    background: rgba(248, 113, 113, 0.1);
+    color: #dc2626;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.45rem;
+    padding: 0.62rem 0.95rem;
+    font-weight: 800;
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+
+  .theme-dark .account-logout-btn {
+    color: #fca5a5;
+  }
+
+  .account-logout-btn:hover,
+  .account-logout-btn:focus-visible {
+    background: rgba(248, 113, 113, 0.16);
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 767.98px) {
+    .account-hero {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .account-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="account-shell">
+  <header class="account-hero">
+    <div class="account-avatar" aria-hidden="true">{{ request.user.first_name|default:request.user.email|default:request.user.username|first }}</div>
+    <div>
+      <h1 class="account-name">
+        {% if request.user.get_full_name %}
+          {{ request.user.get_full_name }}
+        {% else %}
+          {{ request.user.first_name|default:request.user.username }}
+        {% endif %}
+      </h1>
+      <div class="account-email">{{ request.user.email|default:"Email no cargado" }}</div>
+      <div class="account-member">Miembro desde {{ request.user.date_joined|date:"F Y" }}</div>
+    </div>
+  </header>
+
+  <div class="account-grid">
+    <article class="account-card">
+      <div class="account-card-label">Plan actual</div>
+      <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+        <h2 class="account-card-title mb-0">Free Beta</h2>
+        <span class="account-badge">FREE</span>
+      </div>
+      <p class="account-card-copy mt-3">Acceso gratuito durante la beta pública.</p>
+      <button class="account-disabled-btn" type="button" disabled>Próximamente: Intrinsic Pro</button>
+    </article>
+
+    <article class="account-card">
+      <div class="account-card-label">Uso</div>
+      <div class="account-metrics">
+        <div class="account-metric">
+          <span class="account-metric-label">Watchlists creadas</span>
+          <span class="account-metric-value">{{ stats.watchlist_group_count }}</span>
+        </div>
+        <div class="account-metric">
+          <span class="account-metric-label">Empresas en watchlist</span>
+          <span class="account-metric-value">{{ stats.watchlist_item_count }}</span>
+        </div>
+        <div class="account-metric">
+          <span class="account-metric-label">Análisis guardados</span>
+          <span class="account-metric-value">{{ stats.analysis_count }}</span>
+        </div>
+        <div class="account-metric">
+          <span class="account-metric-label">Último análisis realizado</span>
+          <span class="account-metric-value">
+            {% if stats.latest_analysis %}
+              {{ stats.latest_analysis.ticker }}
+            {% else %}
+              Sin datos
+            {% endif %}
+          </span>
+        </div>
+      </div>
+    </article>
+
+    <article class="account-card">
+      <div class="account-card-label">Límites actuales</div>
+      <h2 class="account-card-title">Beta pública</h2>
+      <ul class="account-limits-list">
+        <li>Beta pública</li>
+        <li>Sin límites activos por ahora</li>
+      </ul>
+      <p class="account-small-note">Los límites y planes premium se habilitarán más adelante.</p>
+    </article>
+
+    <article class="account-card">
+      <div class="account-card-label">Seguridad</div>
+      <ul class="account-security-list">
+        <li>Email de login: {{ request.user.email|default:"No cargado" }}</li>
+        <li>Contraseña protegida</li>
+      </ul>
+      <div class="account-security-actions">
+        <button class="account-disabled-btn" type="button" disabled>Cambiar contraseña próximamente</button>
+        <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
+          {% csrf_token %}
+          <button class="account-logout-btn" type="submit">Cerrar sesión</button>
+        </form>
+      </div>
+    </article>
+  </div>
+</section>
+{% endblock %}
