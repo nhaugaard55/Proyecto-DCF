@@ -213,6 +213,7 @@
       font-weight: 700;
       padding: 0.35rem 0.85rem;
     }
+    .landing-auth-short { display: none; }
     .landing-auth-link {
       border: 1px solid rgba(255,255,255,0.3);
       color: #f8fafc;
@@ -710,21 +711,21 @@
 
     @media (max-width: 575.98px) {
       .glass-nav {
-        padding-top: 0.65rem !important;
-        padding-bottom: 0.65rem !important;
+        padding-top: 0.7rem !important;
+        padding-bottom: 0.7rem !important;
       }
 
       .glass-nav .container {
         align-items: center !important;
         flex-wrap: nowrap !important;
-        gap: 0.7rem !important;
+        gap: 0.38rem !important;
       }
 
-      .glass-nav .d-flex {
+      .glass-nav .container > .d-flex {
         width: auto;
         flex: 0 0 auto;
         justify-content: flex-end;
-        gap: 0.55rem !important;
+        gap: 0.34rem !important;
         flex-wrap: nowrap !important;
         margin-left: auto;
       }
@@ -735,22 +736,75 @@
 
       .nav-brand {
         flex: 1 1 auto;
+        min-width: 0;
         margin-right: auto;
       }
 
       .brand-logo {
-        height: 2.1rem;
-        max-width: 13rem;
+        height: 2.05rem;
+        max-width: 12rem;
       }
 
+      .landing-auth-actions {
+        display: flex !important;
+        flex: 0 0 auto;
+        gap: 0.34rem;
+      }
+
+      .landing-auth-link,
+      .landing-logout-btn {
+        display: inline-flex;
+        align-items: center;
+        width: 4.2rem;
+        height: 2.22rem;
+        justify-content: center;
+        padding: 0.4rem 0;
+        font-size: 0.78rem;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      .landing-auth-link--primary {
+        width: 5.25rem;
+      }
+
+      .landing-auth-full { display: none; }
+      .landing-auth-short { display: inline; }
+
       .theme-toggle-btn {
-        width: 2.65rem;
-        height: 2.65rem;
-        flex: 0 0 2.65rem;
+        width: 2.18rem;
+        height: 2.18rem;
+        flex: 0 0 2.18rem;
         padding: 0 !important;
         justify-content: center;
         border-radius: 50%;
         line-height: 1;
+      }
+
+      .landing-user-menu {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      .landing-user-trigger {
+        max-width: 100%;
+        min-height: 2.35rem;
+        padding: 0.22rem 0.54rem 0.22rem 0.24rem;
+      }
+
+      .landing-user-avatar {
+        width: 1.65rem;
+        height: 1.65rem;
+      }
+
+      .landing-user-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .landing-user-dropdown {
+        width: min(100vw - 2rem, 16rem);
       }
 
       #theme-icon {
@@ -1106,8 +1160,8 @@
       <a href="#precios" class="nav-link-item d-none d-md-inline">Precios</a>
       <div class="landing-auth-actions d-flex align-items-center flex-wrap">
         {% if not request.user.is_authenticated %}
-          <a href="{% url 'accounts:login' %}" class="landing-auth-link">Iniciar sesión</a>
-          <a href="{% url 'accounts:register' %}" class="landing-auth-link landing-auth-link--primary">Crear cuenta</a>
+          <a href="{% url 'accounts:login' %}" class="landing-auth-link"><span class="landing-auth-full">Iniciar sesión</span><span class="landing-auth-short">Entrar</span></a>
+          <a href="{% url 'accounts:register' %}" class="landing-auth-link landing-auth-link--primary"><span class="landing-auth-full">Crear cuenta</span><span class="landing-auth-short">Registrate</span></a>
         {% endif %}
       </div>
       <button class="theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema">
