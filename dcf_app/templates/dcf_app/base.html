@@ -868,25 +868,26 @@
 
         @media (max-width: 575.98px) {
             .glass-nav {
-                padding-top: 0.65rem !important;
-                padding-bottom: 0.65rem !important;
+                padding-top: 0.7rem !important;
+                padding-bottom: 0.7rem !important;
             }
 
             .glass-nav .container {
                 position: relative;
                 justify-content: space-between !important;
                 flex-wrap: nowrap !important;
-                gap: 0.65rem !important;
+                gap: 0.38rem !important;
             }
 
             .navbar-brand {
-                flex: 0 1 auto;
+                flex: 1 1 auto;
+                min-width: 0;
                 margin-right: auto;
             }
 
             .brand-logo {
-                height: 2.1rem;
-                max-width: 13rem;
+                height: 2.05rem;
+                max-width: 12rem;
             }
 
             .nav-actions-panel {
@@ -986,16 +987,29 @@
             }
 
             .nav-controls {
-                margin-left: auto;
+                gap: 0.34rem;
+                margin-left: auto !important;
             }
 
             .nav-controls .theme-toggle-btn {
-                min-height: 2.75rem;
-                padding: 0.45rem 0.75rem;
+                width: 2.18rem;
+                height: 2.18rem;
+                min-height: 2.18rem;
+                flex: 0 0 2.18rem;
+                padding: 0 !important;
+                border-radius: 50%;
             }
 
             .nav-controls #theme-toggle-text {
                 display: none;
+            }
+
+            .mobile-menu-toggle {
+                width: 2.18rem;
+                height: 2.18rem;
+                flex: 0 0 2.18rem;
+                padding: 0;
+                border-radius: 50%;
             }
 
             main.container {
