@@ -266,6 +266,11 @@
             white-space: nowrap;
         }
 
+        .nav-mobile-account {
+            display: none;
+            text-decoration: none;
+        }
+
         .nav-actions-panel .btn {
             border-radius: 999px;
             font-size: 0.84rem;
@@ -955,7 +960,8 @@
             .nav-actions-panel .btn,
             .nav-actions-panel .theme-toggle-btn,
             .nav-actions-panel .nav-auth-link,
-            .nav-actions-panel .nav-logout-btn {
+            .nav-actions-panel .nav-logout-btn,
+            .nav-actions-panel .nav-mobile-menu-link {
                 width: 100%;
                 min-height: 2.55rem;
                 display: inline-flex;
@@ -972,10 +978,20 @@
                 box-shadow: none;
             }
 
+            .nav-actions-panel .nav-mobile-menu-link {
+                border: 1px solid rgba(255, 255, 255, 0.82);
+                border-radius: 999px;
+                font-size: 0.84rem;
+                font-weight: 700;
+                text-decoration: none;
+            }
+
             .nav-actions-panel .btn:hover,
             .nav-actions-panel .btn:focus-visible,
             .nav-actions-panel .nav-auth-link:hover,
             .nav-actions-panel .nav-auth-link:focus-visible,
+            .nav-actions-panel .nav-mobile-menu-link:hover,
+            .nav-actions-panel .nav-mobile-menu-link:focus-visible,
             .nav-actions-panel .nav-logout-btn:hover,
             .nav-actions-panel .nav-logout-btn:focus-visible {
                 background-color: rgba(255, 255, 255, 0.14);
@@ -989,6 +1005,10 @@
 
             .nav-auth-actions {
                 align-items: stretch !important;
+            }
+
+            .nav-actions-panel > .nav-user-menu {
+                display: none;
             }
 
             .nav-user-menu,
@@ -1017,13 +1037,22 @@
                 margin-left: auto !important;
             }
 
-            .nav-controls .theme-toggle-btn {
+            .nav-mobile-account {
+                display: inline-flex;
                 width: 2.18rem;
                 height: 2.18rem;
-                min-height: 2.18rem;
                 flex: 0 0 2.18rem;
-                padding: 0 !important;
-                border-radius: 50%;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .nav-mobile-account .nav-user-avatar {
+                width: 2.18rem;
+                height: 2.18rem;
+            }
+
+            .nav-controls .theme-toggle-btn {
+                display: none;
             }
 
             .nav-controls #theme-toggle-text {
@@ -1094,22 +1123,45 @@
                             </form>
                         </div>
                     </div>
-                {% endif %}
-                {% block nav_actions %}{% endblock %}
-                <div class="nav-auth-actions d-flex align-items-center flex-wrap">
-                    {% if not request.user.is_authenticated %}
-                        <a href="{% url 'landing' %}" class="nav-auth-link">Volver al inicio</a>
-                        <a href="{% url 'accounts:login' %}" class="nav-auth-link">Iniciar sesión</a>
-                        <a href="{% url 'accounts:register' %}" class="nav-auth-link nav-auth-link--primary">Crear cuenta</a>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="nav-controls d-flex align-items-center ms-2">
-                <button type="button" class="theme-toggle-btn" id="theme-toggle" aria-label="Cambiar tema">
-                    <svg class="ti-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-                    <svg class="ti-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-                    <span id="theme-toggle-text">Modo oscuro</span>
-                </button>
+	                {% endif %}
+	                <div class="nav-auth-actions d-flex align-items-center flex-wrap">
+		                    {% if request.user.is_authenticated %}
+		                        <a href="{% url 'watchlist' %}" class="nav-mobile-menu-link d-sm-none">Watchlist</a>
+		                        <a href="{% url 'history' %}" class="nav-mobile-menu-link d-sm-none">Historial</a>
+		                        <button type="button" class="theme-toggle-btn nav-mobile-menu-link d-sm-none" data-theme-toggle>
+		                            <svg class="ti-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+		                            <svg class="ti-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+		                            <span data-theme-toggle-text>Cambiar tema</span>
+		                        </button>
+		                        {% block nav_actions %}{% endblock %}
+		                        <form method="post" action="{% url 'accounts:logout' %}" class="m-0 d-sm-none">
+		                            {% csrf_token %}
+		                            <button type="submit" class="nav-logout-btn">Cerrar sesión</button>
+		                        </form>
+		                    {% else %}
+		                        {% block nav_actions_guest %}{% endblock %}
+		                        <a href="{% url 'landing' %}" class="nav-auth-link">Volver al inicio</a>
+		                        <button type="button" class="theme-toggle-btn nav-mobile-menu-link d-sm-none" data-theme-toggle>
+		                            <svg class="ti-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+		                            <svg class="ti-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+		                            <span data-theme-toggle-text>Cambiar tema</span>
+		                        </button>
+		                        <a href="{% url 'accounts:login' %}" class="nav-auth-link">Iniciar sesión</a>
+		                        <a href="{% url 'accounts:register' %}" class="nav-auth-link nav-auth-link--primary">Crear cuenta</a>
+		                    {% endif %}
+	                </div>
+	            </div>
+	            <div class="nav-controls d-flex align-items-center ms-2">
+	                {% if request.user.is_authenticated %}
+	                <a href="{% url 'accounts:home' %}" class="nav-mobile-account d-sm-none" aria-label="Mi cuenta">
+	                    <span class="nav-user-avatar">{{ request.user.first_name|default:request.user.email|default:request.user.username|first }}</span>
+	                </a>
+	                {% endif %}
+		                <button type="button" class="theme-toggle-btn" data-theme-toggle aria-label="Cambiar tema">
+	                    <svg class="ti-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+	                    <svg class="ti-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+	                    <span data-theme-toggle-text>Modo oscuro</span>
+	                </button>
                 <button class="navbar-toggler mobile-menu-toggle d-sm-none" type="button" data-bs-toggle="collapse" data-bs-target="#main-nav-actions" aria-controls="main-nav-actions" aria-expanded="false" aria-label="Abrir menú">
                     <span class="navbar-toggler-icon"></span>
                 </button>
@@ -1152,8 +1204,8 @@
         (function () {
             const storageKey = "dcf-ui-theme";
             const body = document.body;
-            const toggleButton = document.getElementById("theme-toggle");
-            const textElement = document.getElementById("theme-toggle-text");
+            const toggleButtons = document.querySelectorAll("[data-theme-toggle]");
+            const textElements = document.querySelectorAll("[data-theme-toggle-text]");
 
             function applyTheme(theme, persist = true) {
                 const isDark = theme === "dark";
@@ -1166,9 +1218,9 @@
                         // Ignorar problemas de storage (modo incógnito, etc).
                     }
                 }
-                if (textElement) {
+                textElements.forEach(function (textElement) {
                     textElement.textContent = isDark ? "Modo claro" : "Modo oscuro";
-                }
+                });
                 window.dispatchEvent(new CustomEvent("dcf-theme-changed", { detail: { dark: isDark } }));
             }
 
@@ -1189,12 +1241,12 @@
 
             document.addEventListener("DOMContentLoaded", function () {
                 applyTheme(detectPreferredTheme(), false);
-                if (toggleButton) {
+                toggleButtons.forEach(function (toggleButton) {
                     toggleButton.addEventListener("click", function () {
                         const next = document.documentElement.classList.contains("theme-dark") ? "light" : "dark";
                         applyTheme(next);
                     });
-                }
+                });
 
                 document.querySelectorAll("[data-auth-cta]").forEach(function (trigger) {
                     trigger.addEventListener("click", function (event) {
