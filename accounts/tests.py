@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
+from django.http import HttpResponse
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import TestCase
 from django.test import RequestFactory
@@ -266,6 +267,51 @@ class SubscriptionLimitTests(TestCase):
         execute_dcf.assert_not_called()
         usage = DailyUsage.objects.get(user__isnull=True)
         self.assertEqual(usage.analysis_count, 0)
+
+    def test_refresh_same_analysis_does_not_consume_usage_twice(self):
+        result = {
+            'nombre': 'Apple Inc.',
+            'sector': 'Technology',
+            'fuente_datos': 'fmp',
+            'valor_intrinseco': 100,
+            'precio_actual': 90,
+            'diferencia_pct': 11.11,
+            'estado': 'SUBVALUADA',
+            'datos_empresa': {},
+        }
+
+        with patch('dcf_app.views._check_ticker_eligibility', return_value=None):
+            with patch('dcf_app.views._cached_ejecutar_dcf', return_value=result):
+                with patch('dcf_app.views.render', return_value=HttpResponse('ok')):
+                    first_response = self.client.get('/app/', {'ticker': 'AAPL'})
+                    refresh_response = self.client.get('/app/', {'ticker': 'AAPL'})
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(refresh_response.status_code, 200)
+        usage = DailyUsage.objects.get(user__isnull=True)
+        self.assertEqual(usage.analysis_count, 1)
+
+    def test_returning_to_previous_analysis_does_not_consume_usage_again(self):
+        result = {
+            'nombre': 'Company Inc.',
+            'sector': 'Technology',
+            'fuente_datos': 'fmp',
+            'valor_intrinseco': 100,
+            'precio_actual': 90,
+            'diferencia_pct': 11.11,
+            'estado': 'SUBVALUADA',
+            'datos_empresa': {},
+        }
+
+        with patch('dcf_app.views._check_ticker_eligibility', return_value=None):
+            with patch('dcf_app.views._cached_ejecutar_dcf', return_value=result):
+                with patch('dcf_app.views.render', return_value=HttpResponse('ok')):
+                    self.client.get('/app/', {'ticker': 'AAPL'})
+                    self.client.get('/app/', {'ticker': 'MSFT'})
+                    self.client.get('/app/', {'ticker': 'AAPL'})
+
+        usage = DailyUsage.objects.get(user__isnull=True)
+        self.assertEqual(usage.analysis_count, 2)
 
     def test_guest_limit_blocks_dcf_execution(self):
         session = self.client.session

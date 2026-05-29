@@ -275,6 +275,36 @@ def _build_chart_data(resultado):
 NEWS_PAGE_SIZE = 6
 RECENT_HISTORY_VISIBLE_LIMIT = 5
 RECENT_HISTORY_FETCH_LIMIT = 25
+COUNTED_ANALYSES_SESSION_KEY = "counted_analysis_tickers"
+
+
+def _get_counted_analysis_tickers(request) -> set[str]:
+    """Return tickers already charged today for this browser session."""
+    today_key = timezone.localdate().isoformat()
+    payload = request.session.get(COUNTED_ANALYSES_SESSION_KEY) or {}
+    if payload.get("date") != today_key:
+        return set()
+    tickers = payload.get("tickers") or []
+    return {str(ticker).strip().upper() for ticker in tickers if ticker}
+
+
+def _analysis_usage_already_counted(request, ticker: str) -> bool:
+    symbol = (ticker or "").strip().upper()
+    return bool(symbol and symbol in _get_counted_analysis_tickers(request))
+
+
+def _mark_analysis_usage_counted(request, ticker: str) -> None:
+    symbol = (ticker or "").strip().upper()
+    if not symbol:
+        return
+
+    tickers = _get_counted_analysis_tickers(request)
+    tickers.add(symbol)
+    request.session[COUNTED_ANALYSES_SESSION_KEY] = {
+        "date": timezone.localdate().isoformat(),
+        "tickers": sorted(tickers),
+    }
+    request.session.modified = True
 
 
 def _guardar_analisis(
@@ -448,10 +478,11 @@ def dcf_view(request):
     ticker = request.GET.get("ticker", "").strip().upper()
 
     if ticker:
+        should_charge_analysis = not _analysis_usage_already_counted(request, ticker)
         eligibility_error = _check_ticker_eligibility(ticker)
         if eligibility_error:
             error = eligibility_error
-        elif not can_run_analysis(request):
+        elif should_charge_analysis and not can_run_analysis(request):
             analysis_limit_exceeded = True
             analysis_limit_summary = get_usage_summary(request)
             if request.user.is_authenticated:
@@ -465,7 +496,9 @@ def dcf_view(request):
                 error = f"Ocurrió un error al analizar el ticker: {exc}"
                 resultado = None
             else:
-                record_analysis_run(request)
+                if should_charge_analysis:
+                    record_analysis_run(request)
+                    _mark_analysis_usage_counted(request, ticker)
                 _guardar_analisis(
                     user=request.user if request.user.is_authenticated else None,
                     ticker=ticker,
