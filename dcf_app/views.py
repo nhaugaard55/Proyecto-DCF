@@ -486,9 +486,19 @@ def dcf_view(request):
             company_stage = None
 
         try:
+            _precio_actual_raw = resultado.get("precio_actual") if isinstance(resultado, dict) else None
+            _precio_actual_float = float(_precio_actual_raw) if _precio_actual_raw is not None else None
+            analyst_data = get_analyst_estimates(ticker, precio_actual=_precio_actual_float)
+        except Exception:
+            analyst_data = {
+                "disponible": False,
+                "mensaje": "No se pudo consultar estimaciones de analistas.",
+            }
+
+        try:
             stage_num = (company_stage or {}).get("stage", 4)
             wacc_val = (resultado.get("metricas") or {}).get("wacc") or 0.08
-            multi_model = run_all_models(ticker, resultado, stage_num, wacc_val)
+            multi_model = run_all_models(ticker, resultado, stage_num, wacc_val, analyst_estimates=analyst_data)
         except Exception:
             multi_model = None
 
@@ -503,16 +513,6 @@ def dcf_view(request):
             insider_data = {
                 "disponible": False,
                 "mensaje": "No se pudo consultar insider trading para este ticker.",
-            }
-
-        try:
-            _precio_actual_raw = resultado.get("precio_actual") if isinstance(resultado, dict) else None
-            _precio_actual_float = float(_precio_actual_raw) if _precio_actual_raw is not None else None
-            analyst_data = get_analyst_estimates(ticker, precio_actual=_precio_actual_float)
-        except Exception:
-            analyst_data = {
-                "disponible": False,
-                "mensaje": "No se pudo consultar estimaciones de analistas.",
             }
 
         # Recalcular posiciones de la barra con rango dinámico que incluye todos los marcadores
@@ -890,9 +890,15 @@ def dcf_executive_report_view(request, ticker: str):
         company_stage = None
 
     try:
+        _precio_actual_exec = _pdf_float(resultado.get("precio_actual"))
+        analyst_data = get_analyst_estimates(ticker, precio_actual=_precio_actual_exec)
+    except Exception:
+        analyst_data = {"disponible": False}
+
+    try:
         stage_num = (company_stage or {}).get("stage", 4)
         wacc_val = (resultado.get("metricas") or {}).get("wacc")
-        multi_model = run_all_models(ticker, resultado, stage_num, wacc_val)
+        multi_model = run_all_models(ticker, resultado, stage_num, wacc_val, analyst_estimates=analyst_data)
     except Exception as exc:
         return HttpResponse(f"No se pudo calcular el score ejecutivo: {exc}", status=500)
 
@@ -956,11 +962,6 @@ def dcf_executive_report_view(request, ticker: str):
         insider_data = get_insider_trading(ticker)
     except Exception:
         insider_data = {"disponible": False}
-
-    try:
-        analyst_data = get_analyst_estimates(ticker, precio_actual=precio_actual)
-    except Exception:
-        analyst_data = {"disponible": False}
 
     precio_objetivo = analyst_data.get("precio_objetivo") if isinstance(analyst_data, dict) else {}
     if not isinstance(precio_objetivo, dict):
