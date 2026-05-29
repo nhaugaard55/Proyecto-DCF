@@ -6,6 +6,8 @@ from django.views.decorators.http import require_POST
 from dcf_app.models import AnalysisRecord, WatchlistGroup, WatchlistItem
 
 from .forms import EmailLoginForm, RegisterForm
+from .models import UserSubscription
+from .subscription import get_usage_summary
 
 
 @login_required
@@ -18,6 +20,7 @@ def account_home(request):
         'watchlist_group_count': watchlist_groups.count(),
         'watchlist_item_count': WatchlistItem.objects.filter(watchlist__user=user).count(),
         'latest_analysis': latest_analysis,
+        'usage_summary': get_usage_summary(request),
     }
     return render(request, 'accounts/account_home.html', {'stats': stats})
 
@@ -29,6 +32,7 @@ def register_view(request):
     form = RegisterForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         user = form.save()
+        UserSubscription.objects.get_or_create(user=user, defaults={'plan': UserSubscription.PLAN_FREE})
         login(request, user)
         return redirect('landing')
 

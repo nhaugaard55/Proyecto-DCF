@@ -252,6 +252,20 @@
             white-space: nowrap;
         }
 
+        .nav-usage-badge {
+            border: 1px solid rgba(96, 165, 250, 0.24);
+            border-radius: 999px;
+            background: rgba(96, 165, 250, 0.1);
+            color: rgba(226, 232, 240, 0.9);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.36rem 0.7rem;
+            font-size: 0.78rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
         .nav-actions-panel .btn {
             border-radius: 999px;
             font-size: 0.84rem;
@@ -982,6 +996,11 @@
                 width: 100%;
             }
 
+            .nav-usage-badge {
+                width: 100%;
+                min-height: 2.45rem;
+            }
+
             .nav-user-trigger {
                 justify-content: center;
             }
@@ -1043,6 +1062,15 @@
             </a>
             <div class="collapse nav-actions-panel ms-sm-auto d-sm-flex justify-content-sm-end align-items-sm-center flex-sm-row flex-wrap" id="main-nav-actions">
                 {% if request.user.is_authenticated %}
+                    {% if nav_usage_summary %}
+                    <span class="nav-usage-badge">
+                        {% if nav_usage_summary.is_unlimited %}
+                            Análisis ilimitados
+                        {% else %}
+                            {{ nav_usage_summary.remaining }} análisis restantes
+                        {% endif %}
+                    </span>
+                    {% endif %}
                     <div class="dropdown nav-user-menu">
                         <button class="nav-user-trigger dropdown-toggle" type="button" id="nav-user-menu" data-bs-toggle="dropdown" aria-expanded="false">
                             <span class="nav-user-avatar">{{ request.user.first_name|default:request.user.email|default:request.user.username|first }}</span>

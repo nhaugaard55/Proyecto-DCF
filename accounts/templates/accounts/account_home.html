@@ -151,6 +151,21 @@
     gap: 0.75rem;
   }
 
+  .account-usage-bar {
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.16);
+    height: 0.7rem;
+    overflow: hidden;
+    margin: 1rem 0 0.75rem;
+  }
+
+  .account-usage-fill {
+    border-radius: inherit;
+    background: linear-gradient(90deg, #2563eb, #0891b2);
+    height: 100%;
+    transition: width 0.24s ease;
+  }
+
   .account-metric {
     border: 1px solid rgba(148, 163, 184, 0.16);
     border-radius: 1rem;
@@ -267,13 +282,39 @@
 
   <div class="account-grid">
     <article class="account-card">
+      {% with usage=stats.usage_summary %}
       <div class="account-card-label">Plan actual</div>
       <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-        <h2 class="account-card-title mb-0">Free Beta</h2>
-        <span class="account-badge">FREE</span>
+        <h2 class="account-card-title mb-0">{% if usage.plan == "PRO" %}Intrinsic Pro{% else %}Free Beta{% endif %}</h2>
+        <span class="account-badge">{{ usage.plan }}</span>
       </div>
-      <p class="account-card-copy mt-3">Acceso gratuito durante la beta pública.</p>
-      <button class="account-disabled-btn" type="button" disabled>Próximamente: Intrinsic Pro</button>
+      <p class="account-card-copy mt-3">
+        {% if usage.plan == "PRO" %}
+          Acceso ilimitado a análisis durante el período activo.
+        {% else %}
+          Acceso gratuito durante la beta pública.
+        {% endif %}
+      </p>
+      <div class="account-card-label mt-3">Uso hoy</div>
+      <div class="account-metric">
+        <span class="account-metric-label">Análisis utilizados</span>
+        <span class="account-metric-value">
+          {% if usage.is_unlimited %}
+            {{ usage.used }} / ilimitado
+          {% else %}
+            {{ usage.used }} / {{ usage.limit }}
+          {% endif %}
+        </span>
+      </div>
+      {% if usage.is_unlimited %}
+      <div class="account-usage-bar"><div class="account-usage-fill" style="width:100%;"></div></div>
+      <p class="account-small-note mb-3">Restantes: ilimitados</p>
+      {% else %}
+      <div class="account-usage-bar"><div class="account-usage-fill" style="width:{% widthratio usage.used usage.limit 100 %}%;"></div></div>
+      <p class="account-small-note mb-3">Restantes: {{ usage.remaining }}</p>
+      {% endif %}
+      <button class="account-disabled-btn" type="button" disabled>{% if usage.plan == "PRO" %}Intrinsic Pro activo{% else %}Próximamente: Intrinsic Pro{% endif %}</button>
+      {% endwith %}
     </article>
 
     <article class="account-card">
@@ -309,7 +350,8 @@
       <h2 class="account-card-title">Beta pública</h2>
       <ul class="account-limits-list">
         <li>Beta pública</li>
-        <li>Sin límites activos por ahora</li>
+        <li>Plan Free: 15 análisis por día</li>
+        <li>Intrinsic Pro: ilimitado próximamente</li>
       </ul>
       <p class="account-small-note">Los límites y planes premium se habilitarán más adelante.</p>
     </article>

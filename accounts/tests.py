@@ -1,6 +1,13 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import TestCase
+from django.test import RequestFactory
+from django.utils import timezone
+from unittest.mock import patch
 
+from accounts.models import DailyUsage, UserSubscription
+from accounts.subscription import can_run_analysis, get_usage_summary, record_analysis_run
 from dcf_app.models import AnalysisRecord, WatchlistGroup, WatchlistItem
 
 
@@ -29,6 +36,7 @@ class AccountsAuthTests(TestCase):
         self.assertEqual(user.first_name, 'Test')
         self.assertEqual(user.last_name, 'User')
         self.assertTrue(user.has_usable_password())
+        self.assertEqual(user.subscription.plan, UserSubscription.PLAN_FREE)
 
     def test_register_rejects_duplicate_email_case_insensitive(self):
         User.objects.create_user(
@@ -165,3 +173,110 @@ class AccountsAuthTests(TestCase):
         self.assertContains(response, 'MSFT')
         self.assertContains(response, '>1<', html=False)
         self.assertContains(response, '>2<', html=False)
+
+
+class SubscriptionLimitTests(TestCase):
+    password = 'IntrinsicTestPass-48291'
+
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def request_for(self, user=None):
+        request = self.factory.get('/app/')
+        middleware = SessionMiddleware(lambda req: None)
+        middleware.process_request(request)
+        request.session.save()
+        request.user = user or AnonymousUser()
+        return request
+
+    def test_guest_allows_three_analyses_then_blocks_fourth(self):
+        request = self.request_for()
+
+        for _ in range(3):
+            self.assertTrue(can_run_analysis(request))
+            record_analysis_run(request)
+
+        self.assertFalse(can_run_analysis(request))
+        summary = get_usage_summary(request)
+        self.assertEqual(summary.plan, 'GUEST')
+        self.assertEqual(summary.used, 3)
+        self.assertEqual(summary.remaining, 0)
+
+    def test_free_allows_fifteen_analyses_then_blocks_sixteenth(self):
+        user = User.objects.create_user(username='free-user', email='free@example.com', password=self.password)
+        request = self.request_for(user)
+
+        for _ in range(15):
+            self.assertTrue(can_run_analysis(request))
+            record_analysis_run(request)
+
+        self.assertFalse(can_run_analysis(request))
+        summary = get_usage_summary(request)
+        self.assertEqual(summary.plan, UserSubscription.PLAN_FREE)
+        self.assertEqual(summary.used, 15)
+        self.assertEqual(summary.remaining, 0)
+
+    def test_pro_plan_is_unlimited(self):
+        user = User.objects.create_user(username='pro-user', email='pro@example.com', password=self.password)
+        UserSubscription.objects.update_or_create(user=user, defaults={'plan': UserSubscription.PLAN_PRO})
+        request = self.request_for(user)
+
+        for _ in range(25):
+            self.assertTrue(can_run_analysis(request))
+            record_analysis_run(request)
+
+        summary = get_usage_summary(request)
+        self.assertEqual(summary.plan, UserSubscription.PLAN_PRO)
+        self.assertTrue(summary.is_unlimited)
+        self.assertIsNone(summary.remaining)
+        self.assertTrue(can_run_analysis(request))
+
+    def test_invalid_ticker_does_not_consume_usage(self):
+        with patch('dcf_app.views._check_ticker_eligibility', return_value='Ticker inválido') as eligibility:
+            with patch('dcf_app.views._cached_ejecutar_dcf') as execute_dcf:
+                response = self.client.get('/app/', {'ticker': 'BAD'})
+
+        self.assertEqual(response.status_code, 200)
+        eligibility.assert_called_once_with('BAD')
+        execute_dcf.assert_not_called()
+        usage = DailyUsage.objects.get(user__isnull=True)
+        self.assertEqual(usage.analysis_count, 0)
+
+    def test_guest_limit_blocks_dcf_execution(self):
+        session = self.client.session
+        session.save()
+        DailyUsage.objects.create(
+            session_key=session.session_key,
+            date=timezone.localdate(),
+            analysis_count=3,
+        )
+
+        with patch('dcf_app.views._check_ticker_eligibility', return_value=None):
+            with patch('dcf_app.views._cached_ejecutar_dcf') as execute_dcf:
+                response = self.client.get('/app/', {'ticker': 'AAPL'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Llegaste al límite gratuito diario')
+        execute_dcf.assert_not_called()
+
+    def test_user_usage_survives_logout_and_login(self):
+        user = User.objects.create_user(
+            username='returning-user',
+            email='returning@example.com',
+            password=self.password,
+        )
+        request = self.request_for(user)
+        record_analysis_run(request)
+        record_analysis_run(request)
+
+        self.client.force_login(user)
+        self.client.post('/accounts/logout/')
+        login_response = self.client.post(
+            '/accounts/login/',
+            {'email': 'returning@example.com', 'password': self.password},
+        )
+
+        self.assertRedirects(login_response, '/')
+        summary = get_usage_summary(self.request_for(user))
+        self.assertEqual(summary.used, 2)
+        self.assertEqual(summary.remaining, 13)

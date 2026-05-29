@@ -17,6 +17,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from xhtml2pdf import pisa
 
+from accounts.subscription import can_run_analysis, get_usage_summary, record_analysis_run
+
 from .models import AnalysisRecord, WatchlistGroup, WatchlistItem
 
 from dcf_core.DCF_Main import ejecutar_dcf
@@ -416,6 +418,8 @@ def ticker_strip_view(request):
 def dcf_view(request):
     resultado = None
     error = None
+    analysis_limit_exceeded = False
+    analysis_limit_summary = None
     ticker = ""
     valor_busqueda = request.GET.get("company_query", "").strip()
     company_name = request.GET.get("company_name", "").strip()
@@ -447,6 +451,13 @@ def dcf_view(request):
         eligibility_error = _check_ticker_eligibility(ticker)
         if eligibility_error:
             error = eligibility_error
+        elif not can_run_analysis(request):
+            analysis_limit_exceeded = True
+            analysis_limit_summary = get_usage_summary(request)
+            if request.user.is_authenticated:
+                error = "Límite diario alcanzado."
+            else:
+                error = "Llegaste al límite gratuito diario."
         else:
             try:
                 resultado = _cached_ejecutar_dcf(ticker)
@@ -454,6 +465,7 @@ def dcf_view(request):
                 error = f"Ocurrió un error al analizar el ticker: {exc}"
                 resultado = None
             else:
+                record_analysis_run(request)
                 _guardar_analisis(
                     user=request.user if request.user.is_authenticated else None,
                     ticker=ticker,
@@ -583,6 +595,8 @@ def dcf_view(request):
         metricas_context = {}
 
     context = {
+        "analysis_limit_exceeded": analysis_limit_exceeded,
+        "analysis_limit_summary": analysis_limit_summary or get_usage_summary(request),
         "in_watchlist": in_watchlist,
         "watchlist_groups": watchlist_groups,
         "precio_historico": precio_historico,

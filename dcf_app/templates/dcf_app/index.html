@@ -4815,6 +4815,39 @@
     </div>
 </section>
 {% endif %}
+
+{% if analysis_limit_exceeded %}
+<div class="modal fade auth-cta-modal" id="analysis-limit-modal" tabindex="-1" aria-labelledby="analysis-limit-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body">
+                <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                <div class="persist-cta-icon" aria-hidden="true">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+                </div>
+                {% if request.user.is_authenticated %}
+                <h2 class="persist-cta-title" id="analysis-limit-title">Límite diario alcanzado</h2>
+                <p class="persist-cta-copy">Plan actual: <strong>{{ analysis_limit_summary.plan }}</strong></p>
+                <p class="persist-cta-copy">Análisis utilizados: <strong>{{ analysis_limit_summary.used }} / {{ analysis_limit_summary.limit }}</strong></p>
+                <p class="persist-cta-copy mb-0">Intrinsic Pro llegará próximamente.</p>
+                {% else %}
+                <h2 class="persist-cta-title" id="analysis-limit-title">Llegaste al límite gratuito diario</h2>
+                <p class="persist-cta-copy">Creá una cuenta gratis para seguir analizando con más capacidad diaria.</p>
+                <ul class="persist-cta-list">
+                    <li>más análisis por día</li>
+                    <li>watchlists persistentes</li>
+                    <li>historial guardado</li>
+                </ul>
+                <div class="persist-cta-actions">
+                    <a class="persist-cta-primary" href="{% url 'accounts:register' %}">Crear cuenta</a>
+                    <a class="persist-cta-secondary" href="{% url 'accounts:login' %}">Iniciar sesión</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% if news_total > 0 %}
 {{ news_data|json_script:"dcf-news-data" }}
 {{ news_config|json_script:"dcf-news-config" }}
@@ -5510,6 +5543,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 await submitWatchlistToggle(option.dataset.watchlistGroupId || "", option);
             });
         });
+    }
+
+    const analysisLimitModal = document.getElementById("analysis-limit-modal");
+    if (analysisLimitModal && window.bootstrap && window.bootstrap.Modal) {
+        window.bootstrap.Modal.getOrCreateInstance(analysisLimitModal).show();
     }
 
     // ---- Barra de rango de valuación ----
