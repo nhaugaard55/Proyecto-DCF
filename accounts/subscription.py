@@ -16,7 +16,7 @@ from .models import DailyUsage, UserSubscription
 
 
 PLAN_GUEST = "GUEST"
-PLAN_ADMIN = "ADMIN"
+PLAN_ADMIN = UserSubscription.PLAN_ADMIN
 PLAN_FREE = UserSubscription.PLAN_FREE
 PLAN_PRO = UserSubscription.PLAN_PRO
 

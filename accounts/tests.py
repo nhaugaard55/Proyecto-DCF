@@ -236,8 +236,8 @@ class SubscriptionLimitTests(TestCase):
             username='admin-user',
             email='admin@example.com',
             password=self.password,
-            is_staff=True,
         )
+        UserSubscription.objects.update_or_create(user=user, defaults={'plan': UserSubscription.PLAN_ADMIN})
         request = self.request_for(user)
 
         for _ in range(15):

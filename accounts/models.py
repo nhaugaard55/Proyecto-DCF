@@ -11,9 +11,11 @@ class UserSubscription(models.Model):
     """
 
     PLAN_FREE = "FREE"
+    PLAN_ADMIN = "ADMIN"
     PLAN_PRO = "PRO"
     PLAN_CHOICES = [
         (PLAN_FREE, "Free"),
+        (PLAN_ADMIN, "Admin"),
         (PLAN_PRO, "Pro"),
     ]
 
