@@ -285,11 +285,13 @@
       {% with usage=stats.usage_summary %}
       <div class="account-card-label">Plan actual</div>
       <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-        <h2 class="account-card-title mb-0">{% if usage.plan == "PRO" %}Intrinsic Pro{% else %}Free Beta{% endif %}</h2>
+        <h2 class="account-card-title mb-0">{% if usage.plan == "ADMIN" %}Admin Beta{% elif usage.plan == "PRO" %}Intrinsic Pro{% else %}Free Beta{% endif %}</h2>
         <span class="account-badge">{{ usage.plan }}</span>
       </div>
       <p class="account-card-copy mt-3">
-        {% if usage.plan == "PRO" %}
+        {% if usage.plan == "ADMIN" %}
+          Acceso administrativo para testear límites sin bloqueo.
+        {% elif usage.plan == "PRO" %}
           Acceso ilimitado a análisis durante el período activo.
         {% else %}
           Acceso gratuito durante la beta pública.
@@ -313,7 +315,7 @@
       <div class="account-usage-bar"><div class="account-usage-fill" style="width:{% widthratio usage.used usage.limit 100 %}%;"></div></div>
       <p class="account-small-note mb-3">Restantes: {{ usage.remaining }}</p>
       {% endif %}
-      <button class="account-disabled-btn" type="button" disabled>{% if usage.plan == "PRO" %}Intrinsic Pro activo{% else %}Próximamente: Intrinsic Pro{% endif %}</button>
+      <button class="account-disabled-btn" type="button" disabled>{% if usage.plan == "ADMIN" %}Admin activo{% elif usage.plan == "PRO" %}Intrinsic Pro activo{% else %}Próximamente: Intrinsic Pro{% endif %}</button>
       {% endwith %}
     </article>
 

@@ -16,11 +16,13 @@ from .models import DailyUsage, UserSubscription
 
 
 PLAN_GUEST = "GUEST"
+PLAN_ADMIN = "ADMIN"
 PLAN_FREE = UserSubscription.PLAN_FREE
 PLAN_PRO = UserSubscription.PLAN_PRO
 
 DAILY_ANALYSIS_LIMITS = {
     PLAN_GUEST: 3,
+    PLAN_ADMIN: 15,
     PLAN_FREE: 15,
     PLAN_PRO: None,
 }
@@ -37,9 +39,11 @@ class UsageSummary:
 
 
 def get_user_plan(request) -> str:
-    """Return GUEST, FREE, or PRO for the current request."""
+    """Return GUEST, ADMIN, FREE, or PRO for the current request."""
     if not request.user.is_authenticated:
         return PLAN_GUEST
+    if request.user.is_staff or request.user.is_superuser:
+        return PLAN_ADMIN
     subscription, _ = UserSubscription.objects.get_or_create(user=request.user)
     return subscription.plan
 
@@ -76,6 +80,8 @@ def get_remaining_analyses(request) -> int | None:
 
 def can_run_analysis(request) -> bool:
     """Return whether the request can execute one more valid analysis today."""
+    if get_user_plan(request) == PLAN_ADMIN:
+        return True
     limit = get_daily_limit(request)
     if limit is None:
         return True
@@ -85,6 +91,12 @@ def can_run_analysis(request) -> bool:
 def record_analysis_run(request) -> DailyUsage:
     """Increment usage after a valid analysis completed successfully."""
     usage = get_usage_record(request)
+    if get_user_plan(request) == PLAN_ADMIN:
+        limit = DAILY_ANALYSIS_LIMITS[PLAN_ADMIN]
+        next_count = 1 if usage.analysis_count >= limit else usage.analysis_count + 1
+        usage.analysis_count = next_count
+        usage.save(update_fields=("analysis_count",))
+        return usage
     DailyUsage.objects.filter(pk=usage.pk).update(analysis_count=F("analysis_count") + 1)
     usage.refresh_from_db(fields=("analysis_count",))
     return usage

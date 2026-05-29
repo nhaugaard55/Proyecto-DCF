@@ -231,6 +231,31 @@ class SubscriptionLimitTests(TestCase):
         self.assertIsNone(summary.remaining)
         self.assertTrue(can_run_analysis(request))
 
+    def test_admin_plan_cycles_counter_without_blocking(self):
+        user = User.objects.create_user(
+            username='admin-user',
+            email='admin@example.com',
+            password=self.password,
+            is_staff=True,
+        )
+        request = self.request_for(user)
+
+        for _ in range(15):
+            self.assertTrue(can_run_analysis(request))
+            record_analysis_run(request)
+
+        summary_at_limit = get_usage_summary(request)
+        self.assertEqual(summary_at_limit.plan, 'ADMIN')
+        self.assertEqual(summary_at_limit.used, 15)
+        self.assertEqual(summary_at_limit.remaining, 0)
+        self.assertTrue(can_run_analysis(request))
+
+        record_analysis_run(request)
+        summary_after_reset = get_usage_summary(request)
+        self.assertEqual(summary_after_reset.used, 1)
+        self.assertEqual(summary_after_reset.remaining, 14)
+        self.assertTrue(can_run_analysis(request))
+
     def test_invalid_ticker_does_not_consume_usage(self):
         with patch('dcf_app.views._check_ticker_eligibility', return_value='Ticker inválido') as eligibility:
             with patch('dcf_app.views._cached_ejecutar_dcf') as execute_dcf:
