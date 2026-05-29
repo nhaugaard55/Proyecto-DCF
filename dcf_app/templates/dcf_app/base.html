@@ -283,6 +283,9 @@
         .nav-auth-link {
             border: 1px solid rgba(255, 255, 255, 0.32);
             color: #f8fafc;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             text-decoration: none;
             transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         }
@@ -940,11 +943,15 @@
             .nav-actions-panel .nav-auth-link,
             .nav-actions-panel .nav-logout-btn {
                 width: 100%;
+                min-height: 2.55rem;
+                display: inline-flex;
+                align-items: center;
                 justify-content: center;
                 padding-left: 0.65rem;
                 padding-right: 0.65rem;
                 white-space: normal;
-                line-height: 1.2;
+                line-height: 1;
+                text-align: center;
                 background-color: var(--mobile-nav-button-bg);
                 color: #f8fafc;
                 border-color: rgba(255, 255, 255, 0.82);
@@ -1063,6 +1070,7 @@
                 {% block nav_actions %}{% endblock %}
                 <div class="nav-auth-actions d-flex align-items-center flex-wrap">
                     {% if not request.user.is_authenticated %}
+                        <a href="{% url 'landing' %}" class="nav-auth-link">Volver al inicio</a>
                         <a href="{% url 'accounts:login' %}" class="nav-auth-link">Iniciar sesión</a>
                         <a href="{% url 'accounts:register' %}" class="nav-auth-link nav-auth-link--primary">Crear cuenta</a>
                     {% endif %}
