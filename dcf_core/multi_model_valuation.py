@@ -105,6 +105,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.0,
+        "analyst_consensus": 1.0,
         "tam_note": True, "asset_note": False,
     },
     2: {  # Hyper Growth
@@ -115,6 +116,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.3,
+        "analyst_consensus": 1.0,
         "tam_note": True, "asset_note": False,
     },
     3: {  # Break Even
@@ -125,6 +127,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "fwd_earnings": 0.5, "fwd_fcf": 0.5,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.5,
+        "analyst_consensus": 1.0,
         "tam_note": False, "asset_note": False,
     },
     4: {  # Operating Leverage
@@ -135,6 +138,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
         "schwab_iv": 0.8,
+        "analyst_consensus": 1.0,
         "tam_note": False, "asset_note": False,
     },
     5: {  # Capital Return
@@ -145,6 +149,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.8,
+        "analyst_consensus": 1.0,
         "tam_note": False, "asset_note": False,
     },
     6: {  # Decline — los modelos de crecimiento pierden relevancia
@@ -155,13 +160,14 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 1.0,
         "schwab_iv": 0.0,
+        "analyst_consensus": 1.0,
         "tam_note": False, "asset_note": True,
     },
 }
 
 _MODEL_KEYS = ["dcf", "reverse_dcf", "pe_trailing", "ps", "pgp",
                "tam", "pfcf_trailing", "ev_ebitda", "ddm", "fwd_earnings", "fwd_fcf",
-               "schwab_iv", "liquidation_value"]
+               "schwab_iv", "liquidation_value", "analyst_consensus"]
 
 _MODEL_NOMBRES = {
     "dcf":               "DCF",
@@ -177,6 +183,7 @@ _MODEL_NOMBRES = {
     "fwd_fcf":           "P/FCF Forward",
     "schwab_iv":         "Earnings Growth Model",
     "liquidation_value": "Valor de Liquidación",
+    "analyst_consensus": "Consenso de Analistas",
 }
 
 
@@ -1091,6 +1098,25 @@ def _modelo_altman_z_score(financials: dict) -> dict:
     }
 
 
+def _modelo_analyst_consensus(analyst_estimates: dict) -> dict:
+    """Modelo — Consenso de Analistas (precio objetivo promedio de analistas sell-side)."""
+    precio_obj = (analyst_estimates or {}).get("precio_objetivo") or {}
+    precio_medio = _sf(precio_obj.get("medio"))
+    num_analistas = precio_obj.get("num_analistas")
+
+    if precio_medio is None or precio_medio <= 0:
+        return {"valor": None, "aplicable": False,
+                "detalle": "Precio objetivo de analistas no disponible"}
+
+    num_str = str(num_analistas) if num_analistas else "varios"
+    return {
+        "valor": round(precio_medio, 2),
+        "aplicable": True,
+        "num_analistas": num_analistas,
+        "detalle": f"Precio objetivo promedio de {num_str} analistas",
+    }
+
+
 # ---------------------------------------------------------------------------
 # Redistribución de pesos
 # ---------------------------------------------------------------------------
@@ -1134,6 +1160,7 @@ def run_all_models(
     financials: dict,
     stage: int,
     wacc: float,
+    analyst_estimates: Optional[dict] = None,
 ) -> dict:
     """
     Ejecuta los 13 modelos de valuación y calcula el precio consenso ponderado.
@@ -1168,6 +1195,7 @@ def run_all_models(
         "fwd_fcf":           _modelo_fwd_fcf(financials, ratios),
         "schwab_iv":         _modelo_schwab_iv(financials, ratios),
         "liquidation_value": _modelo_liquidation_value(financials),
+        "analyst_consensus": _modelo_analyst_consensus(analyst_estimates or {}),
     }
 
     # Altman Z-Score: informativo, no entra al consenso
@@ -1208,6 +1236,31 @@ def run_all_models(
     # ── Pesos ajustados ───────────────────────────────────────────────────────
     pesos_ajustados = _redistribuir_pesos(raw_weights, resultados_raw)
 
+    # ── Fallback cuando quedan < 2 modelos útiles (CORRECCIÓN 2) ─────────────
+    _nota_pocos_modelos: Optional[str] = None
+    _modelos_con_peso = sum(
+        1 for k in _MODEL_KEYS
+        if k != "reverse_dcf"
+        and resultados_raw.get(k, {}).get("valor") is not None
+        and pesos_ajustados.get(k, 0.0) > 0
+    )
+    if _modelos_con_peso < 2:
+        # Expandir a todos los modelos que producen un valor válido
+        _fallback: dict[str, float] = {}
+        for k in _MODEL_KEYS:
+            if k == "reverse_dcf":
+                continue
+            r = resultados_raw.get(k, {})
+            if r.get("aplicable") and r.get("valor") is not None:
+                _fallback[k] = 1.0
+        _total_fb = sum(_fallback.values())
+        if _total_fb >= 2:
+            pesos_ajustados = {k: (_fallback.get(k, 0.0) / _total_fb) for k in _MODEL_KEYS}
+            _nota_pocos_modelos = (
+                "Pocos modelos aplicables para esta etapa empresarial — "
+                "el consenso debe interpretarse con cautela"
+            )
+
     # ── Construir dict de modelos con metadatos completos ────────────────────
     modelos: dict[str, dict] = {}
     for key in _MODEL_KEYS:
@@ -1215,7 +1268,11 @@ def run_all_models(
         peso_raw = float(raw_weights.get(key, 0.0)) if isinstance(raw_weights.get(key), (int, float)) else 0.0
         peso_final = pesos_ajustados.get(key, 0.0)
 
-        relevancia = _relevancia_desde_peso(peso_raw)
+        # Consenso de analistas es siempre "Útil" cuando hay dato disponible
+        if key == "analyst_consensus":
+            relevancia = "Útil" if r.get("aplicable") else "No útil"
+        else:
+            relevancia = _relevancia_desde_peso(peso_raw)
 
         valor_modelo = r.get("valor")
         if valor_modelo is not None and precio_actual and key != "reverse_dcf":
@@ -1288,6 +1345,8 @@ def run_all_models(
             entry["veredicto"] = r.get("veredicto")
             entry["veredicto_descripcion"] = r.get("veredicto_descripcion")
             entry["veredicto_zona_altman"] = r.get("veredicto_zona_altman")
+        elif key == "analyst_consensus":
+            entry["num_analistas"] = r.get("num_analistas")
 
         if stage == 6 and key == "pfcf_trailing" and peso_raw > 0:
             entry["advertencia"] = (
@@ -1366,6 +1425,7 @@ def run_all_models(
             "disagreement_color": dr_color,
             "disponible": True,
             "razon_no_calculable": None,
+            "nota_pocos_modelos": _nota_pocos_modelos,
         }
     else:
         n_modelos = len(valores_aplicables)

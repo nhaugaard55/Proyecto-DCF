@@ -511,6 +511,14 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     fcf_positivo = (fcf_ttm_raw is not None and fcf_ttm_raw > 0) or (fcf_vals and fcf_vals[0] > 0)
     fcf_negativo = (fcf_ttm_raw is not None and fcf_ttm_raw < 0) or (fcf_vals and fcf_vals[0] < 0)
 
+    # Excepción al Override A: empresa con señales operativas saludables no es Decline
+    # aunque los ratios contables sean negativos (ej: Ford con pérdidas extraordinarias).
+    _override_a_exception = (
+        revenue_growth is not None and revenue_growth > 0.03
+        and bool(fcf_positivo)
+        and ebitda_raw is not None and ebitda_raw > 0
+    )
+
     # ── Override D: Empresa establecida en reestructuración ──────────────────
     # Revenue >$1B en contracción leve, FCF negativo pero EBITDA positivo:
     # el negocio core funciona; las pérdidas son cargos extraordinarios transitorios.
@@ -611,14 +619,28 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     )
 
     if top_stage == 5 and decline_financiero:
-        stage_overrides.append({
-            "tipo": "A",
-            "nombre": "Decline financiero",
-            "accion": "stage_5_to_6",
-            "nota": "Margen neto, ROE y apalancamiento indican deterioro financiero.",
-        })
-        top_stage = 6
-        confidence = "Media"
+        if _override_a_exception:
+            note = (
+                "Señales mixtas — rentabilidad contable negativa pero negocio operativo saludable "
+                "(revenue creciendo >3%, FCF positivo, EBITDA positivo). Se mantiene Etapa 5 con confianza Baja."
+            )
+            stage_overrides.append({
+                "tipo": "A",
+                "nombre": "Señales mixtas (Override A excepción)",
+                "accion": "stage_5_kept",
+                "nota": note,
+            })
+            stage_notes.append(note)
+            confidence = "Baja"
+        else:
+            stage_overrides.append({
+                "tipo": "A",
+                "nombre": "Decline financiero",
+                "accion": "stage_5_to_6",
+                "nota": "Margen neto, ROE y apalancamiento indican deterioro financiero.",
+            })
+            top_stage = 6
+            confidence = "Media"
 
     if top_stage == 5 and decline_secular:
         note = "Revenue en contracción con múltiplos deprimidos — posible Decline secular"
