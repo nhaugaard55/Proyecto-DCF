@@ -752,6 +752,7 @@ def analizar_empresa(
 
     fcf: list[float] = []
     fcf_presentacion: list[tuple[Optional[int], float]] = []
+    _cashflow_parcial = False  # inicializar antes del if/else; se sobreescribe en el else
     if fcf_historial:
         for entrada in fcf_historial:
             raw_valor = getattr(entrada, "value", None)
