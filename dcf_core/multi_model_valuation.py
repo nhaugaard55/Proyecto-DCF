@@ -1378,6 +1378,20 @@ def run_all_models(
         else:
             relevancia = _relevancia_desde_peso(peso_raw)
 
+        # Validación de consistencia: un modelo que participa en el consenso
+        # (peso_final > 0) nunca puede mostrarse como "No útil" — eso ocurre
+        # cuando el fallback asigna peso a modelos que la etapa marca como
+        # "No útil" (peso_raw=0) por falta de alternativas suficientes.
+        if relevancia == "No útil" and peso_final > 0:
+            import sys as _sys_mmv
+            print(
+                f"[multi_model WARN] inconsistencia en '{key}': "
+                f"peso_final={peso_final:.2%} pero peso_raw={peso_raw} "
+                f"→ relevancia corregida a 'Algo útil' (fallback por pocos modelos)",
+                file=_sys_mmv.stderr,
+            )
+            relevancia = "Algo útil"
+
         valor_modelo = r.get("valor")
         if valor_modelo is not None and precio_actual and key != "reverse_dcf":
             upside_pct = round((valor_modelo - precio_actual) / precio_actual * 100, 1)
