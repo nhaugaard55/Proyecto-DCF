@@ -343,7 +343,14 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
 
     # ── Determinar fuente de FCF ─────────────────────────────────
     if fcf_historial:
-        valores_para_crecimiento = [dato.value for dato in fcf_historial]
+        # Excluir el año fiscal en curso si FMP lo incluyó como entrada parcial.
+        # year >= año_actual → año fiscal que aún no cerró (o que abrió este año).
+        # El CAGR debe calcularse solo sobre años completos.
+        _año_actual_dcf = pd.Timestamp.now().year
+        valores_para_crecimiento = [
+            dato.value for dato in fcf_historial
+            if dato.year is None or dato.year < _año_actual_dcf
+        ]
         fuente_utilizada = "fmp"
 
     if fuente_utilizada != "fmp":

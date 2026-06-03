@@ -786,36 +786,44 @@ def analizar_empresa(
     fcf: list[float] = []
     fcf_presentacion: list[tuple[Optional[int], float]] = []
     _cashflow_parcial = False  # inicializar antes del if/else; se sobreescribe en el else
+    _año_actual = datetime.now().year
     if fcf_historial:
+        # FMP path: excluir entradas del año fiscal en curso (incompleto).
+        # El año en curso (year >= _año_actual) puede ser un stub parcial.
+        # PRINCIPIO: el CAGR usa solo años completos; el TTM viene de quarters.
         for entrada in fcf_historial:
             raw_valor = getattr(entrada, "value", None)
             if raw_valor is None:
                 continue
-            valor = to_float(raw_valor, 0.0)
-            fcf.append(valor)
-
             raw_year = getattr(entrada, "year", None)
             try:
                 year = int(raw_year) if raw_year is not None else None
             except (TypeError, ValueError):
                 year = None
+            if year is not None and year >= _año_actual:
+                _cashflow_parcial = True  # marca para aviso_datos_parciales
+                continue  # excluir año parcial de la serie anual
+            valor = to_float(raw_valor, 0.0)
+            fcf.append(valor)
             fcf_presentacion.append((year, valor))
     else:
+        # yfinance path: filtrar stub anual Y usar fechas reales del índice
+        # (no etiquetas añadidas por año_actual - i, que serían incorrectas)
         cashflow = getattr(empresa_yf, "cashflow", None)
         _cashflow_parcial = _primer_periodo_es_parcial(cashflow)
         if cashflow is not None and not cashflow.empty and "Free Cash Flow" in cashflow.index:
             _fcf_raw_series = cashflow.loc["Free Cash Flow"].dropna()
-            # Si el primer período es un año fiscal incompleto, omitirlo de la serie
-            # histórica anual para no contaminar el CAGR ni la clasificación de etapa.
             if _cashflow_parcial and len(_fcf_raw_series) > 1:
                 _fcf_raw_series = _fcf_raw_series.iloc[1:]
             fcf_series = _fcf_raw_series.head(5)
-            if hasattr(fcf_series, "tolist"):
-                fcf = [to_float(valor) for valor in fcf_series.tolist()]
-            elif isinstance(fcf_series, (list, tuple)):
-                fcf = [to_float(valor) for valor in fcf_series]
-        for valor in fcf:
-            fcf_presentacion.append((None, valor))
+            for _col, _val in fcf_series.items():
+                _v = to_float(_val, 0.0)
+                try:
+                    _yr = _col.year if hasattr(_col, "year") else int(str(_col)[:4])
+                except Exception:
+                    _yr = None
+                fcf.append(_v)
+                fcf_presentacion.append((_yr, _v))
 
     # fcf_actual: usar TTM trimestral (4 quarters, siempre exacto).
     # La serie anual fcf[] solo se usa para el CAGR histórico.
@@ -1062,6 +1070,21 @@ def analizar_empresa(
                     break
     except Exception:
         revenue_historico_raw = []
+
+    # Recomputar revenue_growth desde datos anuales limpios cuando hay contaminación.
+    # info.get("revenueGrowth") compara TTM-vs-TTM usando los datos anuales de yfinance,
+    # que pueden incluir el año parcial, dando un crecimiento incorrecto.
+    # Si tenemos al menos 2 años completos en revenue_historico_raw, usar esa serie.
+    if len(revenue_historico_raw) >= 2:
+        _rev_curr = revenue_historico_raw[0]
+        _rev_prev = revenue_historico_raw[1]
+        if _rev_prev and abs(_rev_prev) > 0:
+            _revenue_growth_clean = (_rev_curr - _rev_prev) / abs(_rev_prev)
+            # Usar el valor limpio cuando:
+            #   - hay datos parciales detectados (contaminación probable), o
+            #   - info.get() no tiene dato
+            if _income_stmt_parcial or _cashflow_parcial or revenue_growth is None:
+                revenue_growth = _revenue_growth_clean
 
     # Revenue and net income with year labels for charts
     revenue_historico_labeled: list[dict] = []
@@ -1435,7 +1458,10 @@ def analizar_empresa(
         # Señales para detección de etapa empresarial
         "net_margin": net_margin,
         "revenue_growth_raw": to_optional_float(revenue_growth),
-        "has_dividends": (dividend_yield is not None and dividend_yield > 0.005),
+        # Usar annual_dividend (tasa en $) en vez de dividend_yield (%).
+        # La yield depende del precio y puede ser baja aunque el dividendo sea real.
+        # Ej: Hyatt paga $0.60/año con yield 0.32% < umbral anterior 0.5%.
+        "has_dividends": (annual_dividend is not None and annual_dividend > 0),
         # Advertencia de datos parciales (año fiscal en curso excluido de series históricas)
         "aviso_datos_parciales": (
             "El período fiscal más reciente en los datos anuales de yfinance representa "
