@@ -684,6 +684,29 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         top_stage = 1
         confidence = "Media"
 
+    # ── OVERRIDE I: Rentabilidad saludable descarta Decline ──────────────────────
+    # Una empresa con margen neto >10%, revenue creciendo y FCF positivo
+    # no puede estar en Decline — el scoring se confunde por distorsiones
+    # (ej: CAGR FCF negativo por tipo de cambio en ADRs).
+    if (top_stage == 6
+            and net_margin is not None and net_margin > 0.10
+            and revenue_growth is not None and revenue_growth > 0
+            and bool(fcf_positivo)):
+        note = (
+            f"Empresa con rentabilidad saludable — Decline descartado por margen neto "
+            f"{net_margin:.1%} >10% y revenue creciendo {revenue_growth:.1%}. "
+            f"Reclasificado a Etapa 5."
+        )
+        stage_overrides.append({
+            "tipo": "I",
+            "nombre": "Rentabilidad saludable descarta Decline",
+            "accion": "stage_6_to_5",
+            "nota": note,
+        })
+        stage_notes.append(note)
+        top_stage = 5
+        confidence = "Media"
+
     # ── Relevancia de las métricas que ya muestra la app ────────────────────
     filtros_relevancia: list[dict] = []
     for filtro in (financials.get("filtros") or []):

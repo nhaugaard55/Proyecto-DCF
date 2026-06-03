@@ -248,6 +248,28 @@ def _relevancia_desde_peso(peso_raw: float) -> str:
     return "No útil"
 
 
+def _es_outlier(valor: Optional[float], precio_actual: float) -> bool:
+    """True si el valor está fuera de 10× el precio actual — señal de datos o unidades incorrectas."""
+    if valor is None or not precio_actual:
+        return False
+    return valor > precio_actual * 10 or valor < precio_actual / 10
+
+
+def _detectar_adr(datos_empresa: dict) -> dict:
+    """Detecta si la empresa es un ADR extranjero cotizando en bolsa americana."""
+    country = (datos_empresa.get("country") or "").strip()
+    es_adr = bool(country) and country.upper() not in ("UNITED STATES", "US", "USA")
+    return {
+        "es_adr": es_adr,
+        "country": country or None,
+        "warning": (
+            f"Esta empresa cotiza como ADR (país de origen: {country}). "
+            f"Los modelos basados en datos por acción (P/FCF, Valor Liquidación, DCF) "
+            f"pueden tener distorsiones si 1 ADR ≠ 1 acción ordinaria."
+        ) if es_adr else None,
+    }
+
+
 def _stage_adjusted_weights(stage: int, financials: dict) -> dict[str, float | bool]:
     """Aplica ajustes condicionales de pesos sin mutar la matriz base."""
     weights = dict(WEIGHTS.get(stage, WEIGHTS[4]))
@@ -1180,6 +1202,9 @@ def run_all_models(
     raw_weights = _stage_adjusted_weights(stage, financials)
     precio_actual = _sf(financials.get("precio_actual")) or 0.0
 
+    # ── Corrección 1: Detección ADR ──────────────────────────────────────────
+    adr_info = _detectar_adr(financials.get("datos_empresa") or {})
+
     # ── Ejecutar modelos ──────────────────────────────────────────────────────
     resultados_raw: dict[str, dict] = {
         "dcf":               _modelo_dcf(financials),
@@ -1233,6 +1258,27 @@ def run_all_models(
         else:
             lv_raw["veredicto_zona_altman"] = "unknown"
 
+    # ── Corrección 2: Filtro de outliers ─────────────────────────────────────
+    # Descarta modelos con valor fuera de ±10× el precio actual.
+    # Captura automáticamente errores de unidades en ADRs (ej: 1 ADR = 10 acciones ordinarias).
+    _modelos_filtrados_outlier: list[str] = []
+    if precio_actual > 0:
+        for _ok in _MODEL_KEYS:
+            if _ok in ("reverse_dcf", "tam"):
+                continue
+            _r = resultados_raw.get(_ok, {})
+            _v = _r.get("valor")
+            if _v is not None and _es_outlier(_v, precio_actual):
+                _detalle_orig = _r.get("detalle", "")
+                _r["aplicable"] = False
+                _r["outlier_descartado"] = True
+                _r["detalle"] = (
+                    f"Valor ${_v:,.2f} fuera de rango razonable vs precio ${precio_actual:.2f} "
+                    f"(±10×) — posible problema de datos o unidades (común en ADRs). "
+                    + _detalle_orig
+                )
+                _modelos_filtrados_outlier.append(_ok)
+
     # ── Pesos ajustados ───────────────────────────────────────────────────────
     pesos_ajustados = _redistribuir_pesos(raw_weights, resultados_raw)
 
@@ -1261,6 +1307,20 @@ def run_all_models(
                 "el consenso debe interpretarse con cautela"
             )
 
+    # ── Corrección 4: Warning cuando quedan pocos modelos tras filtro de outliers ──
+    if _modelos_filtrados_outlier:
+        _n_post_outlier = sum(
+            1 for k in _MODEL_KEYS
+            if k not in ("reverse_dcf", "tam")
+            and resultados_raw.get(k, {}).get("aplicable", False)
+            and resultados_raw.get(k, {}).get("valor") is not None
+        )
+        if _n_post_outlier <= 2:
+            _nota_pocos_modelos = (
+                "Consenso basado en pocos modelos válidos — "
+                "considerar el precio objetivo de analistas como referencia adicional"
+            )
+
     # ── Construir dict de modelos con metadatos completos ────────────────────
     modelos: dict[str, dict] = {}
     for key in _MODEL_KEYS:
@@ -1269,7 +1329,9 @@ def run_all_models(
         peso_final = pesos_ajustados.get(key, 0.0)
 
         # Consenso de analistas es siempre "Útil" cuando hay dato disponible
-        if key == "analyst_consensus":
+        if r.get("outlier_descartado", False):
+            relevancia = "No útil"
+        elif key == "analyst_consensus":
             relevancia = "Útil" if r.get("aplicable") else "No útil"
         else:
             relevancia = _relevancia_desde_peso(peso_raw)
@@ -1290,6 +1352,7 @@ def run_all_models(
             "peso_pct": round(peso_final * 100, 1),
             "relevancia": relevancia,
             "aplicable": r.get("aplicable", False),
+            "outlier_descartado": r.get("outlier_descartado", False),
             "detalle": r.get("detalle", ""),
         }
 
@@ -1507,6 +1570,8 @@ def run_all_models(
         "stage_context": stage_context,
         "altman": altman,
         "score_final": score_final,
+        "adr_info": adr_info,
+        "modelos_filtrados_outlier": _modelos_filtrados_outlier,
     }
 
 
