@@ -2632,30 +2632,30 @@
                                             {% if v is not None %}{{ v }}{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Free Cash Flow del año anterior al TTM">
-                                        <span class="analysis-data-label">FCF año −1</span>
-                                        {% with item=resultado.fcf_historico.1 %}
+                                    <div class="analysis-data-metric" title="Free Cash Flow del último año fiscal completo">
+                                        {% with item=resultado.fcf_historico.0 %}
+                                        <span class="analysis-data-label">FCF año −1{% if item.anio %} ({{ item.anio }}){% endif %}</span>
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
                                     <div class="analysis-data-metric" title="Free Cash Flow de 2 años atrás">
-                                        <span class="analysis-data-label">FCF año −2</span>
-                                        {% with item=resultado.fcf_historico.2 %}
+                                        {% with item=resultado.fcf_historico.1 %}
+                                        <span class="analysis-data-label">FCF año −2{% if item.anio %} ({{ item.anio }}){% endif %}</span>
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
                                     <div class="analysis-data-metric" title="Free Cash Flow de 3 años atrás">
-                                        <span class="analysis-data-label">FCF año −3</span>
-                                        {% with item=resultado.fcf_historico.3 %}
+                                        {% with item=resultado.fcf_historico.2 %}
+                                        <span class="analysis-data-label">FCF año −3{% if item.anio %} ({{ item.anio }}){% endif %}</span>
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
                                     <div class="analysis-data-metric" title="Free Cash Flow de 4 años atrás">
-                                        <span class="analysis-data-label">FCF año −4</span>
-                                        {% with item=resultado.fcf_historico.4 %}
+                                        {% with item=resultado.fcf_historico.3 %}
+                                        <span class="analysis-data-label">FCF año −4{% if item.anio %} ({{ item.anio }}){% endif %}</span>
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}

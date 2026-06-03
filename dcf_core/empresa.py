@@ -1256,9 +1256,12 @@ def analizar_empresa(
         "pb_ratio_raw": pb_ratio,
         "roe_raw": to_optional_float(roe),
         "debt_to_capital": debt_to_capital,
-        "fcf_ttm": fcf[0] if fcf else None,
-        "fcf_ttm_billones": to_billions(fcf[0]) if fcf else None,
-        "fcf_ttm_display": smart_format_billions(fcf[0]) if fcf else None,
+        # FCF TTM: usar el valor trimestral (4 quarters) como fuente de verdad.
+        # fcf[0] es el último año fiscal completo — se expone por separado
+        # a través de fcf_historico[0] para la tarjeta "AÑO -1".
+        "fcf_ttm": _fcf_ttm_raw,
+        "fcf_ttm_billones": to_billions(_fcf_ttm_raw),
+        "fcf_ttm_display": smart_format_billions(_fcf_ttm_raw),
         "precio_actual": precio,
         "acciones": acciones,
         "acciones_billones": to_billions(acciones),
