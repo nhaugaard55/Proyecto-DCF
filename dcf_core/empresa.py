@@ -70,6 +70,48 @@ def to_optional_float(value) -> Optional[float]:
         return None
 
 
+def _primer_periodo_es_parcial(df_anual) -> bool:
+    """
+    True si la primera columna (período más reciente) de un DataFrame
+    anual de yfinance representa un año fiscal incompleto.
+
+    yfinance a veces incluye un stub del año en curso como primer columna
+    de .cashflow / .income_stmt cuando la empresa ya publicó 1-2 trimestres
+    pero el ejercicio fiscal no cerró. El gap entre el primer y segundo
+    período < 300 días (< 10 meses) es la señal inequívoca de un stub.
+    """
+    if df_anual is None or df_anual.empty or len(df_anual.columns) < 2:
+        return False
+    try:
+        t0 = pd.Timestamp(df_anual.columns[0])
+        t1 = pd.Timestamp(df_anual.columns[1])
+        # Fecha futura → definitivamente incompleto
+        if t0 > pd.Timestamp.now():
+            return True
+        # Gap < 300 días entre períodos sucesivos → stub parcial
+        return (t0 - t1).days < 300
+    except Exception:
+        return False
+
+
+def _fcf_ttm_trimestral(empresa_yf) -> Optional[float]:
+    """
+    Calcula el FCF TTM sumando los últimos 4 trimestres de quarterly_cashflow.
+    Siempre correcto independientemente del estado del año fiscal en curso.
+    Devuelve None si no hay exactamente 4 trimestres disponibles.
+    """
+    try:
+        qcf = getattr(empresa_yf, "quarterly_cashflow", None)
+        if qcf is None or qcf.empty or "Free Cash Flow" not in qcf.index:
+            return None
+        fcf_q = qcf.loc["Free Cash Flow"].dropna()
+        if len(fcf_q) < 4:
+            return None
+        return float(fcf_q.head(4).sum())
+    except Exception:
+        return None
+
+
 def normalizar_dividend_yield(
     raw_yield, raw_dividend_rate, current_price
 ) -> Optional[float]:
@@ -632,6 +674,11 @@ def analizar_empresa(
     except Exception:
         income_stmt = None
 
+    # Detectar si el primer período del income_stmt es un año fiscal parcial.
+    # Esto ocurre cuando yfinance incluye un stub del año en curso (ej: 2026 con
+    # solo Q1+Q2 reportados) junto a los años completos anteriores.
+    _income_stmt_parcial = _primer_periodo_es_parcial(income_stmt)
+
     # EBIT from income statement
     ebit_val = None
     try:
@@ -721,8 +768,14 @@ def analizar_empresa(
             fcf_presentacion.append((year, valor))
     else:
         cashflow = getattr(empresa_yf, "cashflow", None)
+        _cashflow_parcial = _primer_periodo_es_parcial(cashflow)
         if cashflow is not None and not cashflow.empty and "Free Cash Flow" in cashflow.index:
-            fcf_series = cashflow.loc["Free Cash Flow"].dropna().head(5)
+            _fcf_raw_series = cashflow.loc["Free Cash Flow"].dropna()
+            # Si el primer período es un año fiscal incompleto, omitirlo de la serie
+            # histórica anual para no contaminar el CAGR ni la clasificación de etapa.
+            if _cashflow_parcial and len(_fcf_raw_series) > 1:
+                _fcf_raw_series = _fcf_raw_series.iloc[1:]
+            fcf_series = _fcf_raw_series.head(5)
             if hasattr(fcf_series, "tolist"):
                 fcf = [to_float(valor) for valor in fcf_series.tolist()]
             elif isinstance(fcf_series, (list, tuple)):
@@ -730,7 +783,12 @@ def analizar_empresa(
         for valor in fcf:
             fcf_presentacion.append((None, valor))
 
-    fcf_actual = fcf[0] if fcf else 0.0
+    # FCF TTM correcto: preferir suma de últimos 4 trimestres (siempre exacto,
+    # independiente del estado del año fiscal en curso).
+    _fcf_ttm_q = _fcf_ttm_trimestral(empresa_yf)
+    # fcf_actual es el punto de partida del DCF; usar TTM trimestral si disponible.
+    # La serie histórica anual (fcf[]) sigue siendo usada para el CAGR.
+    fcf_actual = _fcf_ttm_q if _fcf_ttm_q is not None else (fcf[0] if fcf else 0.0)
 
     pe_ratio_raw = info.get("trailingPE")
     pe_ratio = to_float(pe_ratio_raw) if pe_ratio_raw is not None else None
@@ -944,12 +1002,16 @@ def analizar_empresa(
         payout_ratio = annual_dividend / eps_ttm
 
     # Revenue history for coefficient of variation (used by company_stage.py to detect irregular revenue)
+    # Si el income_stmt tiene un año fiscal parcial como primer columna, omitirlo.
     revenue_historico_raw: list[float] = []
     try:
         if income_stmt is not None and not income_stmt.empty:
             for _rev_label in ("Total Revenue", "Revenue"):
                 if _rev_label in income_stmt.index:
-                    _rev_s = income_stmt.loc[_rev_label].dropna().head(5)
+                    _rev_s = income_stmt.loc[_rev_label].dropna()
+                    if _income_stmt_parcial and len(_rev_s) > 1:
+                        _rev_s = _rev_s.iloc[1:]  # omitir año parcial en curso
+                    _rev_s = _rev_s.head(5)
                     _rev_list = [to_optional_float(v) for v in _rev_s.tolist()]
                     revenue_historico_raw = [v for v in _rev_list if v is not None]
                     break
@@ -962,7 +1024,10 @@ def analizar_empresa(
         if income_stmt is not None and not income_stmt.empty:
             for _rev_label in ("Total Revenue", "Revenue"):
                 if _rev_label in income_stmt.index:
-                    _rev_s = income_stmt.loc[_rev_label].dropna().head(5)
+                    _rev_s = income_stmt.loc[_rev_label].dropna()
+                    if _income_stmt_parcial and len(_rev_s) > 1:
+                        _rev_s = _rev_s.iloc[1:]
+                    _rev_s = _rev_s.head(5)
                     for _col, _val in _rev_s.items():
                         _v = to_optional_float(_val)
                         if _v is not None:
@@ -978,7 +1043,10 @@ def analizar_empresa(
     net_income_historico_labeled: list[dict] = []
     try:
         if income_stmt is not None and not income_stmt.empty and "Net Income" in income_stmt.index:
-            _ni_s = income_stmt.loc["Net Income"].dropna().head(5)
+            _ni_s = income_stmt.loc["Net Income"].dropna()
+            if _income_stmt_parcial and len(_ni_s) > 1:
+                _ni_s = _ni_s.iloc[1:]
+            _ni_s = _ni_s.head(5)
             for _col, _val in _ni_s.items():
                 _v = to_optional_float(_val)
                 if _v is not None:
@@ -991,7 +1059,9 @@ def analizar_empresa(
         net_income_historico_labeled = []
 
     # ── Derived metrics for 6-category data accordion ─────────────────────
-    _fcf_ttm_raw = fcf[0] if fcf else None
+    # FCF TTM raw: usar el valor trimestral (más preciso) si está disponible,
+    # sino el primero de la serie anual filtrada.
+    _fcf_ttm_raw = _fcf_ttm_q if _fcf_ttm_q is not None else (fcf[0] if fcf else None)
     _ta_final = total_assets_val if total_assets_val is not None else to_optional_float(info.get("totalAssets"))
     _tl_final = total_liab_val if total_liab_val is not None else to_optional_float(info.get("totalLiab"))
 
@@ -1028,17 +1098,26 @@ def analizar_empresa(
     net_margin_historico_labeled_pct: list[dict] = []
     try:
         if income_stmt is not None and not income_stmt.empty:
+            def _hist_series(row_label, n=5):
+                """Extrae serie histórica limpia, omitiendo año parcial si aplica."""
+                if row_label not in income_stmt.index:
+                    return None
+                s = income_stmt.loc[row_label].dropna()
+                if _income_stmt_parcial and len(s) > 1:
+                    s = s.iloc[1:]
+                return s.head(n)
+
             _rev_row2 = None
             for _rev_lbl2 in ("Total Revenue", "Revenue"):
                 if _rev_lbl2 in income_stmt.index:
-                    _rev_row2 = income_stmt.loc[_rev_lbl2].dropna().head(5)
+                    _rev_row2 = _hist_series(_rev_lbl2)
                     break
-            _gp_row = income_stmt.loc["Gross Profit"].dropna().head(5) if "Gross Profit" in income_stmt.index else None
-            _ni_row2 = income_stmt.loc["Net Income"].dropna().head(5) if "Net Income" in income_stmt.index else None
+            _gp_row = _hist_series("Gross Profit")
+            _ni_row2 = _hist_series("Net Income")
             _ebitda_row = None
             for _eb_lbl in ("EBITDA", "Reconciled EBITDA", "Normalized EBITDA"):
                 if _eb_lbl in income_stmt.index:
-                    _ebitda_row = income_stmt.loc[_eb_lbl].dropna().head(5)
+                    _ebitda_row = _hist_series(_eb_lbl)
                     break
             if _rev_row2 is not None:
                 for _col2, _rev_val2 in _rev_row2.items():
@@ -1314,6 +1393,12 @@ def analizar_empresa(
         "net_margin": net_margin,
         "revenue_growth_raw": to_optional_float(revenue_growth),
         "has_dividends": (dividend_yield is not None and dividend_yield > 0.005),
+        # Advertencia de datos parciales (año fiscal en curso excluido de series históricas)
+        "aviso_datos_parciales": (
+            "El período fiscal más reciente en los datos anuales de yfinance representa "
+            "un año incompleto y fue excluido de las series históricas (CAGR, revenue histórico, "
+            "FCF histórico). Los valores TTM se calculan desde datos trimestrales."
+        ) if (_income_stmt_parcial or _cashflow_parcial) else None,
     }
 
 

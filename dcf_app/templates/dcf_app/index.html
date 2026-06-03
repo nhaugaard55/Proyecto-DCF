@@ -3240,6 +3240,14 @@
                 {% if ctx.nota_especial %}<span class="fw-semibold text-warning"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>{{ ctx.nota_especial }}</span>{% endif %}
               </p>
 
+              {# ── Advertencia: año fiscal parcial excluido de series históricas ── #}
+              {% if resultado.aviso_datos_parciales %}
+              <div class="alert alert-warning d-flex gap-2 py-2 px-3 mb-3 small" role="alert" style="border-left:3px solid var(--bs-warning);">
+                <svg class="mi flex-shrink-0 mt-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                <span>{{ resultado.aviso_datos_parciales }}</span>
+              </div>
+              {% endif %}
+
               {# ── Advertencias: financieras, ADR, outliers, pocos modelos ── #}
               {% if mm.financiera_info and mm.financiera_info.es_financiera %}
               <div class="alert alert-info d-flex gap-2 py-2 px-3 mb-3 small" role="alert" style="border-left:3px solid var(--bs-info);">
