@@ -94,22 +94,49 @@ def _primer_periodo_es_parcial(df_anual) -> bool:
         return False
 
 
-def _fcf_ttm_trimestral(empresa_yf) -> Optional[float]:
+def _metricas_ttm_trimestral(empresa_yf) -> dict:
     """
-    Calcula el FCF TTM sumando los últimos 4 trimestres de quarterly_cashflow.
-    Siempre correcto independientemente del estado del año fiscal en curso.
-    Devuelve None si no hay exactamente 4 trimestres disponibles.
+    Calcula revenue, net income, gross profit y FCF TTM sumando los últimos
+    4 trimestres de datos quarterly.
+
+    IMPORTANTE: el TTM siempre es la suma de 4 quarters sin exclusiones.
+    Un trimestre reciente (Q1 2026, Q2 2026…) es un dato válido para el TTM.
+    La detección de año parcial (_primer_periodo_es_parcial) aplica SOLO a
+    las series anuales (CAGR, gráficos históricos) — nunca aquí.
+
+    Devuelve None para cada métrica que no tenga 4 trimestres disponibles.
     """
+    ttm: dict = {"revenue": None, "net_income": None, "gross_profit": None, "fcf": None}
+
+    try:
+        qf = getattr(empresa_yf, "quarterly_income_stmt", None)
+        if qf is None or (hasattr(qf, "empty") and qf.empty):
+            qf = getattr(empresa_yf, "quarterly_financials", None)
+        if qf is not None and not qf.empty:
+            for _lbl in ("Total Revenue", "Revenue"):
+                if _lbl in qf.index:
+                    _s = qf.loc[_lbl].dropna().head(4)
+                    if len(_s) >= 4:
+                        ttm["revenue"] = float(_s.sum())
+                    break
+            for _lbl, _key in (("Net Income", "net_income"), ("Gross Profit", "gross_profit")):
+                if _lbl in qf.index:
+                    _s = qf.loc[_lbl].dropna().head(4)
+                    if len(_s) >= 4:
+                        ttm[_key] = float(_s.sum())
+    except Exception:
+        pass
+
     try:
         qcf = getattr(empresa_yf, "quarterly_cashflow", None)
-        if qcf is None or qcf.empty or "Free Cash Flow" not in qcf.index:
-            return None
-        fcf_q = qcf.loc["Free Cash Flow"].dropna()
-        if len(fcf_q) < 4:
-            return None
-        return float(fcf_q.head(4).sum())
+        if qcf is not None and not qcf.empty and "Free Cash Flow" in qcf.index:
+            _s = qcf.loc["Free Cash Flow"].dropna().head(4)
+            if len(_s) >= 4:
+                ttm["fcf"] = float(_s.sum())
     except Exception:
-        return None
+        pass
+
+    return ttm
 
 
 def normalizar_dividend_yield(
@@ -750,6 +777,12 @@ def analizar_empresa(
             eps_growth_5y = _eg
             eps_growth_5y_fuente = "YoY earningsGrowth (yfinance)"
 
+    # TTM desde datos trimestrales — siempre correcto, nunca filtrar quarters por "año en curso".
+    # Los quarters recientes (Q1/Q2 del año actual) son datos válidos para el TTM.
+    # La exclusión de períodos parciales (_primer_periodo_es_parcial) aplica SOLO
+    # a las series anuales para el CAGR, nunca al cálculo TTM.
+    _ttm_q = _metricas_ttm_trimestral(empresa_yf)
+
     fcf: list[float] = []
     fcf_presentacion: list[tuple[Optional[int], float]] = []
     _cashflow_parcial = False  # inicializar antes del if/else; se sobreescribe en el else
@@ -784,12 +817,9 @@ def analizar_empresa(
         for valor in fcf:
             fcf_presentacion.append((None, valor))
 
-    # FCF TTM correcto: preferir suma de últimos 4 trimestres (siempre exacto,
-    # independiente del estado del año fiscal en curso).
-    _fcf_ttm_q = _fcf_ttm_trimestral(empresa_yf)
-    # fcf_actual es el punto de partida del DCF; usar TTM trimestral si disponible.
-    # La serie histórica anual (fcf[]) sigue siendo usada para el CAGR.
-    fcf_actual = _fcf_ttm_q if _fcf_ttm_q is not None else (fcf[0] if fcf else 0.0)
+    # fcf_actual: usar TTM trimestral (4 quarters, siempre exacto).
+    # La serie anual fcf[] solo se usa para el CAGR histórico.
+    fcf_actual = _ttm_q["fcf"] if _ttm_q["fcf"] is not None else (fcf[0] if fcf else 0.0)
 
     pe_ratio_raw = info.get("trailingPE")
     pe_ratio = to_float(pe_ratio_raw) if pe_ratio_raw is not None else None
@@ -971,8 +1001,18 @@ def analizar_empresa(
     # Chequeo de escala: yfinance a veces devuelve revenue/GP/EBITDA en moneda local
     # sin conversión (p.ej. YPF en ARS), produciendo valores 1000x demasiado altos.
     # Umbral de 100x para no afectar empresas con P/S bajo pero legítimo.
-    revenue_raw = to_optional_float(info.get("totalRevenue"))
-    gross_profit_raw = to_optional_float(info.get("grossProfits"))
+    # Preferir TTM trimestral (4 quarters) sobre info.get() que puede devolver
+    # el acumulado del año parcial en curso en vez del TTM real.
+    revenue_raw = (
+        _ttm_q["revenue"]
+        if _ttm_q["revenue"] is not None
+        else to_optional_float(info.get("totalRevenue"))
+    )
+    gross_profit_raw = (
+        _ttm_q["gross_profit"]
+        if _ttm_q["gross_profit"] is not None
+        else to_optional_float(info.get("grossProfits"))
+    )
     escala_ajustada = False
     escala_aviso = None
     if revenue_raw is not None and equity > 0 and revenue_raw > equity * 100:
@@ -992,7 +1032,11 @@ def analizar_empresa(
     annual_dividend = to_optional_float(info.get("dividendRate"))
     detalles_metricas = metricas_fuente or {}
     eps_ttm = to_optional_float(info.get("trailingEps"))
-    net_income_ttm = to_optional_float(info.get("netIncomeToCommon"))
+    net_income_ttm = (
+        _ttm_q["net_income"]
+        if _ttm_q["net_income"] is not None
+        else to_optional_float(info.get("netIncomeToCommon"))
+    )
     if net_income_ttm is None and income_stmt is not None and not income_stmt.empty and "Net Income" in income_stmt.index:
         net_income_series = income_stmt.loc["Net Income"].dropna()
         if not net_income_series.empty:
@@ -1060,9 +1104,7 @@ def analizar_empresa(
         net_income_historico_labeled = []
 
     # ── Derived metrics for 6-category data accordion ─────────────────────
-    # FCF TTM raw: usar el valor trimestral (más preciso) si está disponible,
-    # sino el primero de la serie anual filtrada.
-    _fcf_ttm_raw = _fcf_ttm_q if _fcf_ttm_q is not None else (fcf[0] if fcf else None)
+    _fcf_ttm_raw = _ttm_q["fcf"] if _ttm_q["fcf"] is not None else (fcf[0] if fcf else None)
     _ta_final = total_assets_val if total_assets_val is not None else to_optional_float(info.get("totalAssets"))
     _tl_final = total_liab_val if total_liab_val is not None else to_optional_float(info.get("totalLiab"))
 
