@@ -257,8 +257,9 @@ def _es_outlier(valor: Optional[float], precio_actual: float) -> bool:
 
 def _detectar_adr(datos_empresa: dict) -> dict:
     """Detecta si la empresa es un ADR extranjero cotizando en bolsa americana."""
-    country = (datos_empresa.get("country") or "").strip()
-    es_adr = bool(country) and country.upper() not in ("UNITED STATES", "US", "USA")
+    # yfinance / empresa.py almacena el país en la clave "pais"
+    country = (datos_empresa.get("pais") or datos_empresa.get("country") or "").strip()
+    es_adr = bool(country) and country.upper() not in ("UNITED STATES", "US", "USA", "")
     return {
         "es_adr": es_adr,
         "country": country or None,
@@ -267,6 +268,24 @@ def _detectar_adr(datos_empresa: dict) -> dict:
             f"Los modelos basados en datos por acción (P/FCF, Valor Liquidación, DCF) "
             f"pueden tener distorsiones si 1 ADR ≠ 1 acción ordinaria."
         ) if es_adr else None,
+    }
+
+
+def _detectar_financiera(datos_empresa: dict) -> dict:
+    """Detecta si la empresa pertenece al sector financiero (banco, aseguradora, etc.)."""
+    from .utils import es_sector_financiero
+    sector = (datos_empresa.get("sector") or "").strip()
+    industria = (datos_empresa.get("industria") or datos_empresa.get("industry") or "").strip()
+    es_financiera = es_sector_financiero(sector, industria)
+    return {
+        "es_financiera": es_financiera,
+        "sector": sector or None,
+        "industria": industria or None,
+        "warning": (
+            "Esta es una empresa del sector financiero. Los modelos basados en flujo de caja "
+            "(DCF, P/FCF, EV/EBITDA) no aplican a bancos y aseguradoras. "
+            "La valuación se basa en P/E, P/B, ROE y dividendos, que son las métricas estándar del sector."
+        ) if es_financiera else None,
     }
 
 
@@ -1202,8 +1221,10 @@ def run_all_models(
     raw_weights = _stage_adjusted_weights(stage, financials)
     precio_actual = _sf(financials.get("precio_actual")) or 0.0
 
-    # ── Corrección 1: Detección ADR ──────────────────────────────────────────
-    adr_info = _detectar_adr(financials.get("datos_empresa") or {})
+    # ── Corrección 1: Detección ADR y sector financiero ──────────────────────
+    _datos_emp = financials.get("datos_empresa") or {}
+    adr_info = _detectar_adr(_datos_emp)
+    financiera_info = _detectar_financiera(_datos_emp)
 
     # ── Ejecutar modelos ──────────────────────────────────────────────────────
     resultados_raw: dict[str, dict] = {
@@ -1257,6 +1278,27 @@ def run_all_models(
                 lv_raw["veredicto_zona_altman"] = "distress"
         else:
             lv_raw["veredicto_zona_altman"] = "unknown"
+
+    # ── Corrección 3 (financieras): invalidar modelos no aplicables a bancos ──
+    # DCF, FCF, EV/EBITDA, Valor Liquidación y P/Gross Profit no tienen sentido
+    # para instituciones financieras — los sustituyen P/E, P/B, DDM y analistas.
+    _MODELOS_NO_FINANCIERA = {
+        "dcf":               "DCF no aplica a instituciones financieras — el FCF operativo no mide rentabilidad bancaria",
+        "reverse_dcf":       "Reverse DCF no aplica a instituciones financieras",
+        "pfcf_trailing":     "P/FCF no es métrica válida para bancos — el FCF no refleja generación de valor en financieras",
+        "fwd_fcf":           "P/FCF Forward no aplica a instituciones financieras",
+        "ev_ebitda":         "EV/EBITDA no aplica a financieras — no tienen EBITDA comparable al sector industrial",
+        "liquidation_value": "NCAV (Graham) no aplica a balances bancarios — los depósitos son pasivos estructurales, no deuda convencional",
+        "pgp":               "Price/Gross Profit no aplica a bancos — no tienen estructura de COGS tradicional",
+    }
+    _modelos_invalidados_financiera: list[str] = []
+    if financiera_info["es_financiera"]:
+        for _mk, _razon in _MODELOS_NO_FINANCIERA.items():
+            _r = resultados_raw.get(_mk, {})
+            _r["aplicable"] = False
+            _r["invalidado_financiera"] = True
+            _r["detalle"] = _razon + (". " + _r.get("detalle", "") if _r.get("detalle") else "")
+            _modelos_invalidados_financiera.append(_mk)
 
     # ── Corrección 2: Filtro de outliers ─────────────────────────────────────
     # Descarta modelos con valor fuera de ±10× el precio actual.
@@ -1329,7 +1371,7 @@ def run_all_models(
         peso_final = pesos_ajustados.get(key, 0.0)
 
         # Consenso de analistas es siempre "Útil" cuando hay dato disponible
-        if r.get("outlier_descartado", False):
+        if r.get("outlier_descartado", False) or r.get("invalidado_financiera", False):
             relevancia = "No útil"
         elif key == "analyst_consensus":
             relevancia = "Útil" if r.get("aplicable") else "No útil"
@@ -1353,6 +1395,7 @@ def run_all_models(
             "relevancia": relevancia,
             "aplicable": r.get("aplicable", False),
             "outlier_descartado": r.get("outlier_descartado", False),
+            "invalidado_financiera": r.get("invalidado_financiera", False),
             "detalle": r.get("detalle", ""),
         }
 
@@ -1571,7 +1614,9 @@ def run_all_models(
         "altman": altman,
         "score_final": score_final,
         "adr_info": adr_info,
+        "financiera_info": financiera_info,
         "modelos_filtrados_outlier": _modelos_filtrados_outlier,
+        "modelos_invalidados_financiera": _modelos_invalidados_financiera,
     }
 
 

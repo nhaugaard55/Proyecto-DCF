@@ -3240,17 +3240,26 @@
                 {% if ctx.nota_especial %}<span class="fw-semibold text-warning"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>{{ ctx.nota_especial }}</span>{% endif %}
               </p>
 
-              {# ── Advertencias ADR y outliers ── #}
+              {# ── Advertencias: financieras, ADR, outliers, pocos modelos ── #}
+              {% if mm.financiera_info and mm.financiera_info.es_financiera %}
+              <div class="alert alert-info d-flex gap-2 py-2 px-3 mb-3 small" role="alert" style="border-left:3px solid var(--bs-info);">
+                <svg class="mi flex-shrink-0 mt-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                <span>{{ mm.financiera_info.warning }}</span>
+              </div>
+              {% endif %}
               {% if mm.adr_info and mm.adr_info.es_adr %}
               <div class="alert alert-warning d-flex gap-2 py-2 px-3 mb-3 small" role="alert" style="border-left:3px solid var(--bs-warning);">
                 <svg class="mi flex-shrink-0 mt-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
                 <span>{{ mm.adr_info.warning }}</span>
               </div>
               {% endif %}
-              {% if mm.modelos_filtrados_outlier %}
+              {% if mm.modelos_invalidados_financiera or mm.modelos_filtrados_outlier %}
               <div class="alert alert-secondary d-flex gap-2 py-2 px-3 mb-3 small" role="alert" style="border-left:3px solid var(--bs-secondary);">
                 <svg class="mi flex-shrink-0 mt-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                <span>Modelos descartados por valor fuera de rango (±10× el precio actual): <strong>{{ mm.modelos_filtrados_outlier|join:", " }}</strong>. Posible problema de datos o unidades.</span>
+                <span>
+                  {% if mm.modelos_invalidados_financiera %}Modelos no aplicables para sector financiero: <strong>{{ mm.modelos_invalidados_financiera|join:", " }}</strong>.{% endif %}
+                  {% if mm.modelos_filtrados_outlier %} Modelos descartados por valor fuera de rango (±10×): <strong>{{ mm.modelos_filtrados_outlier|join:", " }}</strong>.{% endif %}
+                </span>
               </div>
               {% endif %}
               {% if consenso.nota_pocos_modelos %}
