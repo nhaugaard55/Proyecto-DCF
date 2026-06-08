@@ -2548,6 +2548,14 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <tr class="ttm-row">
+                                                <td>TTM</td>
+                                                <td>{% with v=resultado.datos_empresa.revenue_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
+                                                <td>{% with v=resultado.datos_empresa.gross_profit_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
+                                                <td>{% with v=resultado.datos_empresa.ebitda_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
+                                                <td>{% with v=resultado.datos_empresa.net_income_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
+                                                <td>{% with v=resultado.datos_empresa.net_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
+                                            </tr>
                                             {% for item in revs %}
                                             <tr>
                                                 <td>{{ item.anio }}</td>
@@ -2558,14 +2566,6 @@
                                                 <td><span class="nd-val">—</span></td>
                                             </tr>
                                             {% endfor %}
-                                            <tr class="ttm-row">
-                                                <td>TTM</td>
-                                                <td>{% with v=resultado.datos_empresa.revenue_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
-                                                <td>{% with v=resultado.datos_empresa.gross_profit_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
-                                                <td>{% with v=resultado.datos_empresa.ebitda_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
-                                                <td>{% with v=resultado.datos_empresa.net_income_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
-                                                <td>{% with v=resultado.datos_empresa.net_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
-                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -2598,6 +2598,12 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
+                                                <tr class="ttm-row">
+                                                    <td>TTM</td>
+                                                    <td>{% with v=resultado.datos_empresa.gross_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
+                                                    <td>{% with v=resultado.datos_empresa.ebitda_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
+                                                    <td>{% with v=resultado.datos_empresa.net_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
+                                                </tr>
                                                 {% for item in gm_rows %}
                                                 <tr>
                                                     <td>{{ item.anio }}</td>
@@ -2606,12 +2612,6 @@
                                                     <td>{% for nm in nm_rows %}{% if nm.anio == item.anio %}{% if nm.valor is not None %}{{ nm.valor|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endif %}{% endfor %}</td>
                                                 </tr>
                                                 {% endfor %}
-                                                <tr class="ttm-row">
-                                                    <td>TTM</td>
-                                                    <td>{% with v=resultado.datos_empresa.gross_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
-                                                    <td>{% with v=resultado.datos_empresa.ebitda_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
-                                                    <td>{% with v=resultado.datos_empresa.net_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
-                                                </tr>
                                             </tbody>
                                         </table>
                                     </div>
