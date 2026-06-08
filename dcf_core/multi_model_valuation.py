@@ -103,9 +103,9 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 0.5, "pfcf_trailing": 0.0,
         "ev_ebitda": 0.0, "ddm": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
+        "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.0,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,   # referencia externa, nunca entra al consenso
         "tam_note": True, "asset_note": False,
     },
     2: {  # Hyper Growth
@@ -114,9 +114,9 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "ev_ebitda": 0.0, "ddm": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
+        "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.3,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,
         "tam_note": True, "asset_note": False,
     },
     3: {  # Break Even
@@ -125,9 +125,9 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "ev_ebitda": 0.3, "ddm": 0.0,
         "fwd_earnings": 0.5, "fwd_fcf": 0.5,
-        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
+        "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.5,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,
         "tam_note": False, "asset_note": False,
     },
     4: {  # Operating Leverage
@@ -136,9 +136,9 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 1.0, "pfcf_trailing": 0.5,
         "ev_ebitda": 0.8, "ddm": 0.3,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
-        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
+        "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.8,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,
         "tam_note": False, "asset_note": False,
     },
     5: {  # Capital Return
@@ -149,7 +149,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.8,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,
         "tam_note": False, "asset_note": False,
     },
     6: {  # Decline — los modelos de crecimiento pierden relevancia
@@ -160,7 +160,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 1.0,
         "schwab_iv": 0.0,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,
         "tam_note": False, "asset_note": True,
     },
 }
@@ -1333,10 +1333,11 @@ def run_all_models(
         and pesos_ajustados.get(k, 0.0) > 0
     )
     if _modelos_con_peso < 2:
-        # Expandir a todos los modelos que producen un valor válido
+        # Expandir a todos los modelos matemáticos aplicables.
+        # analyst_consensus y reverse_dcf quedan siempre fuera del consenso.
         _fallback: dict[str, float] = {}
         for k in _MODEL_KEYS:
-            if k == "reverse_dcf":
+            if k in ("reverse_dcf", "analyst_consensus"):
                 continue
             r = resultados_raw.get(k, {})
             if r.get("aplicable") and r.get("valor") is not None:
@@ -1370,11 +1371,11 @@ def run_all_models(
         peso_raw = float(raw_weights.get(key, 0.0)) if isinstance(raw_weights.get(key), (int, float)) else 0.0
         peso_final = pesos_ajustados.get(key, 0.0)
 
-        # Consenso de analistas es siempre "Útil" cuando hay dato disponible
+        # analyst_consensus es referencia externa, nunca entra al consenso de modelos.
         if r.get("outlier_descartado", False) or r.get("invalidado_financiera", False):
             relevancia = "No útil"
         elif key == "analyst_consensus":
-            relevancia = "Útil" if r.get("aplicable") else "No útil"
+            relevancia = "Referencia" if r.get("aplicable") else "No útil"
         else:
             relevancia = _relevancia_desde_peso(peso_raw)
 
@@ -1527,6 +1528,15 @@ def run_all_models(
         else:
             dr_label, dr_color = "Dispersión extrema — verificar datos antes de usar este consenso", "danger"
 
+        # Referencia de analistas: precio objetivo sell-side para comparar con el consenso.
+        _ac_r = resultados_raw.get("analyst_consensus", {})
+        _ac_precio = _sf(_ac_r.get("valor"))
+        _ac_upside = (
+            round((_ac_precio - precio_actual) / precio_actual * 100, 1)
+            if _ac_precio is not None and precio_actual
+            else None
+        )
+
         consenso = {
             "precio": precio_consenso,
             "precio_actual": precio_actual,
@@ -1546,6 +1556,12 @@ def run_all_models(
             "disponible": True,
             "razon_no_calculable": None,
             "nota_pocos_modelos": _nota_pocos_modelos,
+            "referencia_analistas": {
+                "precio": _ac_precio,
+                "upside_pct": _ac_upside,
+                "num_analistas": _ac_r.get("num_analistas"),
+                "disponible": _ac_precio is not None,
+            },
         }
     else:
         n_modelos = len(valores_aplicables)
@@ -1569,6 +1585,13 @@ def run_all_models(
                 "El indicador más relevante es el Valor de Liquidación."
             )
         modelos_usados_keys = [k for k in _MODEL_KEYS if valores_aplicables and modelos[k]["valor"] is not None and modelos[k]["peso"] > 0]
+        _ac_r2 = resultados_raw.get("analyst_consensus", {})
+        _ac_precio2 = _sf(_ac_r2.get("valor"))
+        _ac_upside2 = (
+            round((_ac_precio2 - precio_actual) / precio_actual * 100, 1)
+            if _ac_precio2 is not None and precio_actual
+            else None
+        )
         consenso = {
             "precio": None,
             "precio_actual": precio_actual,
@@ -1586,6 +1609,12 @@ def run_all_models(
             "disagreement_color": None,
             "disponible": False,
             "razon_no_calculable": razon_no_calculable,
+            "referencia_analistas": {
+                "precio": _ac_precio2,
+                "upside_pct": _ac_upside2,
+                "num_analistas": _ac_r2.get("num_analistas"),
+                "disponible": _ac_precio2 is not None,
+            },
         }
 
     # ── Contexto de etapa ─────────────────────────────────────────────────────
