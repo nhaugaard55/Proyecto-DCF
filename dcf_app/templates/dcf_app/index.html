@@ -2524,7 +2524,7 @@
                                             {% if v is not None %}${{ v|floatformat:2 }}{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Variación porcentual de ingresos respecto al año anterior · Fuente: Yahoo Finance (revenueGrowth)">
+                                    <div class="analysis-data-metric" title="Variación porcentual de ingresos respecto al año anterior · Fuente: Financial Modeling Prep (FY actual vs FY anterior)">
                                         <span class="analysis-data-label">Revenue Growth YoY <span class="analysis-data-def">Variación vs. año anterior</span></span>
                                         {% with v=resultado.revenue_growth_raw %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">

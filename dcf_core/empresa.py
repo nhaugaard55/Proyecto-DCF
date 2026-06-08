@@ -1071,20 +1071,15 @@ def analizar_empresa(
     except Exception:
         revenue_historico_raw = []
 
-    # Recomputar revenue_growth desde datos anuales limpios cuando hay contaminación.
-    # info.get("revenueGrowth") compara TTM-vs-TTM usando los datos anuales de yfinance,
-    # que pueden incluir el año parcial, dando un crecimiento incorrecto.
-    # Si tenemos al menos 2 años completos en revenue_historico_raw, usar esa serie.
+    # Revenue growth: SIEMPRE calcular desde la serie anual de FMP (FY vs FY anterior).
+    # info.get("revenueGrowth") de yfinance es poco confiable: usa metodología TTM-vs-TTM
+    # propia y diverge del dato real. La serie revenue_historico_raw (FMP) siempre tiene
+    # prioridad cuando hay al menos 2 años completos disponibles.
     if len(revenue_historico_raw) >= 2:
         _rev_curr = revenue_historico_raw[0]
         _rev_prev = revenue_historico_raw[1]
         if _rev_prev and abs(_rev_prev) > 0:
-            _revenue_growth_clean = (_rev_curr - _rev_prev) / abs(_rev_prev)
-            # Usar el valor limpio cuando:
-            #   - hay datos parciales detectados (contaminación probable), o
-            #   - info.get() no tiene dato
-            if _income_stmt_parcial or _cashflow_parcial or revenue_growth is None:
-                revenue_growth = _revenue_growth_clean
+            revenue_growth = (_rev_curr - _rev_prev) / abs(_rev_prev)
 
     # Revenue and net income with year labels for charts
     revenue_historico_labeled: list[dict] = []
