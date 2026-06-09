@@ -2524,7 +2524,7 @@
                                             {% if v is not None %}${{ v|floatformat:2 }}{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Variación porcentual de ingresos respecto al año anterior · Fuente: Yahoo Finance (revenueGrowth)">
+                                    <div class="analysis-data-metric" title="Variación porcentual de ingresos respecto al año anterior · Fuente: Financial Modeling Prep (FY actual vs FY anterior)">
                                         <span class="analysis-data-label">Revenue Growth YoY <span class="analysis-data-def">Variación vs. año anterior</span></span>
                                         {% with v=resultado.revenue_growth_raw %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
@@ -2548,6 +2548,14 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <tr class="ttm-row">
+                                                <td>TTM</td>
+                                                <td>{% with v=resultado.datos_empresa.revenue_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
+                                                <td>{% with v=resultado.datos_empresa.gross_profit_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
+                                                <td>{% with v=resultado.datos_empresa.ebitda_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
+                                                <td>{% with v=resultado.datos_empresa.net_income_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
+                                                <td>{% with v=resultado.datos_empresa.net_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
+                                            </tr>
                                             {% for item in revs %}
                                             <tr>
                                                 <td>{{ item.anio }}</td>
@@ -2558,14 +2566,6 @@
                                                 <td><span class="nd-val">—</span></td>
                                             </tr>
                                             {% endfor %}
-                                            <tr class="ttm-row">
-                                                <td>TTM</td>
-                                                <td>{% with v=resultado.datos_empresa.revenue_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
-                                                <td>{% with v=resultado.datos_empresa.gross_profit_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
-                                                <td>{% with v=resultado.datos_empresa.ebitda_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
-                                                <td>{% with v=resultado.datos_empresa.net_income_ttm_display %}{% if v %}{{ v }}{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
-                                                <td>{% with v=resultado.datos_empresa.net_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">N/D</span>{% endif %}{% endwith %}</td>
-                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -2598,7 +2598,13 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {% for item in gm_rows %}
+                                                <tr class="ttm-row">
+                                                    <td>TTM</td>
+                                                    <td>{% with v=resultado.datos_empresa.gross_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
+                                                    <td>{% with v=resultado.datos_empresa.ebitda_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
+                                                    <td>{% with v=resultado.datos_empresa.net_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
+                                                </tr>
+                                                {% for item in gm_rows|dictsortreversed:"anio" %}
                                                 <tr>
                                                     <td>{{ item.anio }}</td>
                                                     <td>{% if item.valor is not None %}{{ item.valor|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}</td>
@@ -2606,12 +2612,6 @@
                                                     <td>{% for nm in nm_rows %}{% if nm.anio == item.anio %}{% if nm.valor is not None %}{{ nm.valor|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endif %}{% endfor %}</td>
                                                 </tr>
                                                 {% endfor %}
-                                                <tr class="ttm-row">
-                                                    <td>TTM</td>
-                                                    <td>{% with v=resultado.datos_empresa.gross_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
-                                                    <td>{% with v=resultado.datos_empresa.ebitda_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
-                                                    <td>{% with v=resultado.datos_empresa.net_margin_pct %}{% if v is not None %}{{ v|floatformat:1 }}%{% else %}<span class="nd-val">—</span>{% endif %}{% endwith %}</td>
-                                                </tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -2632,30 +2632,30 @@
                                             {% if v is not None %}{{ v }}{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Free Cash Flow del año anterior al TTM">
-                                        <span class="analysis-data-label">FCF año −1</span>
-                                        {% with item=resultado.fcf_historico.1 %}
+                                    <div class="analysis-data-metric" title="Free Cash Flow del último año fiscal completo">
+                                        {% with item=resultado.fcf_historico.0 %}
+                                        <span class="analysis-data-label">FCF año −1{% if item.anio %} ({{ item.anio }}){% endif %}</span>
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
                                     <div class="analysis-data-metric" title="Free Cash Flow de 2 años atrás">
-                                        <span class="analysis-data-label">FCF año −2</span>
-                                        {% with item=resultado.fcf_historico.2 %}
+                                        {% with item=resultado.fcf_historico.1 %}
+                                        <span class="analysis-data-label">FCF año −2{% if item.anio %} ({{ item.anio }}){% endif %}</span>
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
                                     <div class="analysis-data-metric" title="Free Cash Flow de 3 años atrás">
-                                        <span class="analysis-data-label">FCF año −3</span>
-                                        {% with item=resultado.fcf_historico.3 %}
+                                        {% with item=resultado.fcf_historico.2 %}
+                                        <span class="analysis-data-label">FCF año −3{% if item.anio %} ({{ item.anio }}){% endif %}</span>
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
                                     <div class="analysis-data-metric" title="Free Cash Flow de 4 años atrás">
-                                        <span class="analysis-data-label">FCF año −4</span>
-                                        {% with item=resultado.fcf_historico.4 %}
+                                        {% with item=resultado.fcf_historico.3 %}
+                                        <span class="analysis-data-label">FCF año −4{% if item.anio %} ({{ item.anio }}){% endif %}</span>
                                         <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
@@ -3240,17 +3240,34 @@
                 {% if ctx.nota_especial %}<span class="fw-semibold text-warning"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>{{ ctx.nota_especial }}</span>{% endif %}
               </p>
 
-              {# ── Advertencias ADR y outliers ── #}
+              {# ── Advertencia: año fiscal parcial excluido de series históricas ── #}
+              {% if resultado.aviso_datos_parciales %}
+              <div class="alert alert-warning d-flex gap-2 py-2 px-3 mb-3 small" role="alert" style="border-left:3px solid var(--bs-warning);">
+                <svg class="mi flex-shrink-0 mt-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                <span>{{ resultado.aviso_datos_parciales }}</span>
+              </div>
+              {% endif %}
+
+              {# ── Advertencias: financieras, ADR, outliers, pocos modelos ── #}
+              {% if mm.financiera_info and mm.financiera_info.es_financiera %}
+              <div class="alert alert-info d-flex gap-2 py-2 px-3 mb-3 small" role="alert" style="border-left:3px solid var(--bs-info);">
+                <svg class="mi flex-shrink-0 mt-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                <span>{{ mm.financiera_info.warning }}</span>
+              </div>
+              {% endif %}
               {% if mm.adr_info and mm.adr_info.es_adr %}
               <div class="alert alert-warning d-flex gap-2 py-2 px-3 mb-3 small" role="alert" style="border-left:3px solid var(--bs-warning);">
                 <svg class="mi flex-shrink-0 mt-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
                 <span>{{ mm.adr_info.warning }}</span>
               </div>
               {% endif %}
-              {% if mm.modelos_filtrados_outlier %}
+              {% if mm.modelos_invalidados_financiera or mm.modelos_filtrados_outlier %}
               <div class="alert alert-secondary d-flex gap-2 py-2 px-3 mb-3 small" role="alert" style="border-left:3px solid var(--bs-secondary);">
                 <svg class="mi flex-shrink-0 mt-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                <span>Modelos descartados por valor fuera de rango (±10× el precio actual): <strong>{{ mm.modelos_filtrados_outlier|join:", " }}</strong>. Posible problema de datos o unidades.</span>
+                <span>
+                  {% if mm.modelos_invalidados_financiera %}Modelos no aplicables para sector financiero: <strong>{{ mm.modelos_invalidados_financiera|join:", " }}</strong>.{% endif %}
+                  {% if mm.modelos_filtrados_outlier %} Modelos descartados por valor fuera de rango (±10×): <strong>{{ mm.modelos_filtrados_outlier|join:", " }}</strong>.{% endif %}
+                </span>
               </div>
               {% endif %}
               {% if consenso.nota_pocos_modelos %}
@@ -3340,6 +3357,36 @@
                   </div>
                 </div>
               </div>
+
+              {# ── Referencia de analistas (comparación externa, no entra al consenso) ── #}
+              {% if consenso.referencia_analistas and consenso.referencia_analistas.disponible %}
+              {% with ref=consenso.referencia_analistas %}
+              <div class="mt-3 p-3 rounded-3 d-flex align-items-center gap-3 flex-wrap" style="background:var(--surface-card); border:1px solid var(--surface-border);">
+                <div class="d-flex align-items-center gap-2">
+                  <svg class="mi text-secondary" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                  <span class="small text-muted fw-semibold text-uppercase" style="letter-spacing:.04em;">Referencia analistas</span>
+                  {% if ref.num_analistas %}<span class="badge bg-secondary-subtle text-secondary-emphasis small">{{ ref.num_analistas }} analista{{ ref.num_analistas|pluralize:"s" }}</span>{% endif %}
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                  <span class="fw-bold fs-5">${{ ref.precio|floatformat:2 }}</span>
+                  {% if ref.upside_pct is not None %}
+                  <span class="small fw-semibold {% if ref.upside_pct >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    {% if ref.upside_pct >= 0 %}▲{% else %}▼{% endif %} {{ ref.upside_pct|floatformat:1 }}% vs precio actual
+                  </span>
+                  {% endif %}
+                </div>
+                {% if consenso.precio is not None %}
+                <div class="small text-muted ms-auto">
+                  Diferencia vs consenso modelos:
+                  {% with diff=ref.precio|add:"-"|add:consenso.precio %}
+                  <span class="fw-semibold">${{ consenso.precio|floatformat:2 }} modelos vs ${{ ref.precio|floatformat:2 }} analistas</span>
+                  {% endwith %}
+                </div>
+                {% endif %}
+              </div>
+              {% endwith %}
+              {% endif %}
+
               <div class="mt-4">
                 <div class="table-responsive">
                   <table class="table table-sm align-middle multi-model-table" style="background:var(--table-bg); color:var(--table-text); font-size:0.84rem;">
@@ -3375,7 +3422,7 @@
                           {% else %}—{% endif %}
                         </td>
                         <td class="text-end">{% if m.peso > 0 %}<span class="fw-semibold">{{ m.peso_pct|floatformat:1 }}%</span>{% else %}—{% endif %}</td>
-                        <td class="text-center relevance-cell">{% if m.relevancia == "Útil" %}<span class="badge rlv-util"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Útil</span>{% elif m.relevancia == "Algo útil" %}<span class="badge rlv-algo"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Algo útil</span>{% else %}<span class="badge rlv-no"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> No útil</span>{% endif %}</td>
+                        <td class="text-center relevance-cell">{% if m.relevancia == "Útil" %}<span class="badge rlv-util"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Útil</span>{% elif m.relevancia == "Algo útil" %}<span class="badge rlv-algo"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Algo útil</span>{% elif m.relevancia == "Referencia" %}<span class="badge bg-secondary-subtle text-secondary-emphasis"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> Referencia</span>{% else %}<span class="badge rlv-no"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> No útil</span>{% endif %}</td>
                         <td class="text-muted small detail-cell">{{ m.detalle }}</td>
                       </tr>
                       {% endfor %}

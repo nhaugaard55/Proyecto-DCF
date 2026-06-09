@@ -103,9 +103,9 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 0.5, "pfcf_trailing": 0.0,
         "ev_ebitda": 0.0, "ddm": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
+        "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.0,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,   # referencia externa, nunca entra al consenso
         "tam_note": True, "asset_note": False,
     },
     2: {  # Hyper Growth
@@ -114,9 +114,9 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "ev_ebitda": 0.0, "ddm": 0.0,
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
-        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
+        "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.3,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,
         "tam_note": True, "asset_note": False,
     },
     3: {  # Break Even
@@ -125,9 +125,9 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 1.0, "pfcf_trailing": 0.0,
         "ev_ebitda": 0.3, "ddm": 0.0,
         "fwd_earnings": 0.5, "fwd_fcf": 0.5,
-        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
+        "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.5,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,
         "tam_note": False, "asset_note": False,
     },
     4: {  # Operating Leverage
@@ -136,9 +136,9 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "pgp": 1.0, "pfcf_trailing": 0.5,
         "ev_ebitda": 0.8, "ddm": 0.3,
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
-        "tam": 0.0, "liquidation_value": 0.0,  # escenario orientativo, fuera del consenso
+        "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.8,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,
         "tam_note": False, "asset_note": False,
     },
     5: {  # Capital Return
@@ -149,7 +149,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "fwd_earnings": 1.0, "fwd_fcf": 1.0,
         "tam": 0.0, "liquidation_value": 0.0,
         "schwab_iv": 0.8,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,
         "tam_note": False, "asset_note": False,
     },
     6: {  # Decline — los modelos de crecimiento pierden relevancia
@@ -160,7 +160,7 @@ WEIGHTS: dict[int, dict[str, float | bool]] = {
         "fwd_earnings": 0.0, "fwd_fcf": 0.0,
         "tam": 0.0, "liquidation_value": 1.0,
         "schwab_iv": 0.0,
-        "analyst_consensus": 1.0,
+        "analyst_consensus": 0.0,
         "tam_note": False, "asset_note": True,
     },
 }
@@ -257,8 +257,9 @@ def _es_outlier(valor: Optional[float], precio_actual: float) -> bool:
 
 def _detectar_adr(datos_empresa: dict) -> dict:
     """Detecta si la empresa es un ADR extranjero cotizando en bolsa americana."""
-    country = (datos_empresa.get("country") or "").strip()
-    es_adr = bool(country) and country.upper() not in ("UNITED STATES", "US", "USA")
+    # yfinance / empresa.py almacena el país en la clave "pais"
+    country = (datos_empresa.get("pais") or datos_empresa.get("country") or "").strip()
+    es_adr = bool(country) and country.upper() not in ("UNITED STATES", "US", "USA", "")
     return {
         "es_adr": es_adr,
         "country": country or None,
@@ -267,6 +268,24 @@ def _detectar_adr(datos_empresa: dict) -> dict:
             f"Los modelos basados en datos por acción (P/FCF, Valor Liquidación, DCF) "
             f"pueden tener distorsiones si 1 ADR ≠ 1 acción ordinaria."
         ) if es_adr else None,
+    }
+
+
+def _detectar_financiera(datos_empresa: dict) -> dict:
+    """Detecta si la empresa pertenece al sector financiero (banco, aseguradora, etc.)."""
+    from .utils import es_sector_financiero
+    sector = (datos_empresa.get("sector") or "").strip()
+    industria = (datos_empresa.get("industria") or datos_empresa.get("industry") or "").strip()
+    es_financiera = es_sector_financiero(sector, industria)
+    return {
+        "es_financiera": es_financiera,
+        "sector": sector or None,
+        "industria": industria or None,
+        "warning": (
+            "Esta es una empresa del sector financiero. Los modelos basados en flujo de caja "
+            "(DCF, P/FCF, EV/EBITDA) no aplican a bancos y aseguradoras. "
+            "La valuación se basa en P/E, P/B, ROE y dividendos, que son las métricas estándar del sector."
+        ) if es_financiera else None,
     }
 
 
@@ -1202,8 +1221,10 @@ def run_all_models(
     raw_weights = _stage_adjusted_weights(stage, financials)
     precio_actual = _sf(financials.get("precio_actual")) or 0.0
 
-    # ── Corrección 1: Detección ADR ──────────────────────────────────────────
-    adr_info = _detectar_adr(financials.get("datos_empresa") or {})
+    # ── Corrección 1: Detección ADR y sector financiero ──────────────────────
+    _datos_emp = financials.get("datos_empresa") or {}
+    adr_info = _detectar_adr(_datos_emp)
+    financiera_info = _detectar_financiera(_datos_emp)
 
     # ── Ejecutar modelos ──────────────────────────────────────────────────────
     resultados_raw: dict[str, dict] = {
@@ -1258,6 +1279,27 @@ def run_all_models(
         else:
             lv_raw["veredicto_zona_altman"] = "unknown"
 
+    # ── Corrección 3 (financieras): invalidar modelos no aplicables a bancos ──
+    # DCF, FCF, EV/EBITDA, Valor Liquidación y P/Gross Profit no tienen sentido
+    # para instituciones financieras — los sustituyen P/E, P/B, DDM y analistas.
+    _MODELOS_NO_FINANCIERA = {
+        "dcf":               "DCF no aplica a instituciones financieras — el FCF operativo no mide rentabilidad bancaria",
+        "reverse_dcf":       "Reverse DCF no aplica a instituciones financieras",
+        "pfcf_trailing":     "P/FCF no es métrica válida para bancos — el FCF no refleja generación de valor en financieras",
+        "fwd_fcf":           "P/FCF Forward no aplica a instituciones financieras",
+        "ev_ebitda":         "EV/EBITDA no aplica a financieras — no tienen EBITDA comparable al sector industrial",
+        "liquidation_value": "NCAV (Graham) no aplica a balances bancarios — los depósitos son pasivos estructurales, no deuda convencional",
+        "pgp":               "Price/Gross Profit no aplica a bancos — no tienen estructura de COGS tradicional",
+    }
+    _modelos_invalidados_financiera: list[str] = []
+    if financiera_info["es_financiera"]:
+        for _mk, _razon in _MODELOS_NO_FINANCIERA.items():
+            _r = resultados_raw.get(_mk, {})
+            _r["aplicable"] = False
+            _r["invalidado_financiera"] = True
+            _r["detalle"] = _razon + (". " + _r.get("detalle", "") if _r.get("detalle") else "")
+            _modelos_invalidados_financiera.append(_mk)
+
     # ── Corrección 2: Filtro de outliers ─────────────────────────────────────
     # Descarta modelos con valor fuera de ±10× el precio actual.
     # Captura automáticamente errores de unidades en ADRs (ej: 1 ADR = 10 acciones ordinarias).
@@ -1291,10 +1333,11 @@ def run_all_models(
         and pesos_ajustados.get(k, 0.0) > 0
     )
     if _modelos_con_peso < 2:
-        # Expandir a todos los modelos que producen un valor válido
+        # Expandir a todos los modelos matemáticos aplicables.
+        # analyst_consensus y reverse_dcf quedan siempre fuera del consenso.
         _fallback: dict[str, float] = {}
         for k in _MODEL_KEYS:
-            if k == "reverse_dcf":
+            if k in ("reverse_dcf", "analyst_consensus"):
                 continue
             r = resultados_raw.get(k, {})
             if r.get("aplicable") and r.get("valor") is not None:
@@ -1328,13 +1371,27 @@ def run_all_models(
         peso_raw = float(raw_weights.get(key, 0.0)) if isinstance(raw_weights.get(key), (int, float)) else 0.0
         peso_final = pesos_ajustados.get(key, 0.0)
 
-        # Consenso de analistas es siempre "Útil" cuando hay dato disponible
-        if r.get("outlier_descartado", False):
+        # analyst_consensus es referencia externa, nunca entra al consenso de modelos.
+        if r.get("outlier_descartado", False) or r.get("invalidado_financiera", False):
             relevancia = "No útil"
         elif key == "analyst_consensus":
-            relevancia = "Útil" if r.get("aplicable") else "No útil"
+            relevancia = "Referencia" if r.get("aplicable") else "No útil"
         else:
             relevancia = _relevancia_desde_peso(peso_raw)
+
+        # Validación de consistencia: un modelo que participa en el consenso
+        # (peso_final > 0) nunca puede mostrarse como "No útil" — eso ocurre
+        # cuando el fallback asigna peso a modelos que la etapa marca como
+        # "No útil" (peso_raw=0) por falta de alternativas suficientes.
+        if relevancia == "No útil" and peso_final > 0:
+            import sys as _sys_mmv
+            print(
+                f"[multi_model WARN] inconsistencia en '{key}': "
+                f"peso_final={peso_final:.2%} pero peso_raw={peso_raw} "
+                f"→ relevancia corregida a 'Algo útil' (fallback por pocos modelos)",
+                file=_sys_mmv.stderr,
+            )
+            relevancia = "Algo útil"
 
         valor_modelo = r.get("valor")
         if valor_modelo is not None and precio_actual and key != "reverse_dcf":
@@ -1353,6 +1410,7 @@ def run_all_models(
             "relevancia": relevancia,
             "aplicable": r.get("aplicable", False),
             "outlier_descartado": r.get("outlier_descartado", False),
+            "invalidado_financiera": r.get("invalidado_financiera", False),
             "detalle": r.get("detalle", ""),
         }
 
@@ -1470,6 +1528,15 @@ def run_all_models(
         else:
             dr_label, dr_color = "Dispersión extrema — verificar datos antes de usar este consenso", "danger"
 
+        # Referencia de analistas: precio objetivo sell-side para comparar con el consenso.
+        _ac_r = resultados_raw.get("analyst_consensus", {})
+        _ac_precio = _sf(_ac_r.get("valor"))
+        _ac_upside = (
+            round((_ac_precio - precio_actual) / precio_actual * 100, 1)
+            if _ac_precio is not None and precio_actual
+            else None
+        )
+
         consenso = {
             "precio": precio_consenso,
             "precio_actual": precio_actual,
@@ -1489,6 +1556,12 @@ def run_all_models(
             "disponible": True,
             "razon_no_calculable": None,
             "nota_pocos_modelos": _nota_pocos_modelos,
+            "referencia_analistas": {
+                "precio": _ac_precio,
+                "upside_pct": _ac_upside,
+                "num_analistas": _ac_r.get("num_analistas"),
+                "disponible": _ac_precio is not None,
+            },
         }
     else:
         n_modelos = len(valores_aplicables)
@@ -1512,6 +1585,13 @@ def run_all_models(
                 "El indicador más relevante es el Valor de Liquidación."
             )
         modelos_usados_keys = [k for k in _MODEL_KEYS if valores_aplicables and modelos[k]["valor"] is not None and modelos[k]["peso"] > 0]
+        _ac_r2 = resultados_raw.get("analyst_consensus", {})
+        _ac_precio2 = _sf(_ac_r2.get("valor"))
+        _ac_upside2 = (
+            round((_ac_precio2 - precio_actual) / precio_actual * 100, 1)
+            if _ac_precio2 is not None and precio_actual
+            else None
+        )
         consenso = {
             "precio": None,
             "precio_actual": precio_actual,
@@ -1529,6 +1609,12 @@ def run_all_models(
             "disagreement_color": None,
             "disponible": False,
             "razon_no_calculable": razon_no_calculable,
+            "referencia_analistas": {
+                "precio": _ac_precio2,
+                "upside_pct": _ac_upside2,
+                "num_analistas": _ac_r2.get("num_analistas"),
+                "disponible": _ac_precio2 is not None,
+            },
         }
 
     # ── Contexto de etapa ─────────────────────────────────────────────────────
@@ -1571,7 +1657,9 @@ def run_all_models(
         "altman": altman,
         "score_final": score_final,
         "adr_info": adr_info,
+        "financiera_info": financiera_info,
         "modelos_filtrados_outlier": _modelos_filtrados_outlier,
+        "modelos_invalidados_financiera": _modelos_invalidados_financiera,
     }
 
 

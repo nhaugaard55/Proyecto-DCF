@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 import pandas as pd
 import yfinance as yf
 
-from .empresa import analizar_empresa, _fetch_news, _generate_ai_summary
+from .empresa import analizar_empresa, _fetch_news, _generate_ai_summary, _primer_periodo_es_parcial
 from .finanzas import calcular_crecimientos, calcular_escenarios, calcular_tabla_sensibilidad
 from .fmp import (
     FCFEntry,
@@ -123,7 +123,13 @@ def _obtener_fcf_yfinance(ticker: str, empresa_yf: yf.Ticker, limite: int = 5) -
     if cashflow_temp is None or cashflow_temp.empty or "Free Cash Flow" not in cashflow_temp.index:
         return []
 
-    serie = cashflow_temp.loc["Free Cash Flow"].dropna().head(limite)
+    serie = cashflow_temp.loc["Free Cash Flow"].dropna()
+    # Excluir el primer período si es un año fiscal incompleto (stub del año en curso).
+    # Un gap < 300 días entre los dos primeros períodos anuales indica un stub parcial.
+    if _primer_periodo_es_parcial(cashflow_temp) and len(serie) > 1:
+        serie = serie.iloc[1:]
+    serie = serie.head(limite)
+
     valores: List[float] = []
     if hasattr(serie, "tolist"):
         iterador = serie.tolist()
@@ -337,7 +343,14 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
 
     # ── Determinar fuente de FCF ─────────────────────────────────
     if fcf_historial:
-        valores_para_crecimiento = [dato.value for dato in fcf_historial]
+        # Excluir el año fiscal en curso si FMP lo incluyó como entrada parcial.
+        # year >= año_actual → año fiscal que aún no cerró (o que abrió este año).
+        # El CAGR debe calcularse solo sobre años completos.
+        _año_actual_dcf = pd.Timestamp.now().year
+        valores_para_crecimiento = [
+            dato.value for dato in fcf_historial
+            if dato.year is None or dato.year < _año_actual_dcf
+        ]
         fuente_utilizada = "fmp"
 
     if fuente_utilizada != "fmp":

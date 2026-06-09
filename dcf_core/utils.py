@@ -6,6 +6,31 @@ from datetime import datetime, timezone
 from typing import Optional
 
 
+# ---------------------------------------------------------------------------
+# Detección de tipo de empresa
+# ---------------------------------------------------------------------------
+
+_SECTORES_FINANCIEROS: frozenset[str] = frozenset({
+    "Financial Services",
+    "Financials",
+    "Finance",
+})
+
+_INDUSTRIAS_FINANCIERAS_KW: tuple[str, ...] = (
+    "bank", "insurance", "capital markets", "asset management",
+    "credit services", "financial", "savings", "thrift", "mortgage",
+    "brokerage", "investment", "diversified financial",
+)
+
+
+def es_sector_financiero(sector: str, industria: str = "") -> bool:
+    """True si la empresa pertenece al sector financiero (banco, aseguradora, etc.)."""
+    if (sector or "").strip() in _SECTORES_FINANCIEROS:
+        return True
+    industria_lower = (industria or "").lower()
+    return any(kw in industria_lower for kw in _INDUSTRIAS_FINANCIERAS_KW)
+
+
 def parse_datetime_epoch(epoch_seconds: Optional[int]) -> Optional[datetime]:
     """Convierte un timestamp Unix (segundos) a datetime con zona UTC."""
     if not epoch_seconds:

@@ -135,6 +135,10 @@ def _to_decimal(value, *, places: int | None = 4):
             dec_value = Decimal(str(value))
         except (InvalidOperation, TypeError, ValueError):
             return None
+    # Rechazar Infinity y NaN: SQLite los guarda como texto pero luego
+    # decimal.quantize() lanza InvalidOperation al leerlos de vuelta.
+    if dec_value.is_nan() or dec_value.is_infinite():
+        return None
     if places is None:
         return dec_value
     quant = Decimal("1." + ("0" * places))
@@ -314,6 +318,8 @@ def _guardar_analisis(
     company_name: str,
     company_exchange: str,
     resultado: dict[str, Any] | None,
+    precio_consenso: float | None = None,
+    veredicto_consenso: str | None = None,
 ):
     if not ticker or not isinstance(resultado, dict):
         return None
@@ -326,9 +332,32 @@ def _guardar_analisis(
         or AnalysisRecord.METODO_CAGR
     )
 
-    valor_intrinseco = _to_decimal(resultado.get("valor_intrinseco"), places=4)
-    precio_actual = _to_decimal(resultado.get("precio_actual"), places=4)
-    diferencia_pct = _to_decimal(resultado.get("diferencia_pct"), places=2)
+    precio_actual_raw = resultado.get("precio_actual")
+    precio_actual = _to_decimal(precio_actual_raw, places=4)
+
+    # Preferir el precio consenso multi-modelo sobre el valor intrínseco DCF.
+    # El consenso es el dato principal que el usuario ve en el análisis.
+    if precio_consenso is not None:
+        valor_intrinseco = _to_decimal(precio_consenso, places=4)
+        # Recalcular diferencia_pct y estado con el consenso
+        try:
+            pa = float(precio_actual_raw or 0)
+            if pa:
+                diferencia_pct = _to_decimal((precio_consenso - pa) / pa * 100, places=2)
+            else:
+                diferencia_pct = None
+        except Exception:
+            diferencia_pct = None
+        _VEREDICTO_MAP = {
+            "Subvaluada": "SUBVALUADA",
+            "Sobrevaluada": "SOBREVALUADA",
+            "Precio Razonable": "RAZONABLE",
+        }
+        estado = _VEREDICTO_MAP.get(veredicto_consenso or "", "") or (resultado.get("estado") or "").strip()
+    else:
+        valor_intrinseco = _to_decimal(resultado.get("valor_intrinseco"), places=4)
+        diferencia_pct = _to_decimal(resultado.get("diferencia_pct"), places=2)
+        estado = (resultado.get("estado") or "").strip()
 
     ventana_reciente = timezone.now() - timedelta(minutes=5)
     duplicado = AnalysisRecord.objects.filter(
@@ -357,7 +386,7 @@ def _guardar_analisis(
         valor_intrinseco=valor_intrinseco,
         precio_actual=precio_actual,
         diferencia_pct=diferencia_pct,
-        estado=(resultado.get("estado") or "").strip(),
+        estado=estado,
     )
 
 
@@ -499,13 +528,6 @@ def dcf_view(request):
                 if should_charge_analysis:
                     record_analysis_run(request)
                     _mark_analysis_usage_counted(request, ticker)
-                _guardar_analisis(
-                    user=request.user if request.user.is_authenticated else None,
-                    ticker=ticker,
-                    company_name=company_name,
-                    company_exchange=company_exchange,
-                    resultado=resultado,
-                )
 
     company_stage = None
     multi_model = None
@@ -534,6 +556,22 @@ def dcf_view(request):
             multi_model = run_all_models(ticker, resultado, stage_num, wacc_val, analyst_estimates=analyst_data)
         except Exception:
             multi_model = None
+
+        # Guardar en historial con el precio consenso multi-modelo como valor principal.
+        # Se ejecuta aquí, después de calcular multi_model, para tener el consenso real.
+        try:
+            _consenso = (multi_model or {}).get("consenso") or {}
+            _guardar_analisis(
+                user=request.user if request.user.is_authenticated else None,
+                ticker=ticker,
+                company_name=company_name,
+                company_exchange=company_exchange,
+                resultado=resultado,
+                precio_consenso=_consenso.get("precio"),
+                veredicto_consenso=_consenso.get("veredicto"),
+            )
+        except Exception:
+            pass
 
         try:
             filtros_etapa = build_filtros_por_etapa(resultado, stage_num)
@@ -1357,7 +1395,70 @@ def watchlist_prices_view(request):
 
 def history_view(request):
     if request.user.is_authenticated:
-        records = list(AnalysisRecord.objects.filter(user=request.user))
+        records = _cargar_historial_seguro(request.user)
     else:
         records = []
     return render(request, "dcf_app/history.html", {"records": records})
+
+
+def _cargar_historial_seguro(user):
+    """
+    Carga el historial tolerando registros con DecimalField inválidos.
+
+    Estrategia:
+      1. Limpiar valores Infinity/NaN en la DB (raw SQL, no usa ORM decimal).
+      2. Intentar la query normal.
+      3. Si aún falla, obtener solo los IDs (enteros, sin conversión decimal)
+         y cargar cada registro individualmente, saltando los problemáticos.
+    """
+    # Paso 1: sanear la DB antes de la query principal
+    try:
+        _limpiar_decimales_invalidos()
+    except Exception:
+        pass
+
+    # Paso 2: query normal
+    try:
+        return list(AnalysisRecord.objects.filter(user=user))
+    except Exception:
+        pass
+
+    # Paso 3: fallback — IDs primero (sin conversión decimal), luego uno a uno
+    try:
+        ids = list(
+            AnalysisRecord.objects.filter(user=user)
+            .order_by("-created_at")
+            .values_list("id", flat=True)
+        )
+    except Exception:
+        return []
+
+    records = []
+    for pk in ids:
+        try:
+            records.append(AnalysisRecord.objects.get(pk=pk))
+        except Exception:
+            pass
+    return records
+
+
+def _limpiar_decimales_invalidos():
+    """
+    Pone a NULL los campos DecimalField que contienen Infinity/NaN en
+    la tabla de historial. Estos valores son válidos para Decimal de Python
+    pero Django/SQLite no puede leerlos de vuelta con quantize().
+    Usa SQL raw para evitar el conversor decimal del ORM.
+    """
+    from django.db import connection
+    _CAMPOS = ("valor_intrinseco", "precio_actual", "diferencia_pct")
+    # Cubre todas las variantes que SQLite puede haber almacenado
+    _INVALIDOS = ("Infinity", "-Infinity", "NaN", "inf", "-inf", "nan",
+                  "Inf", "-Inf")
+    placeholders = ",".join(["?"] * len(_INVALIDOS))
+    with connection.cursor() as cursor:
+        for campo in _CAMPOS:
+            cursor.execute(
+                f"UPDATE dcf_app_analysisrecord SET {campo} = NULL "
+                f"WHERE CAST({campo} AS TEXT) IN ({placeholders})",
+                _INVALIDOS,
+            )

@@ -17,6 +17,8 @@ import statistics as _stats
 import sys as _sys
 from typing import Optional
 
+from .utils import es_sector_financiero as _es_financiera_fn
+
 
 # ---------------------------------------------------------------------------
 # Metadatos de cada etapa
@@ -277,7 +279,11 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
 
     # Sector y EBITDA (para exclusiones sectoriales y de tamaño)
     sector      = (datos_empresa.get("sector") or "").strip()
+    industria   = (datos_empresa.get("industria") or datos_empresa.get("industry") or "").strip()
     ebitda_raw  = _safe_float(datos_empresa.get("ebitda_ttm"))
+
+    # Detección sector financiero: FCF no es señal válida para bancos/aseguradoras
+    es_financiera = _es_financiera_fn(sector, industria)
 
     # FIX 5A: Detect revenue irregularity via coefficient of variation
     revenue_irregular = False
@@ -488,6 +494,55 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
     if _aplicar_fix5b:
         scores[2] = 0.0
         scores[1] += 2.0
+
+    # ── Sector financiero: reemplazar scoring por señales apropiadas ─────────
+    # El FCF de bancos y aseguradoras es un artefacto contable, no mide
+    # rentabilidad. Se reinician los scores y se puntúa con ROE, net margin,
+    # revenue growth y dividendos — las métricas estándar del sector.
+    if es_financiera:
+        scores = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0, 6: 0.0}
+        # ROE — métrica principal para bancos
+        if roe is not None:
+            if roe > 0.12:
+                scores[5] += 3.0
+            elif roe > 0.08:
+                scores[5] += 1.5
+                scores[4] += 1.5
+            elif roe > 0:
+                scores[4] += 2.0
+            else:
+                scores[6] += 3.0
+        # Net margin — proxy de rentabilidad operativa
+        if net_margin is not None:
+            if net_margin > 0.15:
+                scores[5] += 2.0
+            elif net_margin > 0.08:
+                scores[4] += 2.0
+            elif net_margin > 0:
+                scores[3] += 1.5
+            else:
+                scores[6] += 2.0
+        # Revenue growth
+        if revenue_growth is not None:
+            if revenue_growth > 0.15:
+                scores[4] += 2.0
+            elif revenue_growth > 0.05:
+                scores[4] += 1.5
+                scores[5] += 0.5
+            elif revenue_growth > 0:
+                scores[5] += 1.5
+            else:
+                scores[6] += 2.0
+        # Dividendos — bancos rentables los pagan de forma estable
+        if has_dividends:
+            scores[5] += 3.0
+        # Mega-bancos no pueden ser Startup/Hyper Growth
+        if revenue_ttm is not None and revenue_ttm >= 50_000_000_000:
+            scores[1] = 0.0
+            scores[2] = 0.0
+        # Override de display: FCF no es señal válida para financieras
+        fcf_trend = "N/A — sector financiero"
+        fcf_cagr_display = "N/A — sector financiero"
 
     # ── Determinar etapa ganadora ────────────────────────────────────────────
     sorted_stages = sorted(scores.items(), key=lambda x: x[1], reverse=True)
@@ -707,6 +762,32 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         top_stage = 5
         confidence = "Media"
 
+    # ── OVERRIDE J: Sector financiero — red de seguridad ─────────────────────
+    # Si el scoring financiero aún deja Stage 6 con rentabilidad positiva,
+    # forzar reclasificación. Captura casos donde datos faltantes (roe=None)
+    # impiden que el scoring asigne suficientes puntos a Stage 4/5.
+    if (es_financiera and top_stage == 6
+            and net_margin is not None and net_margin > 0
+            and revenue_growth is not None and revenue_growth > 0):
+        target = 5 if (
+            (roe is not None and roe > 0.10)
+            or (has_dividends and net_margin > 0.10)
+        ) else 4
+        note = (
+            f"Empresa del sector financiero — el FCF no es señal válida para "
+            f"bancos/aseguradoras. Reclasificado de Decline a Etapa {target} por "
+            f"net_margin {net_margin:.1%} y revenue_growth {revenue_growth:.1%}."
+        )
+        stage_overrides.append({
+            "tipo": "J",
+            "nombre": "Sector financiero — FCF no aplicable",
+            "accion": f"stage_6_to_{target}",
+            "nota": note,
+        })
+        stage_notes.append(note)
+        top_stage = target
+        confidence = "Media"
+
     # ── Relevancia de las métricas que ya muestra la app ────────────────────
     filtros_relevancia: list[dict] = []
     for filtro in (financials.get("filtros") or []):
@@ -735,6 +816,17 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         dcf_warning_final = (
             "En reestructuración el FCF negativo refleja cargos extraordinarios, "
             "no el rendimiento operativo. Prefiere EV/EBITDA y Reverse DCF."
+        )
+    elif es_financiera:
+        # Para bancos/aseguradoras las métricas válidas son P/E, P/B, DDM y analistas
+        metricas_utiles_final      = ["P/E", "P/B", "DDM", "P/Forward Earnings"]
+        metricas_algo_utiles_final = ["ROE", "P/S"]
+        metricas_no_utiles_final   = ["DCF", "Reverse DCF", "P/FCF", "EV/EBITDA",
+                                      "Price / Gross Profit", "TAM"]
+        dcf_utility_final = "No es útil"
+        dcf_warning_final = (
+            "El DCF y los modelos basados en FCF no aplican a instituciones financieras. "
+            "El FCF contable de bancos no refleja generación de valor — usa P/E, P/B y DDM."
         )
     else:
         metricas_utiles_final      = meta["metricas_utiles"]
@@ -772,6 +864,7 @@ def detect_company_stage(ticker: str, financials: dict) -> dict:
         "metricas_utiles":       metricas_utiles_final,
         "metricas_algo_utiles":  metricas_algo_utiles_final,
         "metricas_no_utiles":    metricas_no_utiles_final,
+        "es_financiera":         es_financiera,
         "revenue_irregular":     revenue_irregular,
         "revenue_irregular_cv":  round(revenue_cv, 2) if revenue_cv is not None else None,
         "revenue_irregular_nota": (
