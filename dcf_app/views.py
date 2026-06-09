@@ -135,6 +135,10 @@ def _to_decimal(value, *, places: int | None = 4):
             dec_value = Decimal(str(value))
         except (InvalidOperation, TypeError, ValueError):
             return None
+    # Rechazar Infinity y NaN: SQLite los guarda como texto pero luego
+    # decimal.quantize() lanza InvalidOperation al leerlos de vuelta.
+    if dec_value.is_nan() or dec_value.is_infinite():
+        return None
     if places is None:
         return dec_value
     quant = Decimal("1." + ("0" * places))
@@ -1357,7 +1361,35 @@ def watchlist_prices_view(request):
 
 def history_view(request):
     if request.user.is_authenticated:
-        records = list(AnalysisRecord.objects.filter(user=request.user))
+        try:
+            records = list(AnalysisRecord.objects.filter(user=request.user))
+        except Exception:
+            # Algún registro tiene un DecimalField con valor inválido
+            # (Infinity / NaN). Limpiar y reintentar.
+            _limpiar_decimales_invalidos()
+            try:
+                records = list(AnalysisRecord.objects.filter(user=request.user))
+            except Exception:
+                records = []
     else:
         records = []
     return render(request, "dcf_app/history.html", {"records": records})
+
+
+def _limpiar_decimales_invalidos():
+    """
+    Pone a NULL los campos DecimalField que contienen Infinity/NaN en
+    la tabla de historial. Estos valores son válidos para Decimal de Python
+    pero Django/SQLite no puede leerlos de vuelta con quantize().
+    """
+    from django.db import connection
+    _CAMPOS = ("valor_intrinseco", "precio_actual", "diferencia_pct")
+    _INVALIDOS = ("Infinity", "-Infinity", "NaN", "inf", "-inf", "nan")
+    placeholders = ",".join(["?"] * len(_INVALIDOS))
+    with connection.cursor() as cursor:
+        for campo in _CAMPOS:
+            cursor.execute(
+                f"UPDATE dcf_app_analysisrecord SET {campo} = NULL "
+                f"WHERE {campo} IN ({placeholders})",
+                _INVALIDOS,
+            )
