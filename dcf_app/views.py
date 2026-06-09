@@ -318,6 +318,8 @@ def _guardar_analisis(
     company_name: str,
     company_exchange: str,
     resultado: dict[str, Any] | None,
+    precio_consenso: float | None = None,
+    veredicto_consenso: str | None = None,
 ):
     if not ticker or not isinstance(resultado, dict):
         return None
@@ -330,9 +332,32 @@ def _guardar_analisis(
         or AnalysisRecord.METODO_CAGR
     )
 
-    valor_intrinseco = _to_decimal(resultado.get("valor_intrinseco"), places=4)
-    precio_actual = _to_decimal(resultado.get("precio_actual"), places=4)
-    diferencia_pct = _to_decimal(resultado.get("diferencia_pct"), places=2)
+    precio_actual_raw = resultado.get("precio_actual")
+    precio_actual = _to_decimal(precio_actual_raw, places=4)
+
+    # Preferir el precio consenso multi-modelo sobre el valor intrínseco DCF.
+    # El consenso es el dato principal que el usuario ve en el análisis.
+    if precio_consenso is not None:
+        valor_intrinseco = _to_decimal(precio_consenso, places=4)
+        # Recalcular diferencia_pct y estado con el consenso
+        try:
+            pa = float(precio_actual_raw or 0)
+            if pa:
+                diferencia_pct = _to_decimal((precio_consenso - pa) / pa * 100, places=2)
+            else:
+                diferencia_pct = None
+        except Exception:
+            diferencia_pct = None
+        _VEREDICTO_MAP = {
+            "Subvaluada": "SUBVALUADA",
+            "Sobrevaluada": "SOBREVALUADA",
+            "Precio Razonable": "RAZONABLE",
+        }
+        estado = _VEREDICTO_MAP.get(veredicto_consenso or "", "") or (resultado.get("estado") or "").strip()
+    else:
+        valor_intrinseco = _to_decimal(resultado.get("valor_intrinseco"), places=4)
+        diferencia_pct = _to_decimal(resultado.get("diferencia_pct"), places=2)
+        estado = (resultado.get("estado") or "").strip()
 
     ventana_reciente = timezone.now() - timedelta(minutes=5)
     duplicado = AnalysisRecord.objects.filter(
@@ -361,7 +386,7 @@ def _guardar_analisis(
         valor_intrinseco=valor_intrinseco,
         precio_actual=precio_actual,
         diferencia_pct=diferencia_pct,
-        estado=(resultado.get("estado") or "").strip(),
+        estado=estado,
     )
 
 
@@ -503,13 +528,6 @@ def dcf_view(request):
                 if should_charge_analysis:
                     record_analysis_run(request)
                     _mark_analysis_usage_counted(request, ticker)
-                _guardar_analisis(
-                    user=request.user if request.user.is_authenticated else None,
-                    ticker=ticker,
-                    company_name=company_name,
-                    company_exchange=company_exchange,
-                    resultado=resultado,
-                )
 
     company_stage = None
     multi_model = None
@@ -538,6 +556,22 @@ def dcf_view(request):
             multi_model = run_all_models(ticker, resultado, stage_num, wacc_val, analyst_estimates=analyst_data)
         except Exception:
             multi_model = None
+
+        # Guardar en historial con el precio consenso multi-modelo como valor principal.
+        # Se ejecuta aquí, después de calcular multi_model, para tener el consenso real.
+        try:
+            _consenso = (multi_model or {}).get("consenso") or {}
+            _guardar_analisis(
+                user=request.user if request.user.is_authenticated else None,
+                ticker=ticker,
+                company_name=company_name,
+                company_exchange=company_exchange,
+                resultado=resultado,
+                precio_consenso=_consenso.get("precio"),
+                veredicto_consenso=_consenso.get("veredicto"),
+            )
+        except Exception:
+            pass
 
         try:
             filtros_etapa = build_filtros_por_etapa(resultado, stage_num)
