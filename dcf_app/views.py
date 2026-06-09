@@ -1361,19 +1361,51 @@ def watchlist_prices_view(request):
 
 def history_view(request):
     if request.user.is_authenticated:
-        try:
-            records = list(AnalysisRecord.objects.filter(user=request.user))
-        except Exception:
-            # Algún registro tiene un DecimalField con valor inválido
-            # (Infinity / NaN). Limpiar y reintentar.
-            _limpiar_decimales_invalidos()
-            try:
-                records = list(AnalysisRecord.objects.filter(user=request.user))
-            except Exception:
-                records = []
+        records = _cargar_historial_seguro(request.user)
     else:
         records = []
     return render(request, "dcf_app/history.html", {"records": records})
+
+
+def _cargar_historial_seguro(user):
+    """
+    Carga el historial tolerando registros con DecimalField inválidos.
+
+    Estrategia:
+      1. Limpiar valores Infinity/NaN en la DB (raw SQL, no usa ORM decimal).
+      2. Intentar la query normal.
+      3. Si aún falla, obtener solo los IDs (enteros, sin conversión decimal)
+         y cargar cada registro individualmente, saltando los problemáticos.
+    """
+    # Paso 1: sanear la DB antes de la query principal
+    try:
+        _limpiar_decimales_invalidos()
+    except Exception:
+        pass
+
+    # Paso 2: query normal
+    try:
+        return list(AnalysisRecord.objects.filter(user=user))
+    except Exception:
+        pass
+
+    # Paso 3: fallback — IDs primero (sin conversión decimal), luego uno a uno
+    try:
+        ids = list(
+            AnalysisRecord.objects.filter(user=user)
+            .order_by("-created_at")
+            .values_list("id", flat=True)
+        )
+    except Exception:
+        return []
+
+    records = []
+    for pk in ids:
+        try:
+            records.append(AnalysisRecord.objects.get(pk=pk))
+        except Exception:
+            pass
+    return records
 
 
 def _limpiar_decimales_invalidos():
@@ -1381,15 +1413,18 @@ def _limpiar_decimales_invalidos():
     Pone a NULL los campos DecimalField que contienen Infinity/NaN en
     la tabla de historial. Estos valores son válidos para Decimal de Python
     pero Django/SQLite no puede leerlos de vuelta con quantize().
+    Usa SQL raw para evitar el conversor decimal del ORM.
     """
     from django.db import connection
     _CAMPOS = ("valor_intrinseco", "precio_actual", "diferencia_pct")
-    _INVALIDOS = ("Infinity", "-Infinity", "NaN", "inf", "-inf", "nan")
+    # Cubre todas las variantes que SQLite puede haber almacenado
+    _INVALIDOS = ("Infinity", "-Infinity", "NaN", "inf", "-inf", "nan",
+                  "Inf", "-Inf")
     placeholders = ",".join(["?"] * len(_INVALIDOS))
     with connection.cursor() as cursor:
         for campo in _CAMPOS:
             cursor.execute(
                 f"UPDATE dcf_app_analysisrecord SET {campo} = NULL "
-                f"WHERE {campo} IN ({placeholders})",
+                f"WHERE CAST({campo} AS TEXT) IN ({placeholders})",
                 _INVALIDOS,
             )
