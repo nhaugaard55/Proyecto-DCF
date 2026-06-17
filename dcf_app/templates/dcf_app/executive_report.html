@@ -503,7 +503,7 @@
       Precio: {{ pdf_summary.data_price_timestamp }} ·
       Financials: {{ pdf_summary.data_financials_period }} ·
       Reporte generado: {{ pdf_summary.generated_at }} ·
-      Fuentes: {{ pdf_summary.sources }}
+      {% if mostrar_debug %}Fuentes: {{ pdf_summary.sources }}{% endif %}
     </div>
 
     <div class="footer">

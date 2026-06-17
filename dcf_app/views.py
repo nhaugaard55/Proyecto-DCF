@@ -1123,6 +1123,7 @@ def dcf_executive_report_view(request, ticker: str):
         "az_zona_text": az_zona_text,
         "insider_trading": insider_data,
         "analyst_estimates": analyst_data,
+        "mostrar_debug": request.user.is_staff,
     }
 
     try:
