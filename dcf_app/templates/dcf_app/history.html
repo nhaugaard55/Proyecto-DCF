@@ -307,6 +307,11 @@
 
     <div class="d-flex align-items-center justify-content-between mb-1">
       <h2 class="fw-bold mb-0">Historial de análisis</h2>
+      {% if records %}
+      <button type="button" class="btn btn-sm btn-outline-danger" id="btn-borrar-todo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:0.3rem;vertical-align:-1px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>Borrar todo el historial
+      </button>
+      {% endif %}
     </div>
     <p class="text-muted mb-3">Todos los escenarios de valoración evaluados.</p>
 
@@ -332,7 +337,7 @@
     <ul class="recent-history-list">
       {% for record in records %}
       {% with estado_slug=record.estado|default:''|slugify %}
-      <li class="recent-history-item" data-history-item>
+      <li class="recent-history-item" data-history-item data-record-id="{{ record.pk }}" data-record-ticker="{{ record.ticker }}">
         <button type="button" class="recent-chip" data-history-open aria-label="Ver detalle del análisis de {{ record.ticker }}">
           <div class="recent-chip-group">
             <span class="recent-chip-symbol">{{ record.ticker }}</span>
@@ -410,8 +415,11 @@
                 Método: {{ record.get_metodo_display }} · Fuente: {{ record.fuente_display }}
               </div>
             </div>
-            <div class="recent-actions">
+            <div class="recent-actions d-flex gap-2">
               <a class="btn btn-sm btn-outline-primary" href="{% url 'home' %}?ticker={{ record.ticker }}{% if record.company_name %}&company_name={{ record.company_name|urlencode }}{% endif %}{% if record.company_exchange %}&company_exchange={{ record.company_exchange|urlencode }}{% endif %}">Reanalizar</a>
+              <button type="button" class="btn btn-sm btn-outline-danger btn-borrar-registro">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:0.25rem;vertical-align:-1px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>Borrar
+              </button>
             </div>
           </article>
         </div>
@@ -442,6 +450,25 @@
       {% endif %}
     {% endif %}
 
+  </div>
+</div>
+
+<!-- Modal de confirmación de borrado -->
+<div id="confirm-modal-overlay" style="display:none;position:fixed;inset:0;z-index:1055;background:rgba(7,11,28,.55);backdrop-filter:blur(3px);align-items:center;justify-content:center;">
+  <div id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" style="background:var(--surface-card);border:1px solid var(--surface-border);border-radius:1.25rem;padding:2rem 2rem 1.5rem;max-width:420px;width:calc(100% - 2rem);box-shadow:0 24px 60px rgba(7,11,28,.35);">
+    <div style="display:flex;align-items:flex-start;gap:1rem;margin-bottom:1.25rem;">
+      <div id="confirm-modal-icon" style="flex-shrink:0;width:2.5rem;height:2.5rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(220,38,38,.12);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </div>
+      <div>
+        <h5 id="confirm-modal-title" style="margin:0 0 0.4rem;font-size:1.05rem;font-weight:700;color:var(--text-primary);"></h5>
+        <p id="confirm-modal-body" style="margin:0;font-size:0.875rem;color:var(--text-muted);line-height:1.5;"></p>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:0.6rem;">
+      <button type="button" id="confirm-modal-cancel" class="btn btn-sm btn-outline-secondary">Cancelar</button>
+      <button type="button" id="confirm-modal-confirm" class="btn btn-sm btn-danger">Confirmar</button>
+    </div>
   </div>
 </div>
 
@@ -666,6 +693,100 @@
 
   // Apply default count filter on load
   setCountFilter(activeCount);
+
+  // ── Modal de confirmación ─────────────────────────────────────
+  var overlay      = document.getElementById('confirm-modal-overlay');
+  var modalTitle   = document.getElementById('confirm-modal-title');
+  var modalBody    = document.getElementById('confirm-modal-body');
+  var btnCancel    = document.getElementById('confirm-modal-cancel');
+  var btnConfirm   = document.getElementById('confirm-modal-confirm');
+  var pendingAction = null; // function to execute on confirm
+
+  function showModal(title, body, onConfirm) {
+    modalTitle.textContent = title;
+    modalBody.textContent  = body;
+    pendingAction = onConfirm;
+    overlay.style.display = 'flex';
+    btnConfirm.focus();
+  }
+
+  function hideModal() {
+    overlay.style.display = 'none';
+    pendingAction = null;
+  }
+
+  btnCancel.addEventListener('click', hideModal);
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) hideModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && overlay.style.display === 'flex') hideModal();
+  });
+
+  btnConfirm.addEventListener('click', function () {
+    if (pendingAction) pendingAction();
+    hideModal();
+  });
+
+  function getCsrf() {
+    var m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+  }
+
+  function postJson(url, onSuccess) {
+    fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) { if (data.ok) onSuccess(); })
+    .catch(function () {});
+  }
+
+  // ── Borrar registro individual ────────────────────────────────
+  document.querySelectorAll('.btn-borrar-registro').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var li     = btn.closest('[data-history-item]');
+      var ticker = li ? li.dataset.recordTicker : '';
+      var id     = li ? li.dataset.recordId : '';
+      showModal(
+        'Borrar análisis de ' + ticker,
+        'Se eliminará este registro del historial. Esta acción es permanente y no se puede deshacer.',
+        function () {
+          postJson('{% url "history_delete_record" 0 %}'.replace('/0/', '/' + id + '/'), function () {
+            li.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+            li.style.opacity = '0';
+            li.style.transform = 'translateX(8px)';
+            setTimeout(function () { li.remove(); }, 260);
+          });
+        }
+      );
+    });
+  });
+
+  // ── Borrar todo el historial ──────────────────────────────────
+  var btnBorrarTodo = document.getElementById('btn-borrar-todo');
+  if (btnBorrarTodo) {
+    btnBorrarTodo.addEventListener('click', function () {
+      showModal(
+        'Borrar todo el historial',
+        'Se eliminarán permanentemente todos tus registros de análisis. Esta acción no se puede deshacer.',
+        function () {
+          postJson('{% url "history_delete_all" %}', function () {
+            var list = document.querySelector('.recent-history-list');
+            if (list) {
+              list.style.transition = 'opacity 0.25s ease';
+              list.style.opacity = '0';
+              setTimeout(function () { window.location.reload(); }, 270);
+            } else {
+              window.location.reload();
+            }
+          });
+        }
+      );
+    });
+  }
 })();
 </script>
 {% endblock %}

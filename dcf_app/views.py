@@ -1401,6 +1401,24 @@ def history_view(request):
     return render(request, "dcf_app/history.html", {"records": records})
 
 
+@require_POST
+def history_delete_record(request, record_id: int):
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False, "error": "Autenticación requerida"}, status=401)
+    deleted, _ = AnalysisRecord.objects.filter(pk=record_id, user=request.user).delete()
+    if not deleted:
+        return JsonResponse({"ok": False, "error": "Registro no encontrado"}, status=404)
+    return JsonResponse({"ok": True})
+
+
+@require_POST
+def history_delete_all(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False, "error": "Autenticación requerida"}, status=401)
+    AnalysisRecord.objects.filter(user=request.user).delete()
+    return JsonResponse({"ok": True})
+
+
 def _cargar_historial_seguro(user):
     """
     Carga el historial tolerando registros con DecimalField inválidos.

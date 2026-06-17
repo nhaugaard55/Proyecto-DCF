@@ -13,5 +13,7 @@ urlpatterns = [
     path('api/search_companies/', views.search_companies_view, name='company_search'),
     path('api/watchlist-prices/', views.watchlist_prices_view, name='watchlist_prices'),
     path('historial/', views.history_view, name='history'),
+    path('historial/borrar/<int:record_id>/', views.history_delete_record, name='history_delete_record'),
+    path('historial/borrar-todo/', views.history_delete_all, name='history_delete_all'),
     path('api/business-cycle/', views.business_cycle_view, name='business_cycle'),
 ]
