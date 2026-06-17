@@ -2483,8 +2483,8 @@
                                             {% if v is not None %}{{ v }}{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Gross Profit = Revenue − Costo de ventas · Gross Margin % = GP / Revenue">
-                                        <span class="analysis-data-label">Gross Profit TTM <span class="analysis-data-def">Revenue menos costo de ventas</span></span>
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Gross Profit = Revenue − Costo de ventas · Gross Margin % = GP / Revenue"{% else %}title="Ganancia bruta de la empresa"{% endif %}>
+                                        <span class="analysis-data-label">Gross Profit TTM {% if mostrar_debug %}<span class="analysis-data-def">Revenue menos costo de ventas</span>{% endif %}</span>
                                         {% with v=resultado.datos_empresa.gross_profit_ttm_display m=resultado.datos_empresa.gross_margin_pct %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}{{ v }}{% else %}N/D{% endif %}
@@ -2492,8 +2492,8 @@
                                         {% if m is not None %}<span class="adm-sub-label">Margen {{ m|floatformat:1 }}%</span>{% endif %}
                                         {% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Resultado antes de intereses, impuestos, depreciación y amortización · EBITDA Margin = EBITDA / Revenue">
-                                        <span class="analysis-data-label">EBITDA TTM <span class="analysis-data-def">Antes de int., imp., D&amp;A</span></span>
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Resultado antes de intereses, impuestos, depreciación y amortización · EBITDA Margin = EBITDA / Revenue"{% else %}title="Resultado antes de intereses, impuestos, depreciación y amortización"{% endif %}>
+                                        <span class="analysis-data-label">EBITDA TTM {% if mostrar_debug %}<span class="analysis-data-def">Antes de int., imp., D&amp;A</span>{% endif %}</span>
                                         {% with v=resultado.datos_empresa.ebitda_ttm_display m=resultado.datos_empresa.ebitda_margin_pct %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}{{ v }}{% else %}N/D{% endif %}
@@ -2501,7 +2501,7 @@
                                         {% if m is not None %}<span class="adm-sub-label">Margen {{ m|floatformat:1 }}%</span>{% endif %}
                                         {% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Ingreso neto = ganancia después de todos los costos e impuestos · Net Margin = NI / Revenue">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Ingreso neto = ganancia después de todos los costos e impuestos · Net Margin = NI / Revenue"{% else %}title="Ingreso neto después de todos los costos e impuestos"{% endif %}>
                                         <span class="analysis-data-label">Net Income TTM <span class="analysis-data-def">Ingreso neto, últimos 12 meses</span></span>
                                         {% with v=resultado.datos_empresa.net_income_ttm_display m=resultado.datos_empresa.net_margin_pct %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
@@ -2510,7 +2510,7 @@
                                         {% if m is not None %}<span class="adm-sub-label">Margen {{ m|floatformat:1 }}%</span>{% endif %}
                                         {% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Earnings Per Share, últimos 12 meses · EPS = Net Income / Shares Outstanding · Fuente: Yahoo Finance (trailingEps)"{% else %}title="Earnings Per Share, últimos 12 meses · EPS = Net Income / Shares Outstanding"{% endif %}>
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Earnings Per Share, últimos 12 meses · EPS = Net Income / Shares Outstanding · Fuente: Yahoo Finance (trailingEps)"{% else %}title="Earnings Per Share, últimos 12 meses"{% endif %}>
                                         <span class="analysis-data-label">EPS TTM <span class="analysis-data-def">Ganancia por acción, TTM</span></span>
                                         {% with v=resultado.datos_empresa.eps_ttm %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
@@ -2625,7 +2625,7 @@
                             <section class="analysis-data-group">
                                 <h3 class="analysis-data-group-title">Flujo de Caja</h3>
                                 <div class="analysis-data-cards">
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Free Cash Flow de los últimos 12 meses · FCF = Flujo operativo − Capex · Fuente: yfinance cashflow / FMP"{% else %}title="Free Cash Flow de los últimos 12 meses · FCF = Flujo operativo − Capex"{% endif %}>
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Free Cash Flow de los últimos 12 meses · FCF = Flujo operativo − Capex · Fuente: yfinance cashflow / FMP"{% else %}title="Free Cash Flow de los últimos 12 meses"{% endif %}>
                                         <span class="analysis-data-label">FCF TTM <span class="analysis-data-def">Free Cash Flow, últimos 12 meses</span></span>
                                         {% with v=resultado.datos_empresa.fcf_ttm_display %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
@@ -2660,22 +2660,22 @@
                                             {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="CAGR histórico del FCF usado en el modelo · Selección automática: valor más cercano a cero entre CAGR e incremento promedio">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="CAGR histórico del FCF usado en el modelo · Selección automática: valor más cercano a cero entre CAGR e incremento promedio"{% else %}title="CAGR histórico del FCF usado en el modelo"{% endif %}>
                                         <span class="analysis-data-label">CAGR FCF <span class="analysis-data-def">Tasa compuesta usada en el modelo</span></span>
                                         {% with v=resultado.metricas.crecimiento_cagr_pct %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}{{ v|floatformat:2 }}%{% elif resultado.metricas.cagr_fcf_todos_negativos %}N/A{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="FCF TTM dividido por las acciones en circulación · FCF/Share = FCF TTM / Shares Outstanding">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="FCF TTM dividido por las acciones en circulación · FCF/Share = FCF TTM / Shares Outstanding"{% else %}title="FCF TTM dividido por las acciones en circulación"{% endif %}>
                                         <span class="analysis-data-label">FCF / Acción <span class="analysis-data-def">FCF TTM por acción</span></span>
                                         {% with v=resultado.datos_empresa.fcf_per_share %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}${{ v|floatformat:2 }}{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Rendimiento del FCF sobre el Market Cap · FCF Yield = FCF TTM / Market Cap · Valores altos indican mayor generación de caja relativa a la valuación">
-                                        <span class="analysis-data-label">FCF Yield % <span class="analysis-data-def">FCF TTM / Market Cap</span></span>
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Rendimiento del FCF sobre el Market Cap · FCF Yield = FCF TTM / Market Cap · Valores altos indican mayor generación de caja relativa a la valuación"{% else %}title="Rendimiento del FCF sobre el Market Cap · Valores altos indican mayor generación de caja relativa a la valuación"{% endif %}>
+                                        <span class="analysis-data-label">FCF Yield % {% if mostrar_debug %}<span class="analysis-data-def">FCF TTM / Market Cap</span>{% endif %}</span>
                                         {% with v=resultado.datos_empresa.fcf_yield_pct %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}{{ v|floatformat:2 }}%{% else %}N/D{% endif %}
@@ -2710,7 +2710,7 @@
                                             {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Deuda LP + Deuda corriente · Usada en el cálculo de Deuda Neta">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Deuda LP + Deuda corriente · Usada en el cálculo de Deuda Neta"{% else %}title="Deuda total de la empresa"{% endif %}>
                                         <span class="analysis-data-label">Deuda total</span>
                                         {% with v=resultado.datos_empresa.deuda_total_billones %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
@@ -2724,7 +2724,7 @@
                                             {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Deuda Total − Caja · Valor positivo = empresa neta deudora · Valor negativo = empresa con caja neta">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Deuda Total − Caja · Valor positivo = empresa neta deudora · Valor negativo = empresa con caja neta"{% else %}title="Valor positivo = empresa neta deudora · Valor negativo = empresa con caja neta"{% endif %}>
                                         <span class="analysis-data-label">Deuda neta <span class="analysis-data-def">Deuda total menos caja</span></span>
                                         {% with v=resultado.datos_empresa.deuda_neta_billones %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
@@ -2745,8 +2745,8 @@
                                             {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Activos Totales − Pasivos Totales = valor contable del patrimonio neto · También llamado Book Value">
-                                        <span class="analysis-data-label">Patrimonio neto <span class="analysis-data-def">Activos − Pasivos (book value)</span></span>
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Activos Totales − Pasivos Totales = valor contable del patrimonio neto · También llamado Book Value"{% else %}title="Valor contable del patrimonio neto · También llamado Book Value"{% endif %}>
+                                        <span class="analysis-data-label">Patrimonio neto {% if mostrar_debug %}<span class="analysis-data-def">Activos − Pasivos (book value)</span>{% endif %}</span>
                                         {% with v=resultado.datos_empresa.patrimonio_neto_billones %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2780,7 +2780,7 @@
                                 <div class="analysis-data-cards">
                                     <!-- ROE -->
                                     {% with v=resultado.datos_empresa.roe_pct %}
-                                    <div class="analysis-data-metric" title="Return on Equity = Net Income / Patrimonio neto · Verde: &gt;15% · Amarillo: 10–15% · Rojo: &lt;10%">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Return on Equity = Net Income / Patrimonio neto · Verde: &gt;15% · Amarillo: 10–15% · Rojo: &lt;10%"{% else %}title="Rentabilidad sobre el patrimonio neto · Verde: &gt;15% · Amarillo: 10–15% · Rojo: &lt;10%"{% endif %}>
                                         <span class="analysis-data-label">ROE % <span class="analysis-data-def">Rentabilidad sobre patrimonio neto</span></span>
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}<span class="adm-tl-dot {% if v >= 15 %}adm-tl-green{% elif v >= 10 %}adm-tl-yellow{% else %}adm-tl-red{% endif %}"></span>{{ v|floatformat:1 }}%{% else %}N/D{% endif %}
@@ -2788,7 +2788,7 @@
                                     </div>{% endwith %}
                                     <!-- ROA -->
                                     {% with v=resultado.datos_empresa.roa_pct %}
-                                    <div class="analysis-data-metric" title="Return on Assets = Net Income / Activos Totales · Verde: &gt;5% · Amarillo: 2–5% · Rojo: &lt;2%">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Return on Assets = Net Income / Activos Totales · Verde: &gt;5% · Amarillo: 2–5% · Rojo: &lt;2%"{% else %}title="Rentabilidad sobre los activos totales · Verde: &gt;5% · Amarillo: 2–5% · Rojo: &lt;2%"{% endif %}>
                                         <span class="analysis-data-label">ROA % <span class="analysis-data-def">Rentabilidad sobre activos totales</span></span>
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}<span class="adm-tl-dot {% if v >= 5 %}adm-tl-green{% elif v >= 2 %}adm-tl-yellow{% else %}adm-tl-red{% endif %}"></span>{{ v|floatformat:1 }}%{% else %}N/D{% endif %}
@@ -2796,7 +2796,7 @@
                                     </div>{% endwith %}
                                     <!-- Debt/Capital -->
                                     {% with v=resultado.datos_empresa.debt_to_capital_pct %}
-                                    <div class="analysis-data-metric" title="Deuda LP / (Deuda LP + Market Cap) · Verde: &lt;25% · Amarillo: 25–50% · Rojo: &gt;50%">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Deuda LP / (Deuda LP + Market Cap) · Verde: &lt;25% · Amarillo: 25–50% · Rojo: &gt;50%"{% else %}title="Nivel de endeudamiento relativo al capital total · Verde: &lt;25% · Amarillo: 25–50% · Rojo: &gt;50%"{% endif %}>
                                         <span class="analysis-data-label">Debt/Capital % <span class="analysis-data-def">Deuda LP sobre capital total</span></span>
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}<span class="adm-tl-dot {% if v < 25 %}adm-tl-green{% elif v < 50 %}adm-tl-yellow{% else %}adm-tl-red{% endif %}"></span>{{ v|floatformat:1 }}%{% else %}N/D{% endif %}
@@ -2804,15 +2804,15 @@
                                     </div>{% endwith %}
                                     <!-- Current Ratio -->
                                     {% with v=resultado.datos_empresa.current_ratio_raw %}
-                                    <div class="analysis-data-metric" title="Activos Corrientes / Pasivos Corrientes · Mide liquidez a corto plazo · Verde: &gt;2 · Amarillo: 1–2 · Rojo: &lt;1">
-                                        <span class="analysis-data-label">Current Ratio <span class="analysis-data-def">Activos corrientes / Pasivos corrientes</span></span>
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Activos Corrientes / Pasivos Corrientes · Mide liquidez a corto plazo · Verde: &gt;2 · Amarillo: 1–2 · Rojo: &lt;1"{% else %}title="Mide liquidez a corto plazo · Verde: &gt;2 · Amarillo: 1–2 · Rojo: &lt;1"{% endif %}>
+                                        <span class="analysis-data-label">Current Ratio {% if mostrar_debug %}<span class="analysis-data-def">Activos corrientes / Pasivos corrientes</span>{% endif %}</span>
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}<span class="adm-tl-dot {% if v >= 2 %}adm-tl-green{% elif v >= 1 %}adm-tl-yellow{% else %}adm-tl-red{% endif %}"></span>{{ v|floatformat:2 }}x{% else %}N/D{% endif %}
                                         </span>
                                     </div>{% endwith %}
                                     <!-- P/B -->
                                     {% with v=resultado.datos_empresa.pb_ratio_raw %}
-                                    <div class="analysis-data-metric" title="Price to Book = Precio / Valor contable por acción · Verde: &lt;1 · Amarillo: 1–3 · Rojo: &gt;3">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Price to Book = Precio / Valor contable por acción · Verde: &lt;1 · Amarillo: 1–3 · Rojo: &gt;3"{% else %}title="Precio relativo al valor contable por acción · Verde: &lt;1 · Amarillo: 1–3 · Rojo: &gt;3"{% endif %}>
                                         <span class="analysis-data-label">P/B <span class="analysis-data-def">Precio sobre valor contable</span></span>
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}<span class="adm-tl-dot {% if v < 1 %}adm-tl-green{% elif v < 3 %}adm-tl-yellow{% else %}adm-tl-red{% endif %}"></span>{{ v|floatformat:2 }}x{% else %}N/D{% endif %}
@@ -2820,7 +2820,7 @@
                                     </div>{% endwith %}
                                     <!-- P/S -->
                                     {% with v=resultado.datos_empresa.ps_ratio_raw %}
-                                    <div class="analysis-data-metric" title="Price to Sales = Precio / Revenue por acción · Verde: &lt;2 · Amarillo: 2–4 · Rojo: &gt;4">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Price to Sales = Precio / Revenue por acción · Verde: &lt;2 · Amarillo: 2–4 · Rojo: &gt;4"{% else %}title="Precio relativo a los ingresos por acción · Verde: &lt;2 · Amarillo: 2–4 · Rojo: &gt;4"{% endif %}>
                                         <span class="analysis-data-label">P/S <span class="analysis-data-def">Precio sobre ingresos por acción</span></span>
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}<span class="adm-tl-dot {% if v < 2 %}adm-tl-green{% elif v < 4 %}adm-tl-yellow{% else %}adm-tl-red{% endif %}"></span>{{ v|floatformat:2 }}x{% else %}N/D{% endif %}
@@ -2828,7 +2828,7 @@
                                     </div>{% endwith %}
                                     <!-- P/E trailing -->
                                     {% with v=resultado.datos_empresa.pe_ratio_raw %}
-                                    <div class="analysis-data-metric" title="Price to Earnings trailing = Precio / EPS TTM · Verde: &lt;20 · Amarillo: 20–30 · Rojo: &gt;30">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Price to Earnings trailing = Precio / EPS TTM · Verde: &lt;20 · Amarillo: 20–30 · Rojo: &gt;30"{% else %}title="Precio relativo a las ganancias por acción · Verde: &lt;20 · Amarillo: 20–30 · Rojo: &gt;30"{% endif %}>
                                         <span class="analysis-data-label">P/E trailing <span class="analysis-data-def">Precio sobre EPS de los últimos 12m</span></span>
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}<span class="adm-tl-dot {% if v < 20 %}adm-tl-green{% elif v < 30 %}adm-tl-yellow{% else %}adm-tl-red{% endif %}"></span>{{ v|floatformat:2 }}x{% else %}N/D{% endif %}
@@ -2836,8 +2836,8 @@
                                     </div>{% endwith %}
                                     <!-- P/FCF -->
                                     {% with v=resultado.datos_empresa.p_fcf_raw %}
-                                    <div class="analysis-data-metric" title="Price to Free Cash Flow = Market Cap / FCF TTM · Verde: &lt;20 · Amarillo: 20–35 · Rojo: &gt;35 o negativo">
-                                        <span class="analysis-data-label">P/FCF trailing <span class="analysis-data-def">Market Cap / FCF TTM</span></span>
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Price to Free Cash Flow = Market Cap / FCF TTM · Verde: &lt;20 · Amarillo: 20–35 · Rojo: &gt;35 o negativo"{% else %}title="Precio relativo al flujo de caja libre · Verde: &lt;20 · Amarillo: 20–35 · Rojo: &gt;35 o negativo"{% endif %}>
+                                        <span class="analysis-data-label">P/FCF trailing {% if mostrar_debug %}<span class="analysis-data-def">Market Cap / FCF TTM</span>{% endif %}</span>
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}<span class="adm-tl-dot {% if v > 0 and v < 20 %}adm-tl-green{% elif v >= 20 and v < 35 %}adm-tl-yellow{% else %}adm-tl-red{% endif %}"></span>{{ v|floatformat:1 }}x{% else %}N/D{% endif %}
                                         </span>
@@ -2863,8 +2863,8 @@
                                             {% if v is not None %}{{ v|floatformat:2 }}B{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Capitalización de mercado = Precio × Shares Outstanding · Fuente: Yahoo Finance (marketCap)"{% else %}title="Capitalización de mercado = Precio × Shares Outstanding"{% endif %}>
-                                        <span class="analysis-data-label">Market Cap <span class="analysis-data-def">Precio × acciones en circulación</span></span>
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Capitalización de mercado = Precio × Shares Outstanding · Fuente: Yahoo Finance (marketCap)"{% else %}title="Capitalización de mercado"{% endif %}>
+                                        <span class="analysis-data-label">Market Cap {% if mostrar_debug %}<span class="analysis-data-def">Precio × acciones en circulación</span>{% endif %}</span>
                                         {% with v=resultado.datos_empresa.market_cap_billones %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
@@ -2877,15 +2877,15 @@
                                             {% if v is not None %}${{ v|floatformat:2 }}{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" title="Porcentaje del EPS que se paga como dividendo · Payout Ratio = DPS / EPS TTM · Valores muy altos pueden indicar dividendo insostenible">
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Porcentaje del EPS que se paga como dividendo · Payout Ratio = DPS / EPS TTM · Valores muy altos pueden indicar dividendo insostenible"{% else %}title="Porcentaje del EPS que se paga como dividendo · Valores muy altos pueden indicar dividendo insostenible"{% endif %}>
                                         <span class="analysis-data-label">Payout Ratio <span class="analysis-data-def">% del EPS pagado como dividendo</span></span>
                                         {% with v=payout_ratio_pct %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}
                                         </span>{% endwith %}
                                     </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Rendimiento del dividendo = DPS / Precio actual · Fuente: Yahoo Finance (dividendYield)"{% else %}title="Rendimiento del dividendo = DPS / Precio actual"{% endif %}>
-                                        <span class="analysis-data-label">Dividend Yield % <span class="analysis-data-def">DPS / Precio actual</span></span>
+                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Rendimiento del dividendo = DPS / Precio actual · Fuente: Yahoo Finance (dividendYield)"{% else %}title="Rendimiento del dividendo"{% endif %}>
+                                        <span class="analysis-data-label">Dividend Yield % {% if mostrar_debug %}<span class="analysis-data-def">DPS / Precio actual</span>{% endif %}</span>
                                         {% with v=resultado.dividendos.yield_pct %}
                                         <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
                                             {% if v is not None %}{{ v|floatformat:2 }}%{% else %}N/D{% endif %}
