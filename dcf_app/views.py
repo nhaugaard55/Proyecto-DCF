@@ -698,6 +698,7 @@ def dcf_view(request):
             "initial_page": page_number,
             "base_query": base_query_string,
         },
+        "mostrar_debug": request.user.is_staff,
         "filtros_etapa": filtros_etapa,
         "company_stage": company_stage,
         "stage_labels": ["Startup", "Hyper Growth", "Break Even", "Op. Leverage", "Cap. Return", "Decline"],

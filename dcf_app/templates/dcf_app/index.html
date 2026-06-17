@@ -2402,25 +2402,25 @@
                                 <span class="investment-score-component-label">Upside</span>
                                 <div class="fw-bold">{{ score.componentes.upside.puntos|floatformat:1 }} pts</div>
                                 <div class="text-muted small">Peso {{ score.componentes.upside.peso|floatformat:2 }}</div>
-                                <div class="small mt-2">{{ score.componentes.upside.detalle }}</div>
+                                {% if mostrar_debug %}<div class="small mt-2">{{ score.componentes.upside.detalle }}</div>{% endif %}
                             </div>
                             <div class="investment-score-component">
                                 <span class="investment-score-component-label">Confianza</span>
                                 <div class="fw-bold">{{ score.componentes.confianza.puntos|floatformat:1 }} pts</div>
                                 <div class="text-muted small">Peso {{ score.componentes.confianza.peso|floatformat:2 }}</div>
-                                <div class="small mt-2">{{ score.componentes.confianza.detalle }}</div>
+                                {% if mostrar_debug %}<div class="small mt-2">{{ score.componentes.confianza.detalle }}</div>{% endif %}
                             </div>
                             <div class="investment-score-component">
                                 <span class="investment-score-component-label">Solvencia</span>
                                 <div class="fw-bold">{{ score.componentes.solvencia.puntos|floatformat:1 }} pts</div>
                                 <div class="text-muted small">Peso {{ score.componentes.solvencia.peso|floatformat:2 }}</div>
-                                <div class="small mt-2">{{ score.componentes.solvencia.detalle }}</div>
+                                {% if mostrar_debug %}<div class="small mt-2">{{ score.componentes.solvencia.detalle }}</div>{% endif %}
                             </div>
                             <div class="investment-score-component">
                                 <span class="investment-score-component-label">Fundamentales</span>
                                 <div class="fw-bold">{{ score.componentes.fundamentals.puntos|floatformat:1 }} pts</div>
                                 <div class="text-muted small">Peso {{ score.componentes.fundamentals.peso|floatformat:2 }}</div>
-                                <div class="small mt-2">{{ score.componentes.fundamentals.detalle }}</div>
+                                {% if mostrar_debug %}<div class="small mt-2">{{ score.componentes.fundamentals.detalle }}</div>{% endif %}
                             </div>
                         </div>
                         {% if score.nota_etapa %}
@@ -3423,7 +3423,7 @@
                         </td>
                         <td class="text-end">{% if m.peso > 0 %}<span class="fw-semibold">{{ m.peso_pct|floatformat:1 }}%</span>{% else %}—{% endif %}</td>
                         <td class="text-center relevance-cell">{% if m.relevancia == "Útil" %}<span class="badge rlv-util"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Útil</span>{% elif m.relevancia == "Algo útil" %}<span class="badge rlv-algo"><svg class="mi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Algo útil</span>{% elif m.relevancia == "Referencia" %}<span class="badge bg-secondary-subtle text-secondary-emphasis"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> Referencia</span>{% else %}<span class="badge rlv-no"><svg class="mi" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> No útil</span>{% endif %}</td>
-                        <td class="text-muted small detail-cell">{{ m.detalle }}</td>
+                        <td class="text-muted small detail-cell">{% if mostrar_debug %}{{ m.detalle }}{% endif %}</td>
                       </tr>
                       {% endfor %}
                     </tbody>
@@ -3739,7 +3739,7 @@
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  {% if m.detalle and mostrar_debug %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
                 </div>
               </div>
             </div>
@@ -3774,7 +3774,7 @@
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  {% if m.detalle and mostrar_debug %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
                 </div>
               </div>
             </div>
@@ -3802,7 +3802,7 @@
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  {% if m.detalle and mostrar_debug %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
                 </div>
               </div>
             </div>
@@ -3830,7 +3830,7 @@
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  {% if m.detalle and mostrar_debug %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
                 </div>
               </div>
             </div>
@@ -3864,9 +3864,9 @@
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  {% if m.detalle and mostrar_debug %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
                   {% else %}
-                  <p class="text-muted small mb-0">{{ m.detalle }}</p>
+                  {% if mostrar_debug %}<p class="text-muted small mb-0">{{ m.detalle }}</p>{% endif %}
                   {% endif %}
                 </div>
               </div>
@@ -3906,9 +3906,9 @@
                     <div class="col-md-3"><span class="text-muted small d-block">Historial dividendos</span><span class="fw-semibold fs-5">{% if m.dividend_years %}{{ m.dividend_years }} años{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-2">{{ m.detalle }}</p>{% endif %}
+                  {% if m.detalle and mostrar_debug %}<p class="text-muted small mt-3 mb-2">{{ m.detalle }}</p>{% endif %}
                   {% else %}
-                  <p class="text-muted small mb-2">{{ m.detalle }}</p>
+                  {% if mostrar_debug %}<p class="text-muted small mb-2">{{ m.detalle }}</p>{% endif %}
                   {% endif %}
                   <p class="small mb-0" style="color:var(--text-muted);background:rgba(108,117,125,0.07);border-left:3px solid #6c757d;padding:.45rem .75rem;border-radius:0 .375rem .375rem 0;">
                     El DDM es más confiable en empresas con dividendos estables y predecibles: utilities, bancos, consumer staples y dividend aristocrats. Para empresas de crecimiento que no distribuyen caja, este modelo no aplica.
@@ -3941,7 +3941,7 @@
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  {% if m.detalle and mostrar_debug %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
                 </div>
               </div>
             </div>
@@ -3970,7 +3970,7 @@
                     <div class="col-md-3"><span class="text-muted small d-block">Valor estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  {% if m.detalle and mostrar_debug %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
                 </div>
               </div>
             </div>
@@ -4048,10 +4048,10 @@
                   </div>
 
                   {% else %}
-                  <p class="text-muted mb-0">{{ m.razon_no_aplicable|default:m.detalle }}</p>
+                  <p class="text-muted mb-0">{% if mostrar_debug %}{{ m.razon_no_aplicable|default:m.detalle }}{% else %}{{ m.razon_no_aplicable }}{% endif %}</p>
                   {% endif %}
 
-                  {% if m.detalle and m.aplicable %}<p class="text-muted small mb-0" style="font-size:0.75rem;">{{ m.detalle }}</p>{% endif %}
+                  {% if m.detalle and m.aplicable and mostrar_debug %}<p class="text-muted small mb-0" style="font-size:0.75rem;">{{ m.detalle }}</p>{% endif %}
                 </div>
               </div>
             </div>
@@ -4103,7 +4103,7 @@
                     <div class="col-md-3"><span class="text-muted small d-block">Valor/acción estimado</span><span class="fw-semibold fs-5">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}N/D{% endif %}</span></div>
                     <div class="col-md-3"><span class="text-muted small d-block">Peso en consenso</span><span class="fw-semibold fs-5">{% if m.peso > 0 %}{{ m.peso_pct|floatformat:1 }}%{% else %}—{% endif %}</span></div>
                   </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  {% if m.detalle and mostrar_debug %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
                 </div>
               </div>
             </div>
@@ -4142,7 +4142,7 @@
                     <strong>{{ rdcf.g_implicita_pct|floatformat:1 }}% anual</strong> durante 5 años. Vs CAGR histórico de <strong>{{ rdcf.cagr_historico_pct|floatformat:1 }}%</strong> → expectativa
                     <strong class="{% if rdcf.veredicto == 'Conservador' %}text-success{% elif rdcf.veredicto == 'Optimista' %}text-danger{% else %}text-warning{% endif %}">{{ rdcf.veredicto }}</strong>.
                   </div>
-                  {% else %}<p class="text-muted mb-0">{{ rdcf.detalle }}</p>{% endif %}
+                  {% else %}{% if mostrar_debug %}<p class="text-muted mb-0">{{ rdcf.detalle }}</p>{% endif %}{% endif %}
                 </div>
               </div>
             </div>
@@ -4203,9 +4203,9 @@
                     </tbody>
                   </table>
                   {% else %}
-                  <p class="text-muted small">{{ az.detalle }}</p>
+                  {% if mostrar_debug %}<p class="text-muted small">{{ az.detalle }}</p>{% endif %}
                   {% endif %}
-                  {% if az.detalle and az.disponible %}<p class="text-muted small mb-0">{{ az.detalle }}</p>{% endif %}
+                  {% if az.detalle and az.disponible and mostrar_debug %}<p class="text-muted small mb-0">{{ az.detalle }}</p>{% endif %}
                 </div>
               </div>
             </div>
@@ -4249,7 +4249,7 @@
                     <div class="col-md-3"><span class="text-muted small d-block">Factor de descuento</span>{% with v=m.discount_factor_pct %}<span class="fw-semibold">{% if v is not None %}{{ v|floatformat:1 }}%{% else %}N/D{% endif %}</span>{% endwith %}</div>
                     <div class="col-md-3"><span class="text-muted small d-block">Ingreso desc.</span>{% with v=m.revenue_objetivo_desc_billones %}<span class="fw-semibold">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</div>
                   </div>
-                  {% if m.detalle %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
+                  {% if m.detalle and mostrar_debug %}<p class="text-muted small mt-3 mb-0">{{ m.detalle }}</p>{% endif %}
                   <p class="small mt-2 mb-0" style="color:var(--text-muted);background:rgba(234,179,8,0.08);border-left:3px solid #ca8a04;padding:.45rem .75rem;border-radius:0 .375rem .375rem 0;">
                     Modelo orientativo — el TAM se estima a partir del revenue actual de la empresa, no de datos de mercado externos. Usar como referencia aproximada.
                   </p>
