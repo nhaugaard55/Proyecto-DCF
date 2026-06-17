@@ -515,7 +515,7 @@ def dcf_view(request):
             analysis_limit_exceeded = True
             analysis_limit_summary = get_usage_summary(request)
             if request.user.is_authenticated:
-                error = "Límite diario alcanzado."
+                error = "Alcanzaste tu límite diario."
             else:
                 error = "Llegaste al límite gratuito diario."
         else:

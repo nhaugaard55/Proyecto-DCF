@@ -23,7 +23,7 @@ PLAN_PRO = UserSubscription.PLAN_PRO
 DAILY_ANALYSIS_LIMITS = {
     PLAN_GUEST: 3,
     PLAN_ADMIN: 15,
-    PLAN_FREE: 15,
+    PLAN_FREE: 10,
     PLAN_PRO: None,
 }
 

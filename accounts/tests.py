@@ -203,18 +203,18 @@ class SubscriptionLimitTests(TestCase):
         self.assertEqual(summary.used, 3)
         self.assertEqual(summary.remaining, 0)
 
-    def test_free_allows_fifteen_analyses_then_blocks_sixteenth(self):
+    def test_free_allows_ten_analyses_then_blocks_eleventh(self):
         user = User.objects.create_user(username='free-user', email='free@example.com', password=self.password)
         request = self.request_for(user)
 
-        for _ in range(15):
+        for _ in range(10):
             self.assertTrue(can_run_analysis(request))
             record_analysis_run(request)
 
         self.assertFalse(can_run_analysis(request))
         summary = get_usage_summary(request)
         self.assertEqual(summary.plan, UserSubscription.PLAN_FREE)
-        self.assertEqual(summary.used, 15)
+        self.assertEqual(summary.used, 10)
         self.assertEqual(summary.remaining, 0)
 
     def test_pro_plan_is_unlimited(self):
@@ -350,4 +350,4 @@ class SubscriptionLimitTests(TestCase):
         self.assertRedirects(login_response, '/')
         summary = get_usage_summary(self.request_for(user))
         self.assertEqual(summary.used, 2)
-        self.assertEqual(summary.remaining, 13)
+        self.assertEqual(summary.remaining, 8)

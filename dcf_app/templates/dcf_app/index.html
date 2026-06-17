@@ -4894,10 +4894,8 @@
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
                 </div>
                 {% if request.user.is_authenticated %}
-                <h2 class="persist-cta-title" id="analysis-limit-title">Límite diario alcanzado</h2>
-                <p class="persist-cta-copy">Plan actual: <strong>{{ analysis_limit_summary.plan }}</strong></p>
-                <p class="persist-cta-copy">Análisis utilizados: <strong>{{ analysis_limit_summary.used }} / {{ analysis_limit_summary.limit }}</strong></p>
-                <p class="persist-cta-copy mb-0">Intrinsic Pro llegará próximamente.</p>
+                <h2 class="persist-cta-title" id="analysis-limit-title">Alcanzaste tu límite diario</h2>
+                <p class="persist-cta-copy mb-0">Llegaste a tus {{ analysis_limit_summary.limit }} análisis de hoy. El contador se renueva mañana.</p>
                 {% else %}
                 <h2 class="persist-cta-title" id="analysis-limit-title">Llegaste al límite gratuito diario</h2>
                 <p class="persist-cta-copy">Creá una cuenta gratis para seguir analizando con más capacidad diaria.</p>
