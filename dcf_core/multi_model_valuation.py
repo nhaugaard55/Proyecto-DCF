@@ -814,13 +814,16 @@ def _modelo_fwd_earnings(financials: dict, ratios: dict) -> dict:
     eps_fwd = _sf(datos.get("eps_forward"))
     pe_fwd_sector = ratios.get("pe_fwd", ratios["pe"])
 
-    # Fallback: eps_ttm * (1 + revenue_growth)
+    # Fallback: eps_ttm × (1 + crecimiento EPS)
     if eps_fwd is None:
         eps_ttm = _sf(datos.get("eps_ttm"))
-        rev_growth = _sf((financials.get("metricas") or {}).get("crecimiento_cagr")) or 0.0
+        eps_growth = _sf(datos.get("eps_growth_5y"))
+        if eps_growth is None:
+            eps_growth = _sf((financials.get("metricas") or {}).get("crecimiento_cagr")) or 0.0
+        eps_growth = max(min(eps_growth, 0.40), -0.40)
         if eps_ttm is not None and eps_ttm > 0:
-            eps_fwd = eps_ttm * (1 + rev_growth)
-            fuente_eps = f"estimado (EPS TTM ${eps_ttm:.2f} × {1+rev_growth:.2f})"
+            eps_fwd = eps_ttm * (1 + eps_growth)
+            fuente_eps = f"estimado (EPS TTM ${eps_ttm:.2f} × crecimiento EPS {eps_growth*100:.1f}%)"
         else:
             return {"valor": None, "aplicable": False,
                     "detalle": "EPS forward no disponible y EPS TTM negativo"}
