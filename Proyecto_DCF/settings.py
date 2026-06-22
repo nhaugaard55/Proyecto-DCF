@@ -49,6 +49,8 @@ CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get(
     "https://proyecto-dcf.onrender.com"
 ).split(",") if origin.strip()]
 
+GA_MEASUREMENT_ID = os.environ.get("GA_MEASUREMENT_ID", "")
+
 
 # Application definition
 
@@ -87,6 +89,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'accounts.context_processors.subscription_usage',
+                'accounts.context_processors.ga_measurement_id',
             ],
         },
     },
