@@ -915,6 +915,65 @@
         line-height: 1.2;
         margin-top: 1px;
     }
+    /* ── Compact two-column table (FCF + Balance sections) ───── */
+    .adtable {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: inherit;
+    }
+    .adtable td {
+        padding: 0.48rem 0.3rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--surface-border);
+    }
+    .adtable tr:last-child td {
+        border-bottom: none;
+    }
+    .adtable td:last-child {
+        text-align: right;
+        width: 1%;
+        padding-left: 1rem;
+        white-space: nowrap;
+    }
+    .adtable-sep td {
+        padding: 0.3rem 0;
+        border-bottom: none;
+    }
+    .adtable-sep-line {
+        height: 1px;
+        background: var(--surface-border);
+        border-radius: 1px;
+        opacity: 0.7;
+    }
+    .adtable-concept {
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        line-height: 1.25;
+    }
+    .adtable-def {
+        display: block;
+        font-size: 0.6rem;
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: normal;
+        opacity: 0.7;
+        line-height: 1.2;
+        margin-top: 1px;
+    }
+    .adtable-val {
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+    .adtable-val.is-missing {
+        color: var(--text-muted);
+        opacity: 0.7;
+    }
+    .theme-dark .adtable-val.is-missing { color: var(--text-muted); }
     /* ── Historical charts inside data accordion ─────────────── */
     .analysis-chart-card {
         background: var(--table-bg);
@@ -2624,64 +2683,49 @@
                             <!-- ══ 2. FLUJO DE CAJA ═════════════════════════════════════ -->
                             <section class="analysis-data-group">
                                 <h3 class="analysis-data-group-title">Flujo de Caja</h3>
-                                <div class="analysis-data-cards">
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Free Cash Flow de los últimos 12 meses · FCF = Flujo operativo − Capex · Fuente: yfinance cashflow / FMP"{% else %}title="Free Cash Flow de los últimos 12 meses"{% endif %}>
-                                        <span class="analysis-data-label">FCF TTM <span class="analysis-data-def">Free Cash Flow, últimos 12 meses</span></span>
-                                        {% with v=resultado.datos_empresa.fcf_ttm_display %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}{{ v }}{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" title="Free Cash Flow del último año fiscal completo">
-                                        {% with item=resultado.fcf_historico.0 %}
-                                        <span class="analysis-data-label">FCF año −1{% if item.anio %} ({{ item.anio }}){% endif %}</span>
-                                        <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
-                                            {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" title="Free Cash Flow de 2 años atrás">
-                                        {% with item=resultado.fcf_historico.1 %}
-                                        <span class="analysis-data-label">FCF año −2{% if item.anio %} ({{ item.anio }}){% endif %}</span>
-                                        <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
-                                            {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" title="Free Cash Flow de 3 años atrás">
-                                        {% with item=resultado.fcf_historico.2 %}
-                                        <span class="analysis-data-label">FCF año −3{% if item.anio %} ({{ item.anio }}){% endif %}</span>
-                                        <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
-                                            {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" title="Free Cash Flow de 4 años atrás">
-                                        {% with item=resultado.fcf_historico.3 %}
-                                        <span class="analysis-data-label">FCF año −4{% if item.anio %} ({{ item.anio }}){% endif %}</span>
-                                        <span class="analysis-data-value{% if item.valor is None %} is-missing{% endif %}">
-                                            {% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="CAGR histórico del FCF usado en el modelo · Selección automática: valor más cercano a cero entre CAGR e incremento promedio"{% else %}title="CAGR histórico del FCF usado en el modelo"{% endif %}>
-                                        <span class="analysis-data-label">CAGR FCF <span class="analysis-data-def">Tasa compuesta usada en el modelo</span></span>
-                                        {% with v=resultado.metricas.crecimiento_cagr_pct %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}{{ v|floatformat:2 }}%{% elif resultado.metricas.cagr_fcf_todos_negativos %}N/A{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="FCF TTM dividido por las acciones en circulación · FCF/Share = FCF TTM / Shares Outstanding"{% else %}title="FCF TTM dividido por las acciones en circulación"{% endif %}>
-                                        <span class="analysis-data-label">FCF / Acción <span class="analysis-data-def">FCF TTM por acción</span></span>
-                                        {% with v=resultado.datos_empresa.fcf_per_share %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}${{ v|floatformat:2 }}{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Rendimiento del FCF sobre el Market Cap · FCF Yield = FCF TTM / Market Cap · Valores altos indican mayor generación de caja relativa a la valuación"{% else %}title="Rendimiento del FCF sobre el Market Cap · Valores altos indican mayor generación de caja relativa a la valuación"{% endif %}>
-                                        <span class="analysis-data-label">FCF Yield % {% if mostrar_debug %}<span class="analysis-data-def">FCF TTM / Market Cap</span>{% endif %}</span>
-                                        {% with v=resultado.datos_empresa.fcf_yield_pct %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}{{ v|floatformat:2 }}%{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                </div>
+                                <table class="adtable">
+                                    <tr {% if mostrar_debug %}title="Free Cash Flow de los últimos 12 meses · FCF = Flujo operativo − Capex · Fuente: yfinance cashflow / FMP"{% else %}title="Free Cash Flow de los últimos 12 meses"{% endif %}>
+                                        <td class="adtable-concept">FCF TTM<span class="adtable-def">Free Cash Flow, últimos 12 meses</span></td>
+                                        <td>{% with v=resultado.datos_empresa.fcf_ttm_display %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}{{ v }}{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                    {% with item=resultado.fcf_historico.0 %}
+                                    <tr title="Free Cash Flow del último año fiscal completo">
+                                        <td class="adtable-concept">FCF año −1{% if item.anio %}<span class="adtable-def">{{ item.anio }}</span>{% endif %}</td>
+                                        <td><span class="adtable-val{% if item.valor is None %} is-missing{% endif %}">{% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}</span></td>
+                                    </tr>
+                                    {% endwith %}
+                                    {% with item=resultado.fcf_historico.1 %}
+                                    <tr title="Free Cash Flow de 2 años atrás">
+                                        <td class="adtable-concept">FCF año −2{% if item.anio %}<span class="adtable-def">{{ item.anio }}</span>{% endif %}</td>
+                                        <td><span class="adtable-val{% if item.valor is None %} is-missing{% endif %}">{% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}</span></td>
+                                    </tr>
+                                    {% endwith %}
+                                    {% with item=resultado.fcf_historico.2 %}
+                                    <tr title="Free Cash Flow de 3 años atrás">
+                                        <td class="adtable-concept">FCF año −3{% if item.anio %}<span class="adtable-def">{{ item.anio }}</span>{% endif %}</td>
+                                        <td><span class="adtable-val{% if item.valor is None %} is-missing{% endif %}">{% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}</span></td>
+                                    </tr>
+                                    {% endwith %}
+                                    {% with item=resultado.fcf_historico.3 %}
+                                    <tr title="Free Cash Flow de 4 años atrás">
+                                        <td class="adtable-concept">FCF año −4{% if item.anio %}<span class="adtable-def">{{ item.anio }}</span>{% endif %}</td>
+                                        <td><span class="adtable-val{% if item.valor is None %} is-missing{% endif %}">{% if item.valor is not None %}${{ item.valor|floatformat:2 }}B{% else %}N/D{% endif %}</span></td>
+                                    </tr>
+                                    {% endwith %}
+                                    <tr class="adtable-sep"><td colspan="2"><div class="adtable-sep-line"></div></td></tr>
+                                    <tr {% if mostrar_debug %}title="CAGR histórico del FCF usado en el modelo · Selección automática: valor más cercano a cero entre CAGR e incremento promedio"{% else %}title="CAGR histórico del FCF usado en el modelo"{% endif %}>
+                                        <td class="adtable-concept">CAGR FCF<span class="adtable-def">Tasa compuesta usada en el modelo</span></td>
+                                        <td>{% with v=resultado.metricas.crecimiento_cagr_pct %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}{{ v|floatformat:2 }}%{% elif resultado.metricas.cagr_fcf_todos_negativos %}N/A{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                    <tr {% if mostrar_debug %}title="FCF TTM dividido por las acciones en circulación · FCF/Share = FCF TTM / Shares Outstanding"{% else %}title="FCF TTM dividido por las acciones en circulación"{% endif %}>
+                                        <td class="adtable-concept">FCF / Acción<span class="adtable-def">FCF TTM por acción</span></td>
+                                        <td>{% with v=resultado.datos_empresa.fcf_per_share %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}${{ v|floatformat:2 }}{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                    <tr {% if mostrar_debug %}title="Rendimiento del FCF sobre el Market Cap · FCF Yield = FCF TTM / Market Cap · Valores altos indican mayor generación de caja relativa a la valuación"{% else %}title="Rendimiento del FCF sobre el Market Cap · Valores altos indican mayor generación de caja relativa a la valuación"{% endif %}>
+                                        <td class="adtable-concept">FCF Yield %{% if mostrar_debug %}<span class="adtable-def">FCF TTM / Market Cap</span>{% endif %}</td>
+                                        <td>{% with v=resultado.datos_empresa.fcf_yield_pct %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}{{ v|floatformat:2 }}%{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                </table>
                                 {% if chart_data.has_resultado %}
                                 <div class="analysis-data-section-chart">
                                     <div class="analysis-chart-card">
@@ -2695,64 +2739,41 @@
                             <!-- ══ 3. BALANCE ═══════════════════════════════════════════ -->
                             <section class="analysis-data-group">
                                 <h3 class="analysis-data-group-title">Balance</h3>
-                                <div class="analysis-data-cards">
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Deuda a largo plazo, vence en más de 1 año · Fuente: Yahoo Finance (longTermDebt)"{% else %}title="Deuda a largo plazo, vence en más de 1 año"{% endif %}>
-                                        <span class="analysis-data-label">Deuda largo plazo <span class="analysis-data-def">Vence en más de 1 año</span></span>
-                                        {% with v=resultado.datos_empresa.deuda_billones %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Deuda que vence en menos de 1 año · Fuente: Yahoo Finance (currentDebt)"{% else %}title="Deuda que vence en menos de 1 año"{% endif %}>
-                                        <span class="analysis-data-label">Deuda corriente <span class="analysis-data-def">Vence en menos de 1 año</span></span>
-                                        {% with v=deuda_corriente_billones %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Deuda LP + Deuda corriente · Usada en el cálculo de Deuda Neta"{% else %}title="Deuda total de la empresa"{% endif %}>
-                                        <span class="analysis-data-label">Deuda total</span>
-                                        {% with v=resultado.datos_empresa.deuda_total_billones %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Efectivo y equivalentes de caja · Fuente: Yahoo Finance (totalCash)"{% else %}title="Efectivo y equivalentes de caja"{% endif %}>
-                                        <span class="analysis-data-label">Caja y equivalentes</span>
-                                        {% with v=resultado.datos_empresa.caja_billones %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Deuda Total − Caja · Valor positivo = empresa neta deudora · Valor negativo = empresa con caja neta"{% else %}title="Valor positivo = empresa neta deudora · Valor negativo = empresa con caja neta"{% endif %}>
-                                        <span class="analysis-data-label">Deuda neta <span class="analysis-data-def">Deuda total menos caja</span></span>
-                                        {% with v=resultado.datos_empresa.deuda_neta_billones %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Activos liquidables en menos de 1 año · Fuente: balance sheet (Current Assets)"{% else %}title="Activos liquidables en menos de 1 año"{% endif %}>
-                                        <span class="analysis-data-label">Activos corrientes <span class="analysis-data-def">Liquidables en &lt; 1 año</span></span>
-                                        {% with v=total_current_assets_billones %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Suma de todos los pasivos de la empresa · Fuente: balance sheet (Total Liabilities)"{% else %}title="Suma de todos los pasivos de la empresa"{% endif %}>
-                                        <span class="analysis-data-label">Pasivos totales</span>
-                                        {% with v=total_liabilities_billones %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                    <div class="analysis-data-metric" {% if mostrar_debug %}title="Activos Totales − Pasivos Totales = valor contable del patrimonio neto · También llamado Book Value"{% else %}title="Valor contable del patrimonio neto · También llamado Book Value"{% endif %}>
-                                        <span class="analysis-data-label">Patrimonio neto {% if mostrar_debug %}<span class="analysis-data-def">Activos − Pasivos (book value)</span>{% endif %}</span>
-                                        {% with v=resultado.datos_empresa.patrimonio_neto_billones %}
-                                        <span class="analysis-data-value{% if v is None %} is-missing{% endif %}">
-                                            {% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}
-                                        </span>{% endwith %}
-                                    </div>
-                                </div>
+                                <table class="adtable">
+                                    <tr {% if mostrar_debug %}title="Deuda a largo plazo, vence en más de 1 año · Fuente: Yahoo Finance (longTermDebt)"{% else %}title="Deuda a largo plazo, vence en más de 1 año"{% endif %}>
+                                        <td class="adtable-concept">Deuda largo plazo<span class="adtable-def">Vence en más de 1 año</span></td>
+                                        <td>{% with v=resultado.datos_empresa.deuda_billones %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                    <tr {% if mostrar_debug %}title="Deuda que vence en menos de 1 año · Fuente: Yahoo Finance (currentDebt)"{% else %}title="Deuda que vence en menos de 1 año"{% endif %}>
+                                        <td class="adtable-concept">Deuda corriente<span class="adtable-def">Vence en menos de 1 año</span></td>
+                                        <td>{% with v=deuda_corriente_billones %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                    <tr {% if mostrar_debug %}title="Deuda LP + Deuda corriente · Usada en el cálculo de Deuda Neta"{% else %}title="Deuda total de la empresa"{% endif %}>
+                                        <td class="adtable-concept">Deuda total</td>
+                                        <td>{% with v=resultado.datos_empresa.deuda_total_billones %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                    <tr {% if mostrar_debug %}title="Efectivo y equivalentes de caja · Fuente: Yahoo Finance (totalCash)"{% else %}title="Efectivo y equivalentes de caja"{% endif %}>
+                                        <td class="adtable-concept">Caja y equivalentes</td>
+                                        <td>{% with v=resultado.datos_empresa.caja_billones %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                    <tr {% if mostrar_debug %}title="Deuda Total − Caja · Valor positivo = empresa neta deudora · Valor negativo = empresa con caja neta"{% else %}title="Valor positivo = empresa neta deudora · Valor negativo = empresa con caja neta"{% endif %}>
+                                        <td class="adtable-concept">Deuda neta<span class="adtable-def">Deuda total menos caja</span></td>
+                                        <td>{% with v=resultado.datos_empresa.deuda_neta_billones %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                    <tr class="adtable-sep"><td colspan="2"><div class="adtable-sep-line"></div></td></tr>
+                                    <tr {% if mostrar_debug %}title="Activos liquidables en menos de 1 año · Fuente: balance sheet (Current Assets)"{% else %}title="Activos liquidables en menos de 1 año"{% endif %}>
+                                        <td class="adtable-concept">Activos corrientes<span class="adtable-def">Liquidables en &lt; 1 año</span></td>
+                                        <td>{% with v=total_current_assets_billones %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                    <tr {% if mostrar_debug %}title="Suma de todos los pasivos de la empresa · Fuente: balance sheet (Total Liabilities)"{% else %}title="Suma de todos los pasivos de la empresa"{% endif %}>
+                                        <td class="adtable-concept">Pasivos totales</td>
+                                        <td>{% with v=total_liabilities_billones %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                    <tr {% if mostrar_debug %}title="Activos Totales − Pasivos Totales = valor contable del patrimonio neto · También llamado Book Value"{% else %}title="Valor contable del patrimonio neto · También llamado Book Value"{% endif %}>
+                                        <td class="adtable-concept">Patrimonio neto{% if mostrar_debug %}<span class="adtable-def">Activos − Pasivos (book value)</span>{% endif %}</td>
+                                        <td>{% with v=resultado.datos_empresa.patrimonio_neto_billones %}<span class="adtable-val{% if v is None %} is-missing{% endif %}">{% if v is not None %}${{ v|floatformat:2 }}B{% else %}N/D{% endif %}</span>{% endwith %}</td>
+                                    </tr>
+                                </table>
                                 <!-- Capital structure bar -->
                                 {% with eq_pct=resultado.datos_empresa.capital_bar_equity_pct dt_pct=resultado.datos_empresa.capital_bar_debt_pct %}
                                 {% if eq_pct is not None %}
