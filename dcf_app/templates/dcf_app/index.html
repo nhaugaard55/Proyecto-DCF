@@ -926,7 +926,8 @@
         vertical-align: middle;
         border-bottom: 1px solid var(--surface-border);
     }
-    .adtable tr:last-child td {
+    .adtable tr:last-child td,
+    .adtable tr:has(+ .adtable-sep) td {
         border-bottom: none;
     }
     .adtable td:last-child {
