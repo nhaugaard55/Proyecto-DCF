@@ -1532,40 +1532,37 @@
                 min-width: 0;
                 overflow: visible !important;
             }
-            .accordion-button > .acc-left > .fw-semibold {
+            .accordion-button > .acc-left > .fw-semibold,
+            .accordion-button > .acc-left > .acc-model-name {
                 min-width: 0;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+            }
+            /* Descripción secundaria del modelo: clase propia, sin conflicto con Bootstrap */
+            .accordion-button > .acc-left > .acc-model-name {
+                font-weight: 400;
+                font-size: 0.7rem;
+                color: var(--text-muted);
+                opacity: 0.85;
             }
             .accordion-button > .acc-left > .acc-relevance-badge {
                 justify-self: start;
                 width: max-content;
                 max-width: 6.5rem;
             }
-            /* Descripción secundaria del modelo (small, muted) en desktop */
-            .accordion-button > .acc-left:not(.acc-single-title) > .fw-semibold {
-                font-weight: 400;
-                font-size: 0.74rem;
-                color: var(--text-muted);
-                opacity: 0.85;
-            }
         }
 
         /* Elementos exclusivos de mobile — ocultos en desktop */
-        .acc-title-m { display: none; }
+        .acc-title-m { display: none; font-weight: 700; }
 
-        /* Nombre descriptivo para modelos sin acc-title-m (acc-single-title) */
+        /* Nombre descriptivo para modelos acc-single-title (Reverse DCF, Altman, TAM) */
         .acc-model-desc {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-weight: 400;
             color: var(--text-muted);
             opacity: 0.82;
-            margin-left: 0.35rem;
-        }
-        .acc-model-desc::before {
-            content: " · ";
-            opacity: 0.55;
+            margin-left: 0.1rem;
         }
 
         @media (max-width: 575.98px) {
@@ -1609,7 +1606,7 @@
                 width: 9.5rem;
             }
             /* Ocultar título largo; mostrar solo relevance-badge entre los badges */
-            .acc-left .fw-semibold { display: none; }
+            .acc-left .fw-semibold, .acc-left .acc-model-name { display: none; }
             .acc-left .badge:not(.acc-relevance-badge) { display: none; }
             .acc-left.acc-single-title .fw-semibold {
                 display: block;
@@ -3506,7 +3503,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-dcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
                     <span class="acc-title-m">DCF</span>
-                    <span class="fw-semibold">Flujo de Caja Descontado</span>
+                    <span class="acc-model-name">Flujo de Caja Descontado</span>
                     {% if multi_model %}{% with dcf_m=multi_model.modelos.dcf %}{% if dcf_m %}<span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if dcf_m.relevancia == 'Útil' %}rlv-util{% elif dcf_m.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ dcf_m.relevancia|default:"No útil" }}</span>{% else %}<span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge bg-secondary-subtle text-secondary-emphasis small">No aplicable</span>{% endif %}{% endwith %}{% else %}<span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge bg-secondary-subtle text-secondary-emphasis small">No aplicable</span>{% endif %}
                   </span>
                   <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">{% if resultado.valor_intrinseco is not None %}${{ resultado.valor_intrinseco|floatformat:2 }}{% else %}<span class="d-sm-none text-muted">N/D</span>{% endif %}</span>
@@ -3765,7 +3762,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pe" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
                     <span class="acc-title-m">P/E</span>
-                    <span class="fw-semibold">Price to Earnings Trailing</span>
+                    <span class="acc-model-name">Price to Earnings Trailing</span>
                     <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}rlv-util{% elif m.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ m.relevancia }}</span>
                   </span>
                   <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span class="d-sm-none text-muted">N/D</span>{% endif %}</span>
@@ -3794,7 +3791,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-ps" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
                     <span class="acc-title-m">P/S</span>
-                    <span class="fw-semibold">Price to Sales</span>
+                    <span class="acc-model-name">Price to Sales</span>
                     <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}rlv-util{% elif m.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ m.relevancia }}</span>
                   </span>
                   <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span class="d-sm-none text-muted">N/D</span>{% endif %}</span>
@@ -3829,7 +3826,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pgp" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
                     <span class="acc-title-m">P/GP</span>
-                    <span class="fw-semibold">Price to Gross Profit</span>
+                    <span class="acc-model-name">Price to Gross Profit</span>
                     <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}rlv-util{% elif m.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ m.relevancia }}</span>
                   </span>
                   <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span class="d-sm-none text-muted">N/D</span>{% endif %}</span>
@@ -3857,7 +3854,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-pfcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
                     <span class="acc-title-m">P/FCF</span>
-                    <span class="fw-semibold">Price to Free Cash Flow Trailing</span>
+                    <span class="acc-model-name">Price to Free Cash Flow Trailing</span>
                     <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}rlv-util{% elif m.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ m.relevancia }}</span>
                   </span>
                   <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span class="d-sm-none text-muted">N/D</span>{% endif %}</span>
@@ -3885,7 +3882,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-ev-ebitda" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
                     <span class="acc-title-m">EV/EBITDA</span>
-                    <span class="fw-semibold">Enterprise Value sobre EBITDA</span>
+                    <span class="acc-model-name">Enterprise Value sobre EBITDA</span>
                     {% if m.aplicable %}
                       <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}rlv-util{% elif m.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ m.relevancia }}</span>
                     {% else %}
@@ -3922,7 +3919,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-ddm" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
                     <span class="acc-title-m">DDM</span>
-                    <span class="fw-semibold">Dividend Discount Model</span>
+                    <span class="acc-model-name">Dividend Discount Model</span>
                     {% if m.aplicable %}
                       <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}rlv-util{% elif m.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ m.relevancia }}</span>
                     {% else %}
@@ -3967,7 +3964,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-fwd-e" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
                     <span class="acc-title-m">P/E Fwd</span>
-                    <span class="fw-semibold">Price to Earnings Forward</span>
+                    <span class="acc-model-name">Price to Earnings Forward</span>
                     <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}rlv-util{% elif m.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ m.relevancia }}</span>
                   </span>
                   <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span class="d-sm-none text-muted">N/D</span>{% endif %}</span>
@@ -3996,7 +3993,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-fwd-fcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
                     <span class="acc-title-m">P/FCF Fwd</span>
-                    <span class="fw-semibold">Price to Free Cash Flow Forward</span>
+                    <span class="acc-model-name">Price to Free Cash Flow Forward</span>
                     <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}rlv-util{% elif m.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ m.relevancia }}</span>
                   </span>
                   <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span class="d-sm-none text-muted">N/D</span>{% endif %}</span>
@@ -4025,7 +4022,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-schwab" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
                     <span class="acc-title-m">EGM</span>
-                    <span class="fw-semibold">Earnings Growth Model</span>
+                    <span class="acc-model-name">Earnings Growth Model</span>
                     <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}rlv-util{% elif m.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ m.relevancia }}</span>
                   </span>
                   <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span class="d-sm-none text-muted">N/D</span>{% endif %}</span>
@@ -4106,7 +4103,7 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-liq" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left">
                     <span class="acc-title-m">Liquidación</span>
-                    <span class="fw-semibold">Valor de Liquidación</span>
+                    <span class="acc-model-name">Valor de Liquidación</span>
                     <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if m.relevancia == 'Útil' %}rlv-util{% elif m.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ m.relevancia }}</span>
                   </span>
                   <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span class="d-sm-none text-muted">N/D</span>{% endif %}</span>
@@ -4164,7 +4161,7 @@
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-rdcf" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left acc-single-title">
-                    <span class="fw-semibold">Reverse DCF<span class="acc-model-desc">Tasa de crecimiento implícita</span></span>
+                    <span class="fw-semibold">Reverse DCF<span class="acc-model-desc"> · Tasa de crecimiento implícita</span></span>
                     <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge {% if rdcf.relevancia == 'Útil' %}rlv-util{% elif rdcf.relevancia == 'Algo útil' %}rlv-algo{% else %}rlv-no{% endif %} small">{{ rdcf.relevancia }}</span>
                   </span>
                   <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">{% if rdcf.g_implicita_pct is not None %}<span class="d-none d-sm-inline">Crecimiento implícito: {{ rdcf.g_implicita_pct|floatformat:1 }}%</span><span class="d-sm-none">g = {{ rdcf.g_implicita_pct|floatformat:1 }}%</span>{% else %}<span class="d-sm-none text-muted">N/D</span>{% endif %}</span>
@@ -4196,7 +4193,7 @@
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-altman" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left acc-single-title">
-                    <span class="fw-semibold">Altman Z-Score<span class="acc-model-desc">Indicador de solvencia</span></span>
+                    <span class="fw-semibold">Altman Z-Score<span class="acc-model-desc"> · Indicador de solvencia</span></span>
                     {% if az.disponible %}
                       <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge small {% if az.zona_code == 'safe' %}rlv-util{% elif az.zona_code == 'grey' %}rlv-algo{% else %}bg-danger-subtle text-danger-emphasis{% endif %}">{{ az.zona }}</span>
                     {% else %}
@@ -4266,7 +4263,7 @@
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-tam" style="background:var(--surface-card); color:var(--text-primary); box-shadow:none;">
                   <span class="acc-left acc-single-title">
-                    <span class="fw-semibold">{{ m.nombre }}<span class="acc-model-desc">Total Addressable Market</span></span>
+                    <span class="fw-semibold">{{ m.nombre }}<span class="acc-model-desc"> · Total Addressable Market</span></span>
                     <span style="position:absolute;left:31rem;top:50%;transform:translateY(-50%);" class="badge acc-relevance-badge bg-secondary-subtle text-secondary-emphasis small">No aplicable</span>
                   </span>
                   <span class="acc-price" style="position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:.82rem;white-space:nowrap;color:var(--bs-secondary-color,#6c757d);pointer-events:none;">{% if m.valor is not None %}${{ m.valor|floatformat:2 }}{% else %}<span class="d-sm-none text-muted">N/D</span>{% endif %}</span>
