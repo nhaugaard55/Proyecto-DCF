@@ -1539,20 +1539,22 @@
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
-            /* Abreviación: no encoge, bold (heredado de .acc-title-m global) */
+            /* Abreviación: bold, no encoge */
             .accordion-button > .acc-left > .acc-title-m {
                 flex-shrink: 0;
                 white-space: nowrap;
+                font-weight: 700 !important;
+                font-size: 0.875rem !important;
             }
-            /* Descripción: ocupa el resto, letra chica y muted */
+            /* Descripción: letra chica y muted, ocupa el resto */
             .accordion-button > .acc-left > .acc-model-name {
                 flex: 1;
                 min-width: 0;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
-                font-weight: 400;
-                font-size: 0.7rem;
+                font-weight: 400 !important;
+                font-size: 0.68rem !important;
                 color: var(--text-muted);
                 opacity: 0.85;
             }
