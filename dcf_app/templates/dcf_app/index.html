@@ -1522,39 +1522,44 @@
 
         @media (min-width: 576px) {
             .accordion-button > .acc-left {
-                display: grid !important;
-                grid-template-columns: minmax(0, 24rem) 6.5rem;
-                align-items: center;
-                gap: 0.5rem;
+                display: flex !important;
+                align-items: baseline;
+                gap: 0.4rem;
                 flex: 0 0 31rem !important;
                 width: 31rem !important;
                 max-width: 31rem !important;
                 min-width: 0;
-                overflow: visible !important;
+                overflow: hidden !important;
             }
-            .accordion-button > .acc-left > .fw-semibold,
-            .accordion-button > .acc-left > .acc-model-name {
+            /* fw-semibold (acc-single-title): ocupa todo el espacio disponible */
+            .accordion-button > .acc-left > .fw-semibold {
+                flex: 1;
                 min-width: 0;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
-            /* Descripción secundaria del modelo: clase propia, sin conflicto con Bootstrap */
+            /* Abreviación: no encoge, bold (heredado de .acc-title-m global) */
+            .accordion-button > .acc-left > .acc-title-m {
+                flex-shrink: 0;
+                white-space: nowrap;
+            }
+            /* Descripción: ocupa el resto, letra chica y muted */
             .accordion-button > .acc-left > .acc-model-name {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
                 font-weight: 400;
                 font-size: 0.7rem;
                 color: var(--text-muted);
                 opacity: 0.85;
             }
-            .accordion-button > .acc-left > .acc-relevance-badge {
-                justify-self: start;
-                width: max-content;
-                max-width: 6.5rem;
-            }
         }
 
-        /* Elementos exclusivos de mobile — ocultos en desktop */
-        .acc-title-m { display: none; font-weight: 700; }
+        /* Abreviación del modelo: siempre bold */
+        .acc-title-m { font-weight: 700; font-size: 0.875rem; }
 
         /* Nombre descriptivo para modelos acc-single-title (Reverse DCF, Altman, TAM) */
         .acc-model-desc {
