@@ -16,4 +16,5 @@ urlpatterns = [
     path('historial/borrar/<int:record_id>/', views.history_delete_record, name='history_delete_record'),
     path('historial/borrar-todo/', views.history_delete_all, name='history_delete_all'),
     path('api/business-cycle/', views.business_cycle_view, name='business_cycle'),
+    path('staff/export-md/<str:ticker>/', views.admin_export_md_view, name='admin_export_md'),
 ]

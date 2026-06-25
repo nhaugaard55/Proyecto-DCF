@@ -942,6 +942,66 @@ def _pdf_logo_uri() -> str | None:
     return Path(logo_path).as_uri()
 
 
+def admin_export_md_view(request, ticker: str):
+    """Exporta el análisis completo como archivo Markdown — solo admin/staff."""
+    from django.contrib.auth.decorators import user_passes_test
+    from dcf_core.exportar_md import build_admin_md
+
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return HttpResponse("Acceso denegado", status=403)
+
+    ticker = (ticker or "").strip().upper()
+    if not ticker:
+        return HttpResponse("Ticker inválido", status=400)
+
+    try:
+        resultado = _cached_ejecutar_dcf(ticker)
+    except Exception as exc:
+        return HttpResponse(f"Error al ejecutar análisis: {exc}", status=500)
+
+    if not resultado or not isinstance(resultado, dict):
+        return HttpResponse("No hay datos para este ticker.", status=404)
+
+    try:
+        company_stage = detect_company_stage(ticker, resultado)
+    except Exception:
+        company_stage = None
+
+    try:
+        _precio = float(resultado.get("precio_actual") or 0) or None
+        analyst_data = get_analyst_estimates(ticker, precio_actual=_precio)
+    except Exception:
+        analyst_data = {"disponible": False}
+
+    try:
+        stage_num = (company_stage or {}).get("stage", 4)
+        wacc_val = (resultado.get("metricas") or {}).get("wacc") or 0.08
+        multi_model = run_all_models(ticker, resultado, stage_num, wacc_val, analyst_estimates=analyst_data)
+    except Exception:
+        multi_model = None
+
+    try:
+        insider_data = get_insider_trading(ticker)
+    except Exception:
+        insider_data = {"disponible": False}
+
+    contenido = build_admin_md(
+        ticker=ticker,
+        resultado=resultado,
+        multi_model=multi_model,
+        company_stage=company_stage,
+        analyst_data=analyst_data,
+        insider_data=insider_data,
+    )
+
+    from datetime import datetime
+    ts = datetime.now().strftime("%Y%m%d_%H%M")
+    filename = f"intrinsic_{ticker}_{ts}.md"
+    response = HttpResponse(contenido, content_type="text/markdown; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
 def dcf_executive_report_view(request, ticker: str):
     ticker = (ticker or "").strip().upper()
 

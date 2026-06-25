@@ -4884,6 +4884,12 @@
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8M5 7.5l3 3 3-3M2 13h12"/></svg>
         Descargar PDF
     </a>
+    {% if mostrar_debug %}
+    <a href="{% url 'admin_export_md' ticker %}" class="action-pill" style="background:var(--accent,#6366f1);color:#fff;">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 6h6M5 9h4"/></svg>
+        Exportar MD (Admin)
+    </a>
+    {% endif %}
     <button type="button" id="watchlist-btn"
         class="action-pill {% if in_watchlist %}action-pill--active{% endif %}"
         data-ticker="{{ ticker }}"
