@@ -129,10 +129,16 @@ def build_admin_md(
     exchange = _s(datos.get("exchange") or resultado.get("exchange"))
     fuente = _s(resultado.get("fuente_datos"))
 
+    moneda_reporte = datos.get("moneda_reporte") or "USD"
+    fx_aplicado = datos.get("fx_aplicado")
+    fx_label = f"{fx_aplicado:,.2f} {moneda_reporte}/USD" if fx_aplicado is not None else "N/A (USD)"
+
     ln(f"**Empresa:** {nombre}  ")
     ln(f"**Sector:** {sector}  ")
     ln(f"**Exchange:** {exchange}  ")
     ln(f"**Fuente datos FCF:** {fuente}  ")
+    ln(f"**Moneda reporte:** {moneda_reporte}  ")
+    ln(f"**FX aplicado:** {fx_label}  ")
     ln()
 
     # ── 1. PRECIO Y VEREDICTO ─────────────────────────────────────────────────
@@ -624,6 +630,9 @@ def build_admin_md(
     nota_estructura = datos.get("nota_estructura_capital")
     if nota_estructura:
         avisos.append(f"**Estructura capital:** {nota_estructura}")
+    moneda_aviso = datos.get("moneda_aviso")
+    if moneda_aviso:
+        avisos.append(f"**Moneda:** {moneda_aviso}")
     beta_aviso = datos.get("beta_aviso")
     if beta_aviso:
         avisos.append(f"**Beta aviso:** {beta_aviso}")

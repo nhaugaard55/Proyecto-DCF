@@ -20,6 +20,7 @@ class FCFEntry:
 
     year: Optional[int]
     value: float
+    date: Optional[str] = None  # YYYY-MM-DD real del statement (para FX histórico por fecha)
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,7 @@ class FMPDerivedMetrics:
     tax_samples: Dict[int, float]
     cost_of_debt: Optional[float]
     cost_samples: Dict[int, float]
+    reported_currency: str = "USD"
     nota_estructura_capital: Optional[str] = None
 
 
@@ -211,17 +213,17 @@ class FMPClient:
 
             year_value = statement.get("calendarYear") or ""
             year: Optional[int]
+            raw_date: Optional[str] = statement.get("date") or None
             try:
                 year = int(year_value)
             except (TypeError, ValueError):
                 # Algunos tickers devuelven "date" como AAAA-MM-DD
-                raw_date = statement.get("date") or ""
                 try:
                     year = int(str(raw_date)[:4]) if raw_date else None
                 except (TypeError, ValueError):
                     year = None
 
-            history.append(FCFEntry(year=year, value=value))
+            history.append(FCFEntry(year=year, value=value, date=raw_date))
 
         return history
 
@@ -457,6 +459,13 @@ def obtener_metricas_financieras(ticker: str, limite: int = 5) -> FMPDerivedMetr
     income_statements = cliente.get_income_statements(ticker, limit=limite)
     balance_statements = cliente.get_balance_sheet_statements(ticker, limit=limite)
 
+    # Moneda de reporte: tomar del primer income statement disponible
+    reported_currency = "USD"
+    if income_statements and isinstance(income_statements, list):
+        _rc = income_statements[0].get("reportedCurrency")
+        if _rc and isinstance(_rc, str) and _rc.strip():
+            reported_currency = _rc.strip().upper()
+
     # Para la detección de empresa con brazo financiero
     revenue_total: Optional[float] = None
     total_debt_total: Optional[float] = None
@@ -597,4 +606,5 @@ def obtener_metricas_financieras(ticker: str, limite: int = 5) -> FMPDerivedMetr
         cost_of_debt=costo_promedio,
         cost_samples=costo_por_año,
         nota_estructura_capital=nota_estructura_capital,
+        reported_currency=reported_currency,
     )

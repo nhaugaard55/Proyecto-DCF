@@ -544,11 +544,46 @@ def analizar_empresa(
     metricas_fuente: Optional[Dict[str, dict]] = None,
     empresa_yf: Optional[yf.Ticker] = None,
     skip_news: bool = False,
+    moneda_reporte: str = "USD",
+    fx_spot: float = 1.0,
+    fx_historico: Optional[dict] = None,
 ):
+    if fx_historico is None:
+        fx_historico = {}
+
     if empresa_yf is None:
         empresa_yf = yf.Ticker(ticker)
 
     info = getattr(empresa_yf, "info", {}) or {}
+
+    # Detección de moneda para llamadas standalone (sin DCF_Main).
+    # Si DCF_Main ya detectó y pasó moneda_reporte != "USD", respetar ese valor.
+    if moneda_reporte == "USD":
+        from .fx import detectar_moneda_yfinance
+        moneda_reporte = detectar_moneda_yfinance(info)
+    if moneda_reporte != "USD" and fx_spot == 1.0:
+        from .fx import obtener_fx_spot, obtener_fx_historico
+        fx_spot = obtener_fx_spot(moneda_reporte)
+        fx_historico = obtener_fx_historico(moneda_reporte)
+
+    # Helper de conversión local→USD. Cero efecto cuando fx_spot == 1.0 (moneda USD).
+    # rate = local por 1 USD → value_usd = value_local / rate
+    def _to_usd(valor, fecha=None):
+        if fx_spot == 1.0 or valor is None:
+            return valor
+        from .fx import convertir_a_usd
+        if fecha is not None:
+            return convertir_a_usd(float(valor), fecha, fx_historico, fx_spot)
+        return float(valor) / fx_spot
+
+    moneda_aviso: Optional[str] = None
+    if moneda_reporte != "USD":
+        moneda_aviso = (
+            f"Estados financieros en {moneda_reporte}. "
+            f"Convertidos a USD con FX histórico mensual (yfinance {moneda_reporte}=X). "
+            f"Spot actual: {fx_spot:,.2f} {moneda_reporte}/USD."
+        )
+
     history = empresa_yf.history(period="1d")
 
     nombre = info.get("longName", ticker)
@@ -623,12 +658,18 @@ def analizar_empresa(
     equity = acciones * precio
 
     balance = getattr(empresa_yf, "balance_sheet", None)
+    # Fecha del balance más reciente (para FX histórico por fecha, no spot)
+    _bs_fecha = (
+        balance.columns[0]
+        if balance is not None and not balance.empty and len(balance.columns) > 0
+        else None
+    )
     debt = 0.0
     if balance is not None and not balance.empty and "Long Term Debt" in balance.index:
         deuda_series = balance.loc["Long Term Debt"].dropna()
         if not deuda_series.empty:
-            debt = to_float(deuda_series.iloc[0], 0)
-    cash = to_float(info.get("totalCash"), 0)
+            debt = to_float(_to_usd(deuda_series.iloc[0], _bs_fecha), 0)
+    cash = _to_usd(to_float(info.get("totalCash"), 0) or None, _bs_fecha) or 0.0
     if (not cash) and balance is not None and not balance.empty:
         for label in (
             "Cash And Cash Equivalents",
@@ -638,11 +679,8 @@ def analizar_empresa(
             if label in balance.index:
                 cash_series = balance.loc[label].dropna()
                 if not cash_series.empty:
-                    cash = to_float(cash_series.iloc[0], 0)
+                    cash = to_float(_to_usd(cash_series.iloc[0], _bs_fecha), 0)
                     break
-    # Chequeo de escala de caja: mismo problema que revenue en ADRs de moneda local
-    if cash and equity > 0 and cash > equity * 5:
-        cash = cash / 1000
     net_debt = debt - cash  # LT-only, mantenido por compatibilidad
 
     # Deuda total (LP + corriente) para cálculo correcto del equity value
@@ -652,11 +690,11 @@ def analizar_empresa(
         if "Total Debt" in balance.index:
             _td = balance.loc["Total Debt"].dropna()
             if not _td.empty:
-                total_debt = to_float(_td.iloc[0], 0)
+                total_debt = to_float(_to_usd(_td.iloc[0], _bs_fecha), 0)
         elif "Short Long Term Debt" in balance.index:
             _cd = balance.loc["Short Long Term Debt"].dropna()
             if not _cd.empty:
-                current_debt = to_float(_cd.iloc[0], 0)
+                current_debt = to_float(_to_usd(_cd.iloc[0], _bs_fecha), 0)
                 total_debt = debt + current_debt
     net_debt_total = total_debt - cash
 
@@ -681,7 +719,7 @@ def analizar_empresa(
             if _label in balance.index:
                 _s = balance.loc[_label].dropna()
                 if not _s.empty:
-                    _v = to_optional_float(_s.iloc[0])
+                    _v = _to_usd(to_optional_float(_s.iloc[0]), _bs_fecha)
                     if _key == "ca":   total_current_assets_val = _v
                     elif _key == "cl": total_current_liabilities_val = _v
                     elif _key == "ta": total_assets_val = _v
@@ -706,6 +744,13 @@ def analizar_empresa(
     # solo Q1+Q2 reportados) junto a los años completos anteriores.
     _income_stmt_parcial = _primer_periodo_es_parcial(income_stmt)
 
+    # Fecha del income_stmt más reciente para FX histórico
+    _is_fecha = (
+        income_stmt.columns[0]
+        if income_stmt is not None and not income_stmt.empty and len(income_stmt.columns) > 0
+        else None
+    )
+
     # EBIT from income statement
     ebit_val = None
     try:
@@ -715,13 +760,13 @@ def analizar_empresa(
                 if _ebit_label in _stmt.index:
                     _ebit_s = _stmt.loc[_ebit_label].dropna()
                     if not _ebit_s.empty:
-                        ebit_val = to_optional_float(_ebit_s.iloc[0])
+                        ebit_val = _to_usd(to_optional_float(_ebit_s.iloc[0]), _is_fecha)
                         break
     except Exception:
         ebit_val = None
 
-    # EBITDA — primary from yfinance info, fallback EBIT + D&A from cashflow
-    ebitda_val = to_optional_float(info.get("ebitda"))
+    # EBITDA — primary from yfinance info (en moneda local → spot), fallback EBIT + D&A
+    ebitda_val = _to_usd(to_optional_float(info.get("ebitda")))
     if ebitda_val is None and ebit_val is not None:
         try:
             _cf = getattr(empresa_yf, "cashflow", None)
@@ -782,15 +827,21 @@ def analizar_empresa(
     # La exclusión de períodos parciales (_primer_periodo_es_parcial) aplica SOLO
     # a las series anuales para el CAGR, nunca al cálculo TTM.
     _ttm_q = _metricas_ttm_trimestral(empresa_yf)
+    # Convertir TTM trimestrales a USD usando spot (son datos recientes, spot es correcto)
+    if moneda_reporte != "USD":
+        for _k in ("revenue", "net_income", "gross_profit", "fcf"):
+            if _ttm_q[_k] is not None:
+                _ttm_q[_k] = _to_usd(_ttm_q[_k])
 
     fcf: list[float] = []
     fcf_presentacion: list[tuple[Optional[int], float]] = []
     _cashflow_parcial = False  # inicializar antes del if/else; se sobreescribe en el else
     _año_actual = datetime.now().year
     if fcf_historial:
-        # FMP path: excluir entradas del año fiscal en curso (incompleto).
-        # El año en curso (year >= _año_actual) puede ser un stub parcial.
-        # PRINCIPIO: el CAGR usa solo años completos; el TTM viene de quarters.
+        # FMP path: fcf_historial ya viene convertido a USD desde DCF_Main.
+        # Si analizar_empresa se llama standalone, los valores están en moneda local
+        # y el _to_usd abajo los convertiría — pero FCFEntry.date ya no está disponible
+        # aquí de forma fiable, así que se omite la doble conversión.
         for entrada in fcf_historial:
             raw_valor = getattr(entrada, "value", None)
             if raw_valor is None:
@@ -807,8 +858,8 @@ def analizar_empresa(
             fcf.append(valor)
             fcf_presentacion.append((year, valor))
     else:
-        # yfinance path: filtrar stub anual Y usar fechas reales del índice
-        # (no etiquetas añadidas por año_actual - i, que serían incorrectas)
+        # yfinance path: filtrar stub anual Y usar fechas reales del índice.
+        # Aplicar FX por fecha de columna (cada columna es un Timestamp con la fecha real).
         cashflow = getattr(empresa_yf, "cashflow", None)
         _cashflow_parcial = _primer_periodo_es_parcial(cashflow)
         if cashflow is not None and not cashflow.empty and "Free Cash Flow" in cashflow.index:
@@ -817,7 +868,7 @@ def analizar_empresa(
                 _fcf_raw_series = _fcf_raw_series.iloc[1:]
             fcf_series = _fcf_raw_series.head(5)
             for _col, _val in fcf_series.items():
-                _v = to_float(_val, 0.0)
+                _v = to_float(_to_usd(_val, _col), 0.0)
                 try:
                     _yr = _col.year if hasattr(_col, "year") else int(str(_col)[:4])
                 except Exception:
@@ -979,8 +1030,8 @@ def analizar_empresa(
     dividend_yield = normalizar_dividend_yield(
         info.get("dividendYield"), info.get("dividendRate"), precio
     )
-    total_assets = info.get("totalAssets")
-    total_liabilities = info.get("totalLiab")
+    total_assets = _to_usd(to_optional_float(info.get("totalAssets")))
+    total_liabilities = _to_usd(to_optional_float(info.get("totalLiab")))
     net_worth_per_share = None
     if total_assets and total_liabilities and acciones:
         net_worth_per_share = (total_assets - total_liabilities) / acciones
@@ -1006,24 +1057,23 @@ def analizar_empresa(
         if wacc > 0 and crecimiento_largo_plazo < wacc:
             valor_terminal = (fcf_final * (1 + crecimiento_largo_plazo)) / (wacc - crecimiento_largo_plazo)
 
-    # Chequeo de escala: yfinance a veces devuelve revenue/GP/EBITDA en moneda local
-    # sin conversión (p.ej. YPF en ARS), produciendo valores 1000x demasiado altos.
-    # Umbral de 100x para no afectar empresas con P/S bajo pero legítimo.
-    # Preferir TTM trimestral (4 quarters) sobre info.get() que puede devolver
-    # el acumulado del año parcial en curso en vez del TTM real.
+    # TTM revenue/GP: ya convertidos en _ttm_q si moneda != USD.
+    # Fallbacks de info.get() también necesitan conversión (spot, son valores actuales).
     revenue_raw = (
         _ttm_q["revenue"]
         if _ttm_q["revenue"] is not None
-        else to_optional_float(info.get("totalRevenue"))
+        else _to_usd(to_optional_float(info.get("totalRevenue")))
     )
     gross_profit_raw = (
         _ttm_q["gross_profit"]
         if _ttm_q["gross_profit"] is not None
-        else to_optional_float(info.get("grossProfits"))
+        else _to_usd(to_optional_float(info.get("grossProfits")))
     )
     escala_ajustada = False
     escala_aviso = None
-    if revenue_raw is not None and equity > 0 and revenue_raw > equity * 100:
+    # Heurística ÷1000: solo activa si NO se aplicó conversión real (fx_spot == 1.0).
+    # Si la conversión FX ya normalizó los valores, esta heurística no debe interferir.
+    if fx_spot == 1.0 and revenue_raw is not None and equity > 0 and revenue_raw > equity * 100:
         _rev_b_antes = revenue_raw / 1e9
         _mcap_b = equity / 1e9
         revenue_raw = revenue_raw / 1000
@@ -1043,12 +1093,12 @@ def analizar_empresa(
     net_income_ttm = (
         _ttm_q["net_income"]
         if _ttm_q["net_income"] is not None
-        else to_optional_float(info.get("netIncomeToCommon"))
+        else _to_usd(to_optional_float(info.get("netIncomeToCommon")))
     )
     if net_income_ttm is None and income_stmt is not None and not income_stmt.empty and "Net Income" in income_stmt.index:
         net_income_series = income_stmt.loc["Net Income"].dropna()
         if not net_income_series.empty:
-            net_income_ttm = to_optional_float(net_income_series.iloc[0])
+            net_income_ttm = _to_usd(to_optional_float(net_income_series.iloc[0]), _is_fecha)
 
     payout_ratio = to_optional_float(info.get("payoutRatio"))
     if payout_ratio is None and eps_ttm is not None and eps_ttm > 0 and annual_dividend is not None:
@@ -1065,7 +1115,11 @@ def analizar_empresa(
                     if _income_stmt_parcial and len(_rev_s) > 1:
                         _rev_s = _rev_s.iloc[1:]  # omitir año parcial en curso
                     _rev_s = _rev_s.head(5)
-                    _rev_list = [to_optional_float(v) for v in _rev_s.tolist()]
+                    # Convertir a USD por fecha de columna (cada columna es Timestamp)
+                    _rev_list = [
+                        _to_usd(to_optional_float(v), col)
+                        for col, v in _rev_s.items()
+                    ]
                     revenue_historico_raw = [v for v in _rev_list if v is not None]
                     break
     except Exception:
@@ -1092,7 +1146,7 @@ def analizar_empresa(
                         _rev_s = _rev_s.iloc[1:]
                     _rev_s = _rev_s.head(5)
                     for _col, _val in _rev_s.items():
-                        _v = to_optional_float(_val)
+                        _v = _to_usd(to_optional_float(_val), _col)
                         if _v is not None:
                             try:
                                 _yr = _col.year if hasattr(_col, 'year') else int(str(_col)[:4])
@@ -1111,7 +1165,7 @@ def analizar_empresa(
                 _ni_s = _ni_s.iloc[1:]
             _ni_s = _ni_s.head(5)
             for _col, _val in _ni_s.items():
-                _v = to_optional_float(_val)
+                _v = _to_usd(to_optional_float(_val), _col)
                 if _v is not None:
                     try:
                         _yr = _col.year if hasattr(_col, 'year') else int(str(_col)[:4])
@@ -1243,6 +1297,9 @@ def analizar_empresa(
         "gross_profit_ttm_display": smart_format_billions(gross_profit_raw),
         "escala_ajustada": escala_ajustada,
         "escala_aviso": escala_aviso,
+        "moneda_reporte": moneda_reporte,
+        "fx_aplicado": round(fx_spot, 6) if fx_spot != 1.0 else None,
+        "moneda_aviso": moneda_aviso,
         "net_income_ttm": net_income_ttm,
         "net_income_ttm_billones": to_billions(net_income_ttm),
         "net_income_ttm_display": smart_format_billions(net_income_ttm),
@@ -1277,9 +1334,9 @@ def analizar_empresa(
         "total_current_assets": total_current_assets_val,
         "total_current_assets_billones": to_billions(total_current_assets_val),
         "total_current_liabilities": total_current_liabilities_val,
-        "total_assets": total_assets_val if total_assets_val is not None else to_optional_float(info.get("totalAssets")),
-        "total_liabilities": total_liab_val if total_liab_val is not None else to_optional_float(info.get("totalLiab")),
-        "total_liabilities_billones": to_billions(total_liab_val if total_liab_val is not None else to_optional_float(info.get("totalLiab"))),
+        "total_assets": total_assets_val if total_assets_val is not None else total_assets,
+        "total_liabilities": total_liab_val if total_liab_val is not None else total_liabilities,
+        "total_liabilities_billones": to_billions(total_liab_val if total_liab_val is not None else total_liabilities),
         "retained_earnings": retained_earnings_val,
         "ebit": ebit_val,
         "ebitda_ttm": ebitda_val,

@@ -13,6 +13,12 @@ from .fmp import (
     obtener_fcf_historico,
     obtener_metricas_financieras,
 )
+from .fx import (
+    detectar_moneda_yfinance,
+    obtener_fx_spot,
+    obtener_fx_historico,
+    convertir_a_usd,
+)
 
 _PREFETCH_TIMEOUT = 20  # segundos máximos por tarea
 
@@ -341,6 +347,31 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
         ticker, empresa_yf
     )
 
+    # ── Detección de moneda y conversión FX ─────────────────────
+    # Guard: si moneda == "USD" no se realizan llamadas externas de FX.
+    _info_dict = getattr(empresa_yf, "info", {}) or {}
+    moneda_reporte = detectar_moneda_yfinance(_info_dict)
+    # Fallback a FMP si yfinance no expone financialCurrency
+    if moneda_reporte == "USD" and metricas_fmp is not None:
+        _fmp_currency = getattr(metricas_fmp, "reported_currency", "USD")
+        if _fmp_currency != "USD":
+            moneda_reporte = _fmp_currency
+
+    fx_spot: float = 1.0
+    fx_historico: dict = {}
+    if moneda_reporte != "USD":
+        fx_spot = obtener_fx_spot(moneda_reporte)
+        fx_historico = obtener_fx_historico(moneda_reporte)
+        # Convertir fcf_historial usando la fecha real de cada statement (no diciembre asumido)
+        fcf_historial = [
+            FCFEntry(
+                year=e.year,
+                date=e.date,
+                value=convertir_a_usd(e.value, e.date or e.year, fx_historico, fx_spot),
+            )
+            for e in fcf_historial
+        ]
+
     # ── Determinar fuente de FCF ─────────────────────────────────
     if fcf_historial:
         # Excluir el año fiscal en curso si FMP lo incluyó como entrada parcial.
@@ -356,6 +387,9 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
     if fuente_utilizada != "fmp":
         valores_para_crecimiento = _obtener_fcf_yfinance(ticker, empresa_yf, limite=5)
         fuente_utilizada = "yfinance"
+        # Convertir a USD usando spot (no hay fechas individuales en esta serie)
+        if moneda_reporte != "USD" and fx_spot != 1.0:
+            valores_para_crecimiento = [v / fx_spot for v in valores_para_crecimiento]
 
         if fmp_error:
             mensajes_fuente.append(
@@ -474,6 +508,7 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
             fcf_historial if fuente_utilizada == "fmp" else None,
             tax_rate_override, cost_of_debt_override, metricas_fuente, empresa_yf,
             True,  # skip_news
+            moneda_reporte, fx_spot, fx_historico,
         )
         resultado = _f_dcf.result()
         noticias_data = _f_noticias.result()
