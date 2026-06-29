@@ -538,9 +538,10 @@ def build_admin_md(
         ln()
 
     # ── 11. ESCENARIOS ───────────────────────────────────────────────────────
+    _dcf_aplica = resultado.get("valor_intrinseco") is not None
     escenarios = resultado.get("escenarios") or {}
+    ln(_section("11. Escenarios (Base / Optimista / Pesimista)"))
     if escenarios:
-        ln(_section("11. Escenarios (Base / Optimista / Pesimista)"))
         ln(_table_header(["Escenario", "Crecimiento", "Valor intrínseco", "Upside"]))
         for nombre_esc in ("base", "bull", "bear"):
             esc = escenarios.get(nombre_esc) or {}
@@ -551,12 +552,14 @@ def build_admin_md(
                     f"| {_price(esc.get('valor_intrinseco') or esc.get('valor'))} "
                     f"| {_pct(esc.get('upside_pct') or esc.get('diferencia_pct'), signed=True)} |"
                 )
-        ln()
+    elif not _dcf_aplica:
+        ln("_(No disponible — mismo criterio que DCF simple: FCF base negativo o WACC no calculable)_")
+    ln()
 
     # ── 12. TABLA DE SENSIBILIDAD ────────────────────────────────────────────
     tabla = resultado.get("tabla_sensibilidad") or {}
+    ln(_section("12. Tabla de Sensibilidad (WACC × Crecimiento)"))
     if tabla:
-        ln(_section("12. Tabla de Sensibilidad (WACC × Crecimiento)"))
         crecimientos = tabla.get("crecimientos") or []
         filas = tabla.get("rows") or []   # key is "rows" not "filas"
         precio_actual_ts = tabla.get("precio_actual")
@@ -573,7 +576,9 @@ def build_admin_md(
                 ln("| " + wacc_label + " | " + " | ".join(cells) + " |")
         elif not crecimientos or not filas:
             ln("_(tabla no disponible en context)_")
-        ln()
+    elif not _dcf_aplica:
+        ln("_(No disponible — mismo criterio que DCF simple: FCF base negativo o WACC no calculable)_")
+    ln()
 
     # ── 13. ANALISTAS ────────────────────────────────────────────────────────
     if analyst_data and analyst_data.get("disponible"):
