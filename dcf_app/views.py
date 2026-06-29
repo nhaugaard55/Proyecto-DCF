@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, cast
 from urllib.parse import urlencode
 
+from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles import finders
 from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
@@ -1002,7 +1003,14 @@ def admin_export_md_view(request, ticker: str):
     return response
 
 
+@login_required   # CR-02: cierra acceso anónimo — anónimo → /accounts/login/?next=...
 def dcf_executive_report_view(request, ticker: str):
+    # ACTIVAR AL LANZAR PAGOS: PDF exclusivo Pro/Plus
+    # from accounts.subscription import get_user_plan, PLAN_PRO, PLAN_ADMIN
+    # plan = get_user_plan(request)
+    # if plan not in (PLAN_PRO, PLAN_ADMIN):
+    #     return redirect('/?#pricing')
+
     ticker = (ticker or "").strip().upper()
 
     if not ticker:
