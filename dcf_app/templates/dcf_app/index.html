@@ -4377,8 +4377,8 @@
                     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
                     <script type="text/javascript">
                     (function() {
-                        var TV_CONTAINER_ID = "tradingview_chart_{{ ticker }}";
-                        var TV_SYMBOL = "{{ tradingview_symbol }}";
+                        var TV_CONTAINER_ID = "tradingview_chart_{{ ticker|escapejs }}";
+                        var TV_SYMBOL = "{{ tradingview_symbol|escapejs }}";
 
                         function getIsDark() {
                             var stored; try { stored = localStorage.getItem('dcf-ui-theme'); } catch(e) {}
