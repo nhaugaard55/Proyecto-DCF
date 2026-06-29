@@ -234,6 +234,7 @@ def build_admin_md(
     ln(_row("Kd (costo deuda)", _pct_dec(metricas.get("kd") or datos.get("cost_of_debt"), decimals=2)))
     ln(_row("Kd after-tax", _pct(_kd_at_pct, decimals=2) if _kd_at_pct is not None else "(no expuesto en context)"))
     ln(_row("Rf (tasa libre de riesgo)", _pct(metricas.get("tasa_rf_pct") or (metricas.get("tasa_rf") and metricas["tasa_rf"]*100), decimals=2)))
+    ln(_row("Fuente Rf", _s(metricas.get("rf_fuente"))))
     ln(_row("Rm (retorno esperado mercado)", _pct(metricas.get("market_return_pct") or (metricas.get("market_return") and metricas["market_return"]*100), decimals=2)))
     ln(_row("Beta", _fmt(metricas.get("beta") or datos.get("beta"))))
     ln(_row("Tax rate efectivo", _pct(_tax_pct, decimals=1) if _tax_pct is not None else "(no expuesto en context)"))
