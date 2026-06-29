@@ -328,10 +328,8 @@ def _guardar_analisis(
     nombre_empresa = (company_name or resultado.get("nombre") or ticker).strip()
     sector = (resultado.get("sector") or "").strip()
     fuente_utilizada = (resultado.get("fuente_datos") or "").strip()
-    metodo = (
-        (resultado.get("datos_empresa") or {}).get("metodo_crecimiento_codigo")
-        or AnalysisRecord.METODO_CAGR
-    )
+    _raw_metodo = (resultado.get("datos_empresa") or {}).get("metodo_crecimiento_codigo")
+    metodo = _raw_metodo if _raw_metodo in dict(AnalysisRecord.METODO_CHOICES) else None
 
     precio_actual_raw = resultado.get("precio_actual")
     precio_actual = _to_decimal(precio_actual_raw, places=4)

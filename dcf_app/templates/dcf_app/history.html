@@ -412,7 +412,7 @@
                 <span class="fw-semibold">{% if record.precio_actual is not None %}${{ record.precio_actual|floatformat:2 }}{% else %}N/D{% endif %}</span>
               </div>
               <div class="text-muted small">
-                Método: {{ record.get_metodo_display }} · Fuente: {{ record.fuente_display }}
+                Método: {{ record.get_metodo_display|default:"—" }} · Fuente: {{ record.fuente_display }}
               </div>
             </div>
             <div class="recent-actions d-flex gap-2">
