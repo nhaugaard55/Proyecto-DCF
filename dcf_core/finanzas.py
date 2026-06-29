@@ -7,12 +7,10 @@ G_TERMINAL = 0.025
 
 # Obtiene la tasa libre de riesgo desde la API de la Fed
 
-_FRED_API_KEY_DEFAULT = "03b0d61b2efbea3313f92d4d117af8df"
-
 
 def obtener_tasa_libre_riesgo_con_fuente():
     """Obtiene la tasa libre de riesgo e indica si vino de FRED o fallback."""
-    fred_api_key = os.environ.get("FRED_API_KEY", _FRED_API_KEY_DEFAULT)
+    fred_api_key = os.environ.get("FRED_API_KEY") or ""
     try:
         response = requests.get(
             "https://api.stlouisfed.org/fred/series/observations",

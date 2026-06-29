@@ -20,7 +20,6 @@ import requests
 import yfinance as yf
 
 _FRED_BASE = "https://api.stlouisfed.org/fred/series/observations"
-_FRED_API_KEY_DEFAULT = "03b0d61b2efbea3313f92d4d117af8df"
 
 # Sectores ETF y su fase de ciclo favorable
 _SECTOR_ETFS = {
@@ -613,7 +612,7 @@ def get_business_cycle_phase(api_key: Optional[str] = None) -> dict:
                   position_pct, marker_x, marker_y, color,
                   scoring_detalle, warning_concentracion
     """
-    fred_key = api_key or os.environ.get("FRED_API_KEY", _FRED_API_KEY_DEFAULT)
+    fred_key = api_key or os.environ.get("FRED_API_KEY") or ""
 
     macro_score: float = 0.0
     macro_signals: list[dict] = []

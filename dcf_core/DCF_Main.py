@@ -1,5 +1,8 @@
+import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 import pandas as pd
 import yfinance as yf
@@ -534,29 +537,40 @@ def ejecutar_dcf(ticker: str, metodo: str = "auto", fuente: str = "auto") -> dic
     }
     crecimiento_base_val = (resultado.get("metricas", {}) or {}).get("crecimiento", crecimiento)
 
+    # Fuente única: si el DCF no aplica (FCF negativo/cero o WACC no calculable),
+    # escenarios y tabla tampoco aplican — mismo criterio, sin re-evaluar FCF.
+    _dcf_aplica = resultado.get("valor_intrinseco") is not None
+
+    precio = resultado.get("precio_actual") or 0.0
+    fcf_actual_val = valores_para_crecimiento[0] if valores_para_crecimiento else 0.0
+    datos_empresa = resultado.get("datos_empresa", {})
+    deuda_neta_val = datos_empresa.get("deuda_neta", 0.0) or 0.0
+    acciones_val = datos_empresa.get("acciones", 0.0) or 0.0
+    wacc_val = (resultado.get("metricas", {}) or {}).get("wacc", 0.08) or 0.08
+
     # --- Escenarios bull/base/bear ---
-    try:
-        precio = resultado.get("precio_actual") or 0.0
-        fcf_actual_val = valores_para_crecimiento[0] if valores_para_crecimiento else 0.0
-        datos_empresa = resultado.get("datos_empresa", {})
-        deuda_neta_val = datos_empresa.get("deuda_neta", 0.0) or 0.0
-        acciones_val = datos_empresa.get("acciones", 0.0) or 0.0
-        wacc_val = (resultado.get("metricas", {}) or {}).get("wacc", 0.08) or 0.08
-        escenarios = calcular_escenarios(
-            fcf_actual_val, crecimiento_base_val, wacc_val, deuda_neta_val, acciones_val, precio
-        )
-        resultado["escenarios"] = escenarios
-    except Exception:
-        resultado["escenarios"] = None
+    if not _dcf_aplica:
+        resultado["escenarios"] = None   # esperado — FCF negativo o WACC no calculable
+    else:
+        try:
+            resultado["escenarios"] = calcular_escenarios(
+                fcf_actual_val, crecimiento_base_val, wacc_val, deuda_neta_val, acciones_val, precio
+            )
+        except Exception as exc:
+            logger.error("[CR-06] calcular_escenarios falló inesperadamente para %s: %s", ticker, exc)
+            resultado["escenarios"] = None
 
     # --- Tabla de sensibilidad ---
-    try:
-        tabla = calcular_tabla_sensibilidad(
-            fcf_actual_val, wacc_val, crecimiento_base_val, deuda_neta_val, acciones_val, precio
-        )
-        resultado["tabla_sensibilidad"] = tabla
-    except Exception:
-        resultado["tabla_sensibilidad"] = None
+    if not _dcf_aplica:
+        resultado["tabla_sensibilidad"] = None   # esperado — mismo criterio que escenarios
+    else:
+        try:
+            resultado["tabla_sensibilidad"] = calcular_tabla_sensibilidad(
+                fcf_actual_val, wacc_val, crecimiento_base_val, deuda_neta_val, acciones_val, precio
+            )
+        except Exception as exc:
+            logger.error("[CR-06] calcular_tabla_sensibilidad falló inesperadamente para %s: %s", ticker, exc)
+            resultado["tabla_sensibilidad"] = None
 
     # --- Historial de precios (5 años) para gráfico ---
     try:

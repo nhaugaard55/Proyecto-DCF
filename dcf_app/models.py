@@ -23,7 +23,7 @@ class AnalysisRecord(models.Model):
     company_name = models.CharField(max_length=255)
     company_exchange = models.CharField(max_length=64, blank=True)
     sector = models.CharField(max_length=128, blank=True)
-    metodo = models.CharField(max_length=2, choices=METODO_CHOICES)
+    metodo = models.CharField(max_length=2, choices=METODO_CHOICES, null=True, blank=True)
     fuente_solicitada = models.CharField(max_length=16, blank=True)
     fuente_utilizada = models.CharField(max_length=16, blank=True)
     valor_intrinseco = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)

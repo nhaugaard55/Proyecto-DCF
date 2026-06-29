@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, cast
 from urllib.parse import urlencode
 
+from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles import finders
 from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
@@ -327,10 +328,8 @@ def _guardar_analisis(
     nombre_empresa = (company_name or resultado.get("nombre") or ticker).strip()
     sector = (resultado.get("sector") or "").strip()
     fuente_utilizada = (resultado.get("fuente_datos") or "").strip()
-    metodo = (
-        (resultado.get("datos_empresa") or {}).get("metodo_crecimiento_codigo")
-        or AnalysisRecord.METODO_CAGR
-    )
+    _raw_metodo = (resultado.get("datos_empresa") or {}).get("metodo_crecimiento_codigo")
+    metodo = _raw_metodo if _raw_metodo in dict(AnalysisRecord.METODO_CHOICES) else None
 
     precio_actual_raw = resultado.get("precio_actual")
     precio_actual = _to_decimal(precio_actual_raw, places=4)
@@ -1002,7 +1001,14 @@ def admin_export_md_view(request, ticker: str):
     return response
 
 
+@login_required   # CR-02: cierra acceso anónimo — anónimo → /accounts/login/?next=...
 def dcf_executive_report_view(request, ticker: str):
+    # ACTIVAR AL LANZAR PAGOS: PDF exclusivo Pro/Plus
+    # from accounts.subscription import get_user_plan, PLAN_PRO, PLAN_ADMIN
+    # plan = get_user_plan(request)
+    # if plan not in (PLAN_PRO, PLAN_ADMIN):
+    #     return redirect('/?#pricing')
+
     ticker = (ticker or "").strip().upper()
 
     if not ticker:
